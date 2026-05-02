@@ -1,7 +1,10 @@
 FROM node:20-alpine
+RUN apk add --no-cache python3 make g++
 WORKDIR /app
 COPY server/package*.json ./
 RUN npm install
+# Rebuild native addons for this container's arch/libc
+RUN npm rebuild better-sqlite3
 COPY server/ .
 EXPOSE 3000
 CMD ["npx", "tsx", "index.ts"]
