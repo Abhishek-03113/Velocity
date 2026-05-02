@@ -1,0 +1,17 @@
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY client/package*.json ./client/
+RUN npm install --prefix client
+
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/client/node_modules ./client/node_modules
+COPY client/ ./client/
+ARG VITE_API_URL=http://localhost:37800
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build --prefix client
+
+FROM nginx:alpine
+COPY --from=build /app/client/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
