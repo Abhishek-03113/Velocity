@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import Editor from './components/Editor'
 import MarkdownPreview from './components/MarkdownPreview'
 import PasteList from './components/PasteList'
+import SearchModal from './components/SearchModal'
 import { useEditorStore } from './store/editorStore'
+import { useSearchStore } from './store/searchStore'
 import type { Paste } from './types'
 import styles from './App.module.css'
 
@@ -78,6 +80,7 @@ export default function App() {
     getOpenTabs,
     initialize,
   } = useEditorStore()
+  const { isOpen: searchOpen, openSearch, closeSearch } = useSearchStore()
   const activePaste = getActivePaste()
   const openTabs = getOpenTabs()
   const [pendingTitle, setPendingTitle] = useState('')
@@ -88,9 +91,28 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // leave read mode when switching tabs
+  // Global keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.shiftKey && e.key === 'f') {
+        e.preventDefault()
+        openSearch()
+      } else if (mod && !e.shiftKey && e.key === 'n') {
+        e.preventDefault()
+        addPaste()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // leave read mode and close search when switching tabs
   useEffect(() => {
     setReadMode(false)
+    closeSearch()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId])
 
   const commitTitle = (id: number) => {
@@ -103,6 +125,9 @@ export default function App() {
 
   return (
     <div className={styles.app}>
+      {searchOpen && (
+        <SearchModal onSelect={(id) => setActiveId(id)} />
+      )}
       <div className={styles.tabBar}>
         <div className={styles.tabs}>
           {openTabs.map((paste) => (

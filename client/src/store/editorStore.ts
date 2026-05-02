@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { api } from '../lib/api'
 import type { Paste, CreatePastePayload, UpdatePastePayload } from '../types'
+import { useSearchStore } from './searchStore'
 
 const DEBOUNCE_MS = 800
 const MAX_RETRIES = 3
@@ -134,6 +135,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       const incoming: Paste[] = list.map((p) => ({ ...p, content: undefined, dirty: false }))
       set({ pastes: incoming, openTabIds: [incoming[0].id], activeId: incoming[0].id })
+      useSearchStore.getState().hydrateIndex(incoming.map((p) => ({ id: p.id, title: p.title, content: '' })))
 
       const firstId = incoming[0].id
       try {
@@ -210,6 +212,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           openTabIds: state.openTabIds.map((id) => (id === tempId ? serverPaste.id : id)),
           activeId: state.activeId === tempId ? serverPaste.id : state.activeId,
         }))
+        useSearchStore.getState().indexPaste({ id: serverPaste.id, title: serverPaste.title, content: '' })
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'unknown error'
@@ -267,6 +270,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       get().addPaste()
     }
 
+    useSearchStore.getState().removePaste(id)
+
     if (id > 0) {
       api.delete<void>(`/api/pastes/${id}`).catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'unknown error'
@@ -284,6 +289,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ),
     }))
     scheduleSync(activeId, get)
+    const paste = get().pastes.find((p) => p.id === activeId)
+    if (paste) useSearchStore.getState().indexPaste({ id: activeId, title: paste.title, content })
   },
 
   setTitle: (id: number, title: string) => {
@@ -291,6 +298,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       pastes: state.pastes.map((p) => (p.id === id ? { ...p, title, dirty: true } : p)),
     }))
     scheduleSync(id, get)
+    const paste = get().pastes.find((p) => p.id === id)
+    if (paste) useSearchStore.getState().indexPaste({ id, title, content: paste.content ?? '' })
   },
 
   clearDirty: (id: number) => {
