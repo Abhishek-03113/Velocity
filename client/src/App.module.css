@@ -134,6 +134,32 @@
   color: #ccc;
 }
 
+.readModeBtn {
+  flex-shrink: 0;
+  align-self: center;
+  margin: 0 8px;
+  padding: 3px 12px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #888;
+  font-size: 12px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.readModeBtn:hover {
+  border-color: #666;
+  color: #bbb;
+}
+
+.readModeBtnActive {
+  background: #2a2a2a;
+  border-color: #555;
+  color: #ccc;
+}
+
 /* Body */
 .body {
   display: flex;

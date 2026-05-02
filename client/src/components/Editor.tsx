@@ -2,17 +2,12 @@ import { useEffect, useRef, useCallback } from 'react'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { oneDark } from '@codemirror/theme-one-dark'
-import type { Extension } from '@codemirror/state'
 import styles from './Editor.module.css'
 
-type EditorMode = 'plaintext' | 'markdown'
-
 interface EditorProps {
-  content: string
-  mode: EditorMode
+  content: string | undefined
   onChange: (content: string) => void
 }
 
@@ -48,36 +43,18 @@ const baseTheme = EditorView.theme({
   },
 })
 
-function buildExtensions(mode: EditorMode, onChange: (val: string) => void): Extension[] {
-  const base: Extension[] = [
-    history(),
-    keymap.of([...defaultKeymap, ...historyKeymap]),
-    lineNumbers(),
-    highlightActiveLine(),
-    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-    oneDark,
-    baseTheme,
-    EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        onChange(update.state.doc.toString())
-      }
-    }),
-    EditorView.lineWrapping,
-  ]
+const extensions = [
+  history(),
+  keymap.of([...defaultKeymap, ...historyKeymap]),
+  lineNumbers(),
+  highlightActiveLine(),
+  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  oneDark,
+  baseTheme,
+  EditorView.lineWrapping,
+]
 
-  if (mode === 'markdown') {
-    base.push(
-      markdown({
-        base: markdownLanguage,
-        codeLanguages: [],
-      })
-    )
-  }
-
-  return base
-}
-
-export default function Editor({ content, mode, onChange }: EditorProps) {
+export default function Editor({ content, onChange }: EditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
@@ -90,7 +67,12 @@ export default function Editor({ content, mode, onChange }: EditorProps) {
 
     const state = EditorState.create({
       doc: content ?? '',
-      extensions: buildExtensions(mode, stableOnChange),
+      extensions: [
+        ...extensions,
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) stableOnChange(update.state.doc.toString())
+        }),
+      ],
     })
 
     const view = new EditorView({ state, parent: containerRef.current })
@@ -101,7 +83,7 @@ export default function Editor({ content, mode, onChange }: EditorProps) {
       viewRef.current = null
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode])
+  }, [])
 
   useEffect(() => {
     const view = viewRef.current

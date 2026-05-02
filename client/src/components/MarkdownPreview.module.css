@@ -1,0 +1,108 @@
+.preview {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px 32px;
+  color: #ccc;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  background: #1e1e1e;
+}
+
+.preview h1,
+.preview h2,
+.preview h3,
+.preview h4,
+.preview h5,
+.preview h6 {
+  color: #ddd;
+  margin: 1.4em 0 0.5em;
+  line-height: 1.3;
+}
+
+.preview h1 { font-size: 2em; border-bottom: 1px solid #333; padding-bottom: 0.3em; }
+.preview h2 { font-size: 1.5em; border-bottom: 1px solid #2a2a2a; padding-bottom: 0.2em; }
+.preview h3 { font-size: 1.25em; }
+
+.preview p {
+  margin: 0 0 1em;
+}
+
+.preview a {
+  color: #4e9ce8;
+  text-decoration: none;
+}
+
+.preview a:hover {
+  text-decoration: underline;
+}
+
+.preview code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875em;
+  background: #2a2a2a;
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: #d19a66;
+}
+
+.preview pre {
+  background: #252526;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 0 0 1em;
+}
+
+.preview pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: #abb2bf;
+}
+
+.preview blockquote {
+  border-left: 3px solid #444;
+  margin: 0 0 1em;
+  padding: 0 0 0 16px;
+  color: #888;
+}
+
+.preview ul,
+.preview ol {
+  margin: 0 0 1em;
+  padding-left: 1.5em;
+}
+
+.preview li {
+  margin-bottom: 0.25em;
+}
+
+.preview hr {
+  border: none;
+  border-top: 1px solid #333;
+  margin: 1.5em 0;
+}
+
+.preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 1em;
+}
+
+.preview th,
+.preview td {
+  border: 1px solid #333;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.preview th {
+  background: #252526;
+  color: #ddd;
+}
+
+.preview img {
+  max-width: 100%;
+}

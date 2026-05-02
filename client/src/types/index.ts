@@ -1,7 +1,7 @@
 export interface Paste {
   id: number
   title: string
-  content: string
+  content: string | undefined
   dirty: boolean
   group_id?: number | null
   created_at?: string

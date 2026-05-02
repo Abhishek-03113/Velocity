@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Editor from './components/Editor'
+import MarkdownPreview from './components/MarkdownPreview'
 import PasteList from './components/PasteList'
 import { useEditorStore } from './store/editorStore'
 import type { Paste } from './types'
@@ -69,20 +70,28 @@ export default function App() {
     editingTitleId,
     setActiveId,
     addPaste,
-    closePaste,
+    closeTab,
     setContent,
     setTitle,
     setEditingTitleId,
     getActivePaste,
+    getOpenTabs,
     initialize,
   } = useEditorStore()
   const activePaste = getActivePaste()
+  const openTabs = getOpenTabs()
   const [pendingTitle, setPendingTitle] = useState('')
+  const [readMode, setReadMode] = useState(false)
 
   useEffect(() => {
     initialize()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // leave read mode when switching tabs
+  useEffect(() => {
+    setReadMode(false)
+  }, [activeId])
 
   const commitTitle = (id: number) => {
     if (pendingTitle.trim()) setTitle(id, pendingTitle.trim())
@@ -96,14 +105,14 @@ export default function App() {
     <div className={styles.app}>
       <div className={styles.tabBar}>
         <div className={styles.tabs}>
-          {pastes.map((paste) => (
+          {openTabs.map((paste) => (
             <Tab
               key={paste.id}
               paste={paste}
               isActive={paste.id === activeId}
               isEditing={paste.id === editingTitleId}
               onActivate={() => setActiveId(paste.id)}
-              onClose={() => closePaste(paste.id)}
+              onClose={() => closeTab(paste.id)}
               onDoubleClick={() => {
                 setPendingTitle(paste.title)
                 setEditingTitleId(paste.id)
@@ -120,15 +129,25 @@ export default function App() {
             +
           </button>
         </div>
+        <button
+          className={`${styles.readModeBtn} ${readMode ? styles.readModeBtnActive : ''}`}
+          onClick={() => setReadMode((v) => !v)}
+          title="Toggle Read Mode"
+        >
+          {readMode ? 'Edit' : 'Read'}
+        </button>
       </div>
       <div className={styles.body}>
         <div className={styles.editorPane}>
-          <Editor
-            key={activePaste.id}
-            content={activePaste.content}
-            mode="plaintext"
-            onChange={setContent}
-          />
+          {readMode ? (
+            <MarkdownPreview content={activePaste.content} />
+          ) : (
+            <Editor
+              key={activePaste.id}
+              content={activePaste.content}
+              onChange={setContent}
+            />
+          )}
         </div>
         <div className={styles.listPane}>
           <PasteList pastes={pastes} activeId={activeId} onSelect={setActiveId} />
