@@ -3,9 +3,18 @@ import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, defaultHighlightStyle, LanguageDescription } from '@codemirror/language'
+import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { oneDark } from '@codemirror/theme-one-dark'
+import type { Extension } from '@codemirror/state'
 import styles from './Editor.module.css'
+
+type EditorMode = 'plaintext' | 'markdown'
+
+interface EditorProps {
+  content: string
+  mode: EditorMode
+  onChange: (content: string) => void
+}
 
 const baseTheme = EditorView.theme({
   '&': {
@@ -39,8 +48,8 @@ const baseTheme = EditorView.theme({
   },
 })
 
-function buildExtensions(mode, onChange) {
-  const base = [
+function buildExtensions(mode: EditorMode, onChange: (val: string) => void): Extension[] {
+  const base: Extension[] = [
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     lineNumbers(),
@@ -68,13 +77,13 @@ function buildExtensions(mode, onChange) {
   return base
 }
 
-export default function Editor({ content, mode, onChange }) {
-  const containerRef = useRef(null)
-  const viewRef = useRef(null)
+export default function Editor({ content, mode, onChange }: EditorProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
-  const stableOnChange = useCallback((val) => onChangeRef.current(val), [])
+  const stableOnChange = useCallback((val: string) => onChangeRef.current(val), [])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -92,9 +101,8 @@ export default function Editor({ content, mode, onChange }) {
       viewRef.current = null
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]) // rebuild editor when mode changes
+  }, [mode])
 
-  // Sync external content changes without full rebuild
   useEffect(() => {
     const view = viewRef.current
     if (!view) return

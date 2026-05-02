@@ -1,10 +1,33 @@
-import { useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Editor from './components/Editor'
 import PasteList from './components/PasteList'
 import { useEditorStore } from './store/editorStore'
+import type { Paste } from './types'
 import styles from './App.module.css'
 
-function Tab({ paste, isActive, isEditing, onActivate, onClose, onDoubleClick, onTitleChange, onTitleBlur, onTitleKeyDown }) {
+interface TabProps {
+  paste: Paste
+  isActive: boolean
+  isEditing: boolean
+  onActivate: () => void
+  onClose: () => void
+  onDoubleClick: () => void
+  onTitleChange: (value: string) => void
+  onTitleBlur: () => void
+  onTitleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
+}
+
+function Tab({
+  paste,
+  isActive,
+  isEditing,
+  onActivate,
+  onClose,
+  onDoubleClick,
+  onTitleChange,
+  onTitleBlur,
+  onTitleKeyDown,
+}: TabProps) {
   return (
     <div
       className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
@@ -25,9 +48,13 @@ function Tab({ paste, isActive, isEditing, onActivate, onClose, onDoubleClick, o
           {paste.title || 'Untitled'}
         </span>
       )}
+      {paste.dirty && <span className={styles.tabDirty} title="Unsaved changes" />}
       <button
         className={styles.tabClose}
-        onClick={(e) => { e.stopPropagation(); onClose() }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onClose()
+        }}
       >
         ×
       </button>
@@ -36,15 +63,34 @@ function Tab({ paste, isActive, isEditing, onActivate, onClose, onDoubleClick, o
 }
 
 export default function App() {
-  const { pastes, activeId, editingTitleId, setActiveId, addPaste, closePaste, setContent, setTitle, setEditingTitleId, getActivePaste } = useEditorStore()
+  const {
+    pastes,
+    activeId,
+    editingTitleId,
+    setActiveId,
+    addPaste,
+    closePaste,
+    setContent,
+    setTitle,
+    setEditingTitleId,
+    getActivePaste,
+    initialize,
+  } = useEditorStore()
   const activePaste = getActivePaste()
   const [pendingTitle, setPendingTitle] = useState('')
 
-  const commitTitle = (id) => {
+  useEffect(() => {
+    initialize()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const commitTitle = (id: number) => {
     if (pendingTitle.trim()) setTitle(id, pendingTitle.trim())
     setEditingTitleId(null)
     setPendingTitle('')
   }
+
+  if (!activePaste) return null
 
   return (
     <div className={styles.app}>
@@ -58,13 +104,21 @@ export default function App() {
               isEditing={paste.id === editingTitleId}
               onActivate={() => setActiveId(paste.id)}
               onClose={() => closePaste(paste.id)}
-              onDoubleClick={() => { setPendingTitle(paste.title); setEditingTitleId(paste.id) }}
+              onDoubleClick={() => {
+                setPendingTitle(paste.title)
+                setEditingTitleId(paste.id)
+              }}
               onTitleChange={setPendingTitle}
               onTitleBlur={() => commitTitle(paste.id)}
-              onTitleKeyDown={(e) => { if (e.key === 'Enter') commitTitle(paste.id); if (e.key === 'Escape') setEditingTitleId(null) }}
+              onTitleKeyDown={(e) => {
+                if (e.key === 'Enter') commitTitle(paste.id)
+                if (e.key === 'Escape') setEditingTitleId(null)
+              }}
             />
           ))}
-          <button className={styles.addTab} onClick={addPaste}>+</button>
+          <button className={styles.addTab} onClick={addPaste}>
+            +
+          </button>
         </div>
       </div>
       <div className={styles.body}>
@@ -77,11 +131,7 @@ export default function App() {
           />
         </div>
         <div className={styles.listPane}>
-          <PasteList
-            pastes={pastes}
-            activeId={activeId}
-            onSelect={setActiveId}
-          />
+          <PasteList pastes={pastes} activeId={activeId} onSelect={setActiveId} />
         </div>
       </div>
     </div>

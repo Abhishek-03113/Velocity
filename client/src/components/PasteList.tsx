@@ -1,6 +1,13 @@
+import type { Paste } from '../types'
 import styles from './PasteList.module.css'
 
-export default function PasteList({ pastes, activeId, onSelect }) {
+interface PasteListProps {
+  pastes: Paste[]
+  activeId: number | null
+  onSelect: (id: number) => void
+}
+
+export default function PasteList({ pastes, activeId, onSelect }: PasteListProps) {
   return (
     <div className={styles.panel}>
       <div className={styles.header}>PASTES</div>

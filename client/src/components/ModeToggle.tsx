@@ -1,8 +1,15 @@
 import styles from './ModeToggle.module.css'
 
-const MODES = ['plain', 'markdown']
+type Mode = 'plain' | 'markdown'
 
-export default function ModeToggle({ mode, onChange }) {
+const MODES: Mode[] = ['plain', 'markdown']
+
+interface ModeToggleProps {
+  mode: Mode
+  onChange: (mode: Mode) => void
+}
+
+export default function ModeToggle({ mode, onChange }: ModeToggleProps) {
   return (
     <div className={styles.toggle}>
       {MODES.map((m) => (
