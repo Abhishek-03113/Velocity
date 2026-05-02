@@ -1,0 +1,147 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #1e1e1e;
+  color: #ccc;
+  overflow: hidden;
+}
+
+/* Tab bar */
+.tabBar {
+  display: flex;
+  align-items: stretch;
+  background: #252526;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+  height: 36px;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+  min-width: 0;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px 0 16px;
+  background: #2d2d2d;
+  border-right: 1px solid #1a1a1a;
+  cursor: pointer;
+  min-width: 100px;
+  max-width: 200px;
+  flex-shrink: 0;
+  color: #888;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  position: relative;
+  user-select: none;
+}
+
+.tab:hover {
+  background: #333;
+  color: #bbb;
+}
+
+.tabActive {
+  background: #1e1e1e;
+  color: #ddd;
+  font-weight: 600;
+  border-bottom: 1px solid #1e1e1e;
+  margin-bottom: -1px;
+}
+
+.tabTitle {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #666;
+  color: #ddd;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  outline: none;
+  padding: 0;
+  width: 100%;
+}
+
+.tabClose {
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.tabClose:hover {
+  background: #555;
+  color: #ddd;
+}
+
+.addTab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  flex-shrink: 0;
+  align-self: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #666;
+  font-size: 18px;
+  cursor: pointer;
+  margin: 0 4px;
+}
+
+.addTab:hover {
+  background: #3a3a3a;
+  color: #ccc;
+}
+
+/* Body */
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.editorPane {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.listPane {
+  width: 220px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-left: 1px solid #333;
+}

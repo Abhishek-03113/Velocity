@@ -1,35 +1,89 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useRef, useState } from 'react'
+import Editor from './components/Editor'
+import PasteList from './components/PasteList'
+import { useEditorStore } from './store/editorStore'
+import styles from './App.module.css'
 
-function App() {
-  const [count, setCount] = useState(0)
-
+function Tab({ paste, isActive, isEditing, onActivate, onClose, onDoubleClick, onTitleChange, onTitleBlur, onTitleKeyDown }) {
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div
+      className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
+      onClick={onActivate}
+    >
+      {isEditing ? (
+        <input
+          className={styles.tabInput}
+          defaultValue={paste.title}
+          autoFocus
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => onTitleChange(e.target.value)}
+          onBlur={onTitleBlur}
+          onKeyDown={onTitleKeyDown}
+        />
+      ) : (
+        <span className={styles.tabTitle} onDoubleClick={onDoubleClick}>
+          {paste.title || 'Untitled'}
+        </span>
+      )}
+      <button
+        className={styles.tabClose}
+        onClick={(e) => { e.stopPropagation(); onClose() }}
+      >
+        ×
+      </button>
+    </div>
   )
 }
 
-export default App
+export default function App() {
+  const { pastes, activeId, editingTitleId, setActiveId, addPaste, closePaste, setContent, setTitle, setEditingTitleId, getActivePaste } = useEditorStore()
+  const activePaste = getActivePaste()
+  const [pendingTitle, setPendingTitle] = useState('')
+
+  const commitTitle = (id) => {
+    if (pendingTitle.trim()) setTitle(id, pendingTitle.trim())
+    setEditingTitleId(null)
+    setPendingTitle('')
+  }
+
+  return (
+    <div className={styles.app}>
+      <div className={styles.tabBar}>
+        <div className={styles.tabs}>
+          {pastes.map((paste) => (
+            <Tab
+              key={paste.id}
+              paste={paste}
+              isActive={paste.id === activeId}
+              isEditing={paste.id === editingTitleId}
+              onActivate={() => setActiveId(paste.id)}
+              onClose={() => closePaste(paste.id)}
+              onDoubleClick={() => { setPendingTitle(paste.title); setEditingTitleId(paste.id) }}
+              onTitleChange={setPendingTitle}
+              onTitleBlur={() => commitTitle(paste.id)}
+              onTitleKeyDown={(e) => { if (e.key === 'Enter') commitTitle(paste.id); if (e.key === 'Escape') setEditingTitleId(null) }}
+            />
+          ))}
+          <button className={styles.addTab} onClick={addPaste}>+</button>
+        </div>
+      </div>
+      <div className={styles.body}>
+        <div className={styles.editorPane}>
+          <Editor
+            key={activePaste.id}
+            content={activePaste.content}
+            mode="plaintext"
+            onChange={setContent}
+          />
+        </div>
+        <div className={styles.listPane}>
+          <PasteList
+            pastes={pastes}
+            activeId={activeId}
+            onSelect={setActiveId}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
