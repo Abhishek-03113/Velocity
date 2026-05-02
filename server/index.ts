@@ -1,0 +1,18 @@
+import { serve } from '@hono/node-server'
+import { Hono } from 'hono'
+import { logger } from 'hono/logger'
+import { cors } from 'hono/cors'
+import 'dotenv/config'
+
+const app = new Hono()
+
+app.use('*', logger())
+app.use('*', cors({ origin: process.env.CLIENT_URL ?? 'http://localhost:5173' }))
+
+app.get('/', (c) => c.json({ message: 'Velocity API' }))
+
+const PORT = Number(process.env.PORT ?? 3000)
+
+serve({ fetch: app.fetch, port: PORT }, () => {
+  console.log(`Server running on http://localhost:${PORT}`)
+})
