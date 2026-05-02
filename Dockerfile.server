@@ -1,10 +1,24 @@
 FROM node:20-alpine
+
+# Install build tools required for native addons (better-sqlite3)
 RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
+
+# 1. Copy only package manifests and install deps inside the container
 COPY server/package*.json ./
 RUN npm install
-# Rebuild native addons for this container's arch/libc
+
+# 2. Copy application source EXCLUDING node_modules (.dockerignore handles this,
+#    but the explicit cache clean is a safety net)
+COPY server/ ./
+RUN rm -rf node_modules/.cache
+
+# 3. Rebuild native addons to guarantee they match this container's arch + musl libc
 RUN npm rebuild better-sqlite3
-COPY server/ .
+
+# 4. Set the database path for Docker volume mount
+ENV DB_PATH=/app/data/velocity.db
+
 EXPOSE 3000
 CMD ["npx", "tsx", "index.ts"]

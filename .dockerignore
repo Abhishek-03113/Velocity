@@ -1,0 +1,12 @@
+node_modules/
+server/node_modules/
+client/node_modules/
+dist/
+client/dist/
+.git/
+.env
+data/*.db
+data/*.db-shm
+data/*.db-wal
+*.md
+.gitignore

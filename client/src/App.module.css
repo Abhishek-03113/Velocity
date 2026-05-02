@@ -69,6 +69,14 @@
   text-overflow: ellipsis;
 }
 
+.tabDirty {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e8a030;
+  flex-shrink: 0;
+}
+
 .tabInput {
   flex: 1;
   background: transparent;
