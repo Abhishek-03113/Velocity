@@ -55,7 +55,7 @@ export default function SearchModal({ onSelect }: SearchModalProps) {
         </div>
         <div className={styles.results}>
           {results.length === 0 && query.trim() ? (
-            <div className={styles.empty}>No results for "{query}"</div>
+            <div className={styles.empty}>No results for &quot;{query}&quot;</div>
           ) : results.length === 0 ? (
             <div className={styles.empty}>Type to search across all pastes</div>
           ) : (

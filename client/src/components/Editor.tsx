@@ -48,22 +48,23 @@ const baseTheme = EditorView.theme({
 // App-level keybindings injected into CodeMirror so they fire even when the
 // editor has focus (where window-level listeners are shadowed by CM's keymap).
 function buildAppKeybindings() {
+  const handleNew = () => {
+    useEditorStore.getState().addPaste()
+    return true
+  }
+  const handleClose = () => {
+    const { activeId, closeTab } = useEditorStore.getState()
+    if (activeId != null) closeTab(activeId)
+    return true
+  }
+
   return Prec.highest(
     keymap.of([
-      {
-        key: 'Mod-Shift-f',
-        run: () => {
-          useSearchStore.getState().openSearch()
-          return true
-        },
-      },
-      {
-        key: 'Mod-n',
-        run: () => {
-          useEditorStore.getState().addPaste()
-          return true
-        },
-      },
+      { key: 'Mod-Shift-f', run: () => { useSearchStore.getState().openSearch(); return true } },
+      { key: 'Mod-n', run: handleNew },
+      { key: 'Ctrl-n', run: handleNew },
+      { key: 'Mod-w', run: handleClose },
+      { key: 'Ctrl-w', run: handleClose },
     ])
   )
 }

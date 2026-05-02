@@ -95,12 +95,23 @@ export default function App() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey
-      if (mod && e.shiftKey && e.key === 'f') {
+      const code = e.code
+      const keyStr = e.key.toLowerCase()
+
+      const isF = code === 'KeyF' || keyStr === 'f'
+      const isN = code === 'KeyN' || keyStr === 'n'
+      const isW = code === 'KeyW' || keyStr === 'w'
+
+      if (mod && e.shiftKey && isF) {
         e.preventDefault()
         openSearch()
-      } else if (mod && !e.shiftKey && e.key === 'n') {
+      } else if (mod && !e.shiftKey && isN) {
         e.preventDefault()
         addPaste()
+      } else if (mod && !e.shiftKey && isW) {
+        e.preventDefault()
+        const currentId = useEditorStore.getState().activeId
+        if (currentId != null) closeTab(currentId)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
