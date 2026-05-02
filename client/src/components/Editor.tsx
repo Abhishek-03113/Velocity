@@ -1,9 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { EditorState } from '@codemirror/state'
+import { EditorState, Prec } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { useSearchStore } from '../store/searchStore'
+import { useEditorStore } from '../store/editorStore'
 import styles from './Editor.module.css'
 
 interface EditorProps {
@@ -43,6 +45,29 @@ const baseTheme = EditorView.theme({
   },
 })
 
+// App-level keybindings injected into CodeMirror so they fire even when the
+// editor has focus (where window-level listeners are shadowed by CM's keymap).
+function buildAppKeybindings() {
+  return Prec.highest(
+    keymap.of([
+      {
+        key: 'Mod-Shift-f',
+        run: () => {
+          useSearchStore.getState().openSearch()
+          return true
+        },
+      },
+      {
+        key: 'Mod-n',
+        run: () => {
+          useEditorStore.getState().addPaste()
+          return true
+        },
+      },
+    ])
+  )
+}
+
 const extensions = [
   history(),
   keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -52,6 +77,7 @@ const extensions = [
   oneDark,
   baseTheme,
   EditorView.lineWrapping,
+  buildAppKeybindings(),
 ]
 
 export default function Editor({ content, onChange }: EditorProps) {
