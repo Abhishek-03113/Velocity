@@ -79,6 +79,7 @@ export default function App() {
     getActivePaste,
     getOpenTabs,
     initialize,
+    deletePaste,
   } = useEditorStore()
   const { isOpen: searchOpen, openSearch, closeSearch } = useSearchStore()
   const activePaste = getActivePaste()
@@ -186,7 +187,7 @@ export default function App() {
           )}
         </div>
         <div className={styles.listPane}>
-          <PasteList pastes={pastes} activeId={activeId} onSelect={setActiveId} />
+          <PasteList pastes={pastes} activeId={activeId} onSelect={setActiveId} onDiscard={deletePaste} />
         </div>
       </div>
     </div>

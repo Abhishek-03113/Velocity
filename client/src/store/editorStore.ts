@@ -61,6 +61,19 @@ async function syncPaste(id: number, get: () => EditorState, attempt = 1): Promi
   }
 }
 
+async function deleteFromServer(id: number, attempt = 1): Promise<void> {
+  if (id < 0) return
+  try {
+    await api.delete<void>(`/api/pastes/${id}`)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'unknown error'
+    console.error(`[deletePaste] delete ${id} failed (attempt ${attempt}):`, message)
+    if (attempt < MAX_RETRIES) {
+      setTimeout(() => deleteFromServer(id, attempt + 1), 1000 * 2 ** attempt)
+    }
+  }
+}
+
 // Trim local-only (id < 0) pastes in the sidebar to the MRU cap.
 // Named pastes (title !== 'Untitled') are always kept regardless of server ID.
 function trimLocalMru(pastes: Paste[], openTabIds: number[]): Paste[] {
@@ -272,12 +285,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     useSearchStore.getState().removePaste(id)
 
-    if (id > 0) {
-      api.delete<void>(`/api/pastes/${id}`).catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : 'unknown error'
-        console.error(`[deletePaste] delete ${id} failed:`, message)
-      })
-    }
+    deleteFromServer(id)
   },
 
   setContent: (content: string) => {

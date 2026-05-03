@@ -28,9 +28,9 @@
   font-family: -apple-system, 'Segoe UI', sans-serif;
   color: #888;
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .item:hover {
@@ -40,4 +40,33 @@
 .item.active {
   color: #ddd;
   font-weight: 600;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discard {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: transparent;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+
+.item:hover .discard {
+  color: #666;
+}
+
+.discard:hover {
+  color: #cc4444 !important;
+  background: rgba(204, 68, 68, 0.1);
 }

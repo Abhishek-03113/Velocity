@@ -5,9 +5,10 @@ interface PasteListProps {
   pastes: Paste[]
   activeId: number | null
   onSelect: (id: number) => void
+  onDiscard: (id: number) => void
 }
 
-export default function PasteList({ pastes, activeId, onSelect }: PasteListProps) {
+export default function PasteList({ pastes, activeId, onSelect, onDiscard }: PasteListProps) {
   return (
     <div className={styles.panel}>
       <div className={styles.header}>PASTES</div>
@@ -18,7 +19,17 @@ export default function PasteList({ pastes, activeId, onSelect }: PasteListProps
             className={`${styles.item} ${activeId === paste.id ? styles.active : ''}`}
             onClick={() => onSelect(paste.id)}
           >
-            {paste.title || 'Untitled'}
+            <span className={styles.title}>{paste.title || 'Untitled'}</span>
+            <button
+              className={styles.discard}
+              title="Discard paste"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDiscard(paste.id)
+              }}
+            >
+              ×
+            </button>
           </li>
         ))}
       </ul>
