@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import Editor from './components/Editor'
+import Editor, { type EditorMode } from './components/Editor'
 import MarkdownPreview from './components/MarkdownPreview'
 import PasteList from './components/PasteList'
 import SearchModal from './components/SearchModal'
 import ShortcutsModal from './components/ShortcutsModal'
 import { useEditorStore } from './store/editorStore'
+import { useGroupStore } from './store/groupStore'
 import { useSearchStore } from './store/searchStore'
 import type { Paste } from './types'
 import styles from './App.module.css'
@@ -81,16 +82,31 @@ export default function App() {
     getOpenTabs,
     initialize,
     deletePaste,
+    assignGroup,
   } = useEditorStore()
+  const {
+    groups,
+    activeGroupId,
+    editingGroupId,
+    initialize: initializeGroups,
+    setActiveGroupId,
+    setEditingGroupId,
+    addGroup,
+    setGroupName,
+    deleteGroup,
+  } = useGroupStore()
   const { isOpen: searchOpen, openSearch, closeSearch } = useSearchStore()
   const activePaste = getActivePaste()
   const openTabs = getOpenTabs()
   const [pendingTitle, setPendingTitle] = useState('')
+  const [editorMode, setEditorMode] = useState<EditorMode>('plain')
   const [readMode, setReadMode] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
     initialize()
+    initializeGroups()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -104,10 +120,14 @@ export default function App() {
       const isF = code === 'KeyF' || keyStr === 'f'
       const isN = code === 'KeyN' || keyStr === 'n'
       const isW = code === 'KeyW' || keyStr === 'w'
+      const isOne = code === 'Digit1' || keyStr === '1'
 
       if (mod && e.shiftKey && isF) {
         e.preventDefault()
         openSearch()
+      } else if (mod && !e.shiftKey && isF) {
+        e.preventDefault()
+        window.dispatchEvent(new Event('velocity:open-inline-search'))
       } else if (mod && !e.shiftKey && isN) {
         e.preventDefault()
         addPaste()
@@ -115,6 +135,9 @@ export default function App() {
         e.preventDefault()
         const currentId = useEditorStore.getState().activeId
         if (currentId != null) closeTab(currentId)
+      } else if (mod && !e.shiftKey && isOne) {
+        e.preventDefault()
+        setSidebarOpen((open) => !open)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -134,6 +157,12 @@ export default function App() {
     setEditingTitleId(null)
     setPendingTitle('')
   }
+
+  const visiblePastes = pastes.filter((paste) => {
+    if (activeGroupId === null) return true
+    if (activeGroupId === 'ungrouped') return paste.group_id == null
+    return paste.group_id === activeGroupId
+  })
 
   if (!activePaste) return null
 
@@ -179,27 +208,68 @@ export default function App() {
           ?
         </button>
         <button
-          className={`${styles.readModeBtn} ${readMode ? styles.readModeBtnActive : ''}`}
-          onClick={() => setReadMode((v) => !v)}
-          title="Toggle Read Mode"
+          className={`${styles.sidebarToggle} ${sidebarOpen ? styles.sidebarToggleActive : ''}`}
+          onClick={() => setSidebarOpen((open) => !open)}
+          title="Toggle sidebar"
         >
-          {readMode ? 'Edit' : 'Read'}
+          ◧
         </button>
+        <div className={styles.modeTabs} aria-label="Editor mode">
+          <button
+            className={`${styles.modeBtn} ${!readMode && editorMode === 'plain' ? styles.modeBtnActive : ''}`}
+            onClick={() => {
+              setEditorMode('plain')
+              setReadMode(false)
+            }}
+          >
+            Plain
+          </button>
+          <button
+            className={`${styles.modeBtn} ${!readMode && editorMode === 'markdown' ? styles.modeBtnActive : ''}`}
+            onClick={() => {
+              setEditorMode('markdown')
+              setReadMode(false)
+            }}
+          >
+            Markdown
+          </button>
+          <button
+            className={`${styles.modeBtn} ${readMode ? styles.modeBtnActive : ''}`}
+            onClick={() => setReadMode(true)}
+          >
+            Read
+          </button>
+        </div>
       </div>
-      <div className={styles.body}>
+      <div className={`${styles.body} ${sidebarOpen ? '' : styles.bodySidebarClosed}`}>
         <div className={styles.editorPane}>
           {readMode ? (
             <MarkdownPreview content={activePaste.content} />
           ) : (
             <Editor
-              key={activePaste.id}
+              key={`${activePaste.id}:${editorMode}`}
               content={activePaste.content}
               onChange={setContent}
+              mode={editorMode}
             />
           )}
         </div>
         <div className={styles.listPane}>
-          <PasteList pastes={pastes} activeId={activeId} onSelect={setActiveId} onDiscard={deletePaste} />
+          <PasteList
+            pastes={visiblePastes}
+            groups={groups}
+            activeId={activeId}
+            activeGroupId={activeGroupId}
+            editingGroupId={editingGroupId}
+            onSelect={setActiveId}
+            onDiscard={deletePaste}
+            onAssignGroup={assignGroup}
+            onGroupFilter={setActiveGroupId}
+            onAddGroup={addGroup}
+            onRenameGroup={setGroupName}
+            onDeleteGroup={deleteGroup}
+            onEditingGroupChange={setEditingGroupId}
+          />
         </div>
       </div>
     </div>

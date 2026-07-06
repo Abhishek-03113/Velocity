@@ -9,8 +9,9 @@ const OPT = isMac ? '⌥' : 'Alt'
 const SHORTCUTS = [
   { action: 'New paste', keys: [`${MOD}`, 'N'] },
   { action: 'Close tab', keys: [`${MOD}`, 'W'] },
+  { action: 'Inline search', keys: [`${MOD}`, 'F'] },
   { action: 'Global search', keys: [`${MOD}`, '⇧', 'F'] },
-  { action: 'Toggle read mode', keys: [`${MOD}`, '⇧', 'P'] },
+  { action: 'Toggle sidebar', keys: [`${MOD}`, '1'] },
   { action: 'Multi-cursor', keys: [OPT, 'Click'] },
   { action: 'Undo', keys: [`${MOD}`, 'Z'] },
   { action: 'Redo', keys: [`${MOD}`, '⇧', 'Z'] },

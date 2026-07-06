@@ -6,6 +6,6 @@ export async function errorHandler(c: Context, next: Next) {
   } catch (err) {
     console.error(err)
     c.status(500)
-    return c.json({ error: 'Internal server error' })
+    return c.json({ success: false, error: 'Internal server error' })
   }
 }

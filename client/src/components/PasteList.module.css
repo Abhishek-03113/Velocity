@@ -5,13 +5,108 @@
   background: #252526;
 }
 
-.header {
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 14px 16px 8px;
   font-size: 11px;
   font-family: -apple-system, 'Segoe UI', sans-serif;
   color: #666;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   flex-shrink: 0;
+}
+
+.addGroup {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.addGroup:hover {
+  border-color: #666;
+  color: #ddd;
+}
+
+.groupList {
+  padding: 0 8px 8px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.groupItem {
+  width: 100%;
+  min-height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  text-align: left;
+}
+
+.groupItem:hover {
+  background: #2d2d2d;
+  color: #bbb;
+}
+
+.groupActive {
+  background: #303030;
+  color: #ddd;
+}
+
+.groupName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupInput {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #ddd;
+  padding: 0 6px;
+  font: inherit;
+  outline: none;
+}
+
+.deleteGroup {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.groupItem:hover .deleteGroup {
+  color: #666;
+}
+
+.deleteGroup:hover {
+  color: #cc4444;
+  background: rgba(204, 68, 68, 0.1);
 }
 
 .list {
@@ -50,6 +145,31 @@
   white-space: nowrap;
 }
 
+.groupSelect {
+  width: 72px;
+  min-width: 72px;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  background: #202020;
+  color: #777;
+  font-size: 11px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.item:hover .groupSelect,
+.item.active .groupSelect {
+  opacity: 1;
+}
+
+.groupSelect:focus {
+  opacity: 1;
+  outline: none;
+  border-color: #666;
+  color: #bbb;
+}
+
 .discard {
   flex-shrink: 0;
   background: none;
@@ -69,4 +189,11 @@
 .discard:hover {
   color: #cc4444 !important;
   background: rgba(204, 68, 68, 0.1);
+}
+
+.empty {
+  padding: 10px 16px;
+  color: #666;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
 }

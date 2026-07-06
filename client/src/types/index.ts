@@ -8,6 +8,14 @@ export interface Paste {
   updated_at?: string
 }
 
+export interface Group {
+  id: number
+  name: string
+  created_at?: string
+}
+
+export type GroupFilter = number | 'ungrouped' | null
+
 export interface ApiResponse<T> {
   success: boolean
   data?: T
@@ -23,9 +31,19 @@ export interface PasteListItem {
 export interface CreatePastePayload {
   title: string
   content: string
+  group_id?: number | null
 }
 
 export interface UpdatePastePayload {
   title?: string
   content?: string
+  group_id?: number | null
+}
+
+export interface CreateGroupPayload {
+  name: string
+}
+
+export interface UpdateGroupPayload {
+  name: string
 }
