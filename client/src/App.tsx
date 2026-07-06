@@ -3,6 +3,7 @@ import Editor from './components/Editor'
 import MarkdownPreview from './components/MarkdownPreview'
 import PasteList from './components/PasteList'
 import SearchModal from './components/SearchModal'
+import ShortcutsModal from './components/ShortcutsModal'
 import { useEditorStore } from './store/editorStore'
 import { useSearchStore } from './store/searchStore'
 import type { Paste } from './types'
@@ -86,6 +87,7 @@ export default function App() {
   const openTabs = getOpenTabs()
   const [pendingTitle, setPendingTitle] = useState('')
   const [readMode, setReadMode] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
   useEffect(() => {
     initialize()
@@ -140,6 +142,9 @@ export default function App() {
       {searchOpen && (
         <SearchModal onSelect={(id) => setActiveId(id)} />
       )}
+      {shortcutsOpen && (
+        <ShortcutsModal onClose={() => setShortcutsOpen(false)} />
+      )}
       <div className={styles.tabBar}>
         <div className={styles.tabs}>
           {openTabs.map((paste) => (
@@ -166,6 +171,13 @@ export default function App() {
             +
           </button>
         </div>
+        <button
+          className={styles.shortcutsBtn}
+          onClick={() => setShortcutsOpen(true)}
+          title="Keyboard shortcuts"
+        >
+          ?
+        </button>
         <button
           className={`${styles.readModeBtn} ${readMode ? styles.readModeBtnActive : ''}`}
           onClick={() => setReadMode((v) => !v)}

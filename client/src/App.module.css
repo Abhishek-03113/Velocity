@@ -134,6 +134,31 @@
   color: #ccc;
 }
 
+.shortcutsBtn {
+  flex-shrink: 0;
+  align-self: center;
+  margin: 0 0 0 8px;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 50%;
+  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.shortcutsBtn:hover {
+  border-color: #666;
+  color: #bbb;
+}
+
 .readModeBtn {
   flex-shrink: 0;
   align-self: center;
