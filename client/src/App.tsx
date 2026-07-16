@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Editor, { type EditorMode } from './components/Editor'
 import MarkdownPreview from './components/MarkdownPreview'
 import PasteList from './components/PasteList'
@@ -14,6 +14,7 @@ interface TabProps {
   paste: Paste
   isActive: boolean
   isEditing: boolean
+  groupColor?: string
   onActivate: () => void
   onClose: () => void
   onDoubleClick: () => void
@@ -26,6 +27,7 @@ function Tab({
   paste,
   isActive,
   isEditing,
+  groupColor,
   onActivate,
   onClose,
   onDoubleClick,
@@ -38,6 +40,12 @@ function Tab({
       className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
       onClick={onActivate}
     >
+      {groupColor && (
+        <span
+          className={styles.tabGroupMark}
+          style={{ backgroundColor: groupColor }}
+        />
+      )}
       {isEditing ? (
         <input
           className={styles.tabInput}
@@ -66,6 +74,8 @@ function Tab({
     </div>
   )
 }
+
+const GROUP_COLORS = ['#7aa7ff', '#82d39e', '#d4a96a', '#c58de2', '#d97878']
 
 export default function App() {
   const {
@@ -103,6 +113,9 @@ export default function App() {
   const [readMode, setReadMode] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const groupColorById = useMemo(() => {
+    return new Map(groups.map((group, index) => [group.id, GROUP_COLORS[index % GROUP_COLORS.length]]))
+  }, [groups])
 
   useEffect(() => {
     initialize()
@@ -158,12 +171,6 @@ export default function App() {
     setPendingTitle('')
   }
 
-  const visiblePastes = pastes.filter((paste) => {
-    if (activeGroupId === null) return true
-    if (activeGroupId === 'ungrouped') return paste.group_id == null
-    return paste.group_id === activeGroupId
-  })
-
   if (!activePaste) return null
 
   return (
@@ -182,6 +189,7 @@ export default function App() {
               paste={paste}
               isActive={paste.id === activeId}
               isEditing={paste.id === editingTitleId}
+              groupColor={paste.group_id ? groupColorById.get(paste.group_id) : undefined}
               onActivate={() => setActiveId(paste.id)}
               onClose={() => closeTab(paste.id)}
               onDoubleClick={() => {
@@ -256,7 +264,7 @@ export default function App() {
         </div>
         <div className={styles.listPane}>
           <PasteList
-            pastes={visiblePastes}
+            pastes={pastes}
             groups={groups}
             activeId={activeId}
             activeGroupId={activeGroupId}

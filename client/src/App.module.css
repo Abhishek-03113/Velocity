@@ -69,6 +69,13 @@
   text-overflow: ellipsis;
 }
 
+.tabGroupMark {
+  width: 7px;
+  height: 18px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
 .tabDirty {
   width: 6px;
   height: 6px;

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import type { Paste } from '../types'
+import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import type { Group, GroupFilter } from '../types'
+import type { Paste } from '../types'
 import styles from './PasteList.module.css'
 
 interface PasteListProps {
@@ -19,6 +19,21 @@ interface PasteListProps {
   onEditingGroupChange: (id: number | null) => void
 }
 
+type GroupBucket = {
+  id: number | null
+  dropId: number | 'ungrouped'
+  filterId: GroupFilter
+  name: string
+  color: string
+  pastes: Paste[]
+}
+
+const GROUP_COLORS = ['#7aa7ff', '#82d39e', '#d4a96a', '#c58de2', '#d97878']
+
+function groupColor(index: number): string {
+  return GROUP_COLORS[index % GROUP_COLORS.length]
+}
+
 export default function PasteList({
   pastes,
   groups,
@@ -35,6 +50,8 @@ export default function PasteList({
   onEditingGroupChange,
 }: PasteListProps) {
   const [pendingGroupName, setPendingGroupName] = useState('')
+  const [draggingPasteId, setDraggingPasteId] = useState<number | null>(null)
+  const [dropGroupId, setDropGroupId] = useState<number | 'ungrouped' | null>(null)
 
   useEffect(() => {
     if (editingGroupId == null) return
@@ -47,6 +64,92 @@ export default function PasteList({
     onEditingGroupChange(null)
   }
 
+  const buckets = useMemo<GroupBucket[]>(() => {
+    const namedGroups = groups.map((group, index) => ({
+      id: group.id,
+      dropId: group.id,
+      filterId: group.id,
+      name: group.name,
+      color: groupColor(index),
+      pastes: pastes.filter((paste) => paste.group_id === group.id),
+    }))
+
+    return [
+      ...namedGroups,
+      {
+        id: null,
+        dropId: 'ungrouped',
+        filterId: 'ungrouped',
+        name: 'Ungrouped',
+        color: '#777',
+        pastes: pastes.filter((paste) => paste.group_id == null),
+      },
+    ]
+  }, [groups, pastes])
+
+  const draggingPaste = draggingPasteId == null
+    ? null
+    : pastes.find((paste) => paste.id === draggingPasteId) ?? null
+
+  const startDrag = (e: DragEvent<HTMLElement>, paste: Paste) => {
+    setDraggingPasteId(paste.id)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(paste.id))
+  }
+
+  const clearDrag = () => {
+    setDraggingPasteId(null)
+    setDropGroupId(null)
+  }
+
+  const allowGroupDrop = (e: DragEvent<HTMLElement>, groupId: number | 'ungrouped') => {
+    if (draggingPasteId == null) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropGroupId(groupId)
+  }
+
+  const leaveGroupDrop = (e: DragEvent<HTMLElement>) => {
+    const nextTarget = e.relatedTarget
+    if (nextTarget instanceof Node && e.currentTarget.contains(nextTarget)) return
+    setDropGroupId(null)
+  }
+
+  const dropOnGroup = (e: DragEvent<HTMLElement>, groupId: number | null, filterId: GroupFilter) => {
+    e.preventDefault()
+    const id = Number(e.dataTransfer.getData('text/plain') || draggingPasteId)
+    const paste = pastes.find((item) => item.id === id)
+    if (paste && paste.group_id !== groupId) {
+      onAssignGroup(id, groupId)
+      onGroupFilter(filterId)
+    }
+    clearDrag()
+  }
+
+  const renderPaste = (paste: Paste) => (
+    <li
+      key={paste.id}
+      className={`${styles.item} ${activeId === paste.id ? styles.active : ''} ${draggingPasteId === paste.id ? styles.dragging : ''}`}
+      draggable
+      onDragStart={(e) => startDrag(e, paste)}
+      onDragEnd={clearDrag}
+      onClick={() => onSelect(paste.id)}
+    >
+      <span className={styles.dragHandle} aria-hidden="true">⋮⋮</span>
+      <span className={styles.title}>{paste.title || 'Untitled'}</span>
+      <button
+        className={styles.discard}
+        title="Discard paste"
+        onClick={(e) => {
+          e.stopPropagation()
+          onDiscard(paste.id)
+        }}
+      >
+        ×
+      </button>
+    </li>
+  )
+
   return (
     <div className={styles.panel}>
       <div className={styles.sectionHeader}>
@@ -55,97 +158,75 @@ export default function PasteList({
           +
         </button>
       </div>
-      <div className={styles.groupList}>
+      <div className={styles.groupStack}>
         <button
-          className={`${styles.groupItem} ${activeGroupId === null ? styles.groupActive : ''}`}
+          className={`${styles.allPastes} ${activeGroupId === null ? styles.groupActive : ''}`}
           onClick={() => onGroupFilter(null)}
         >
           <span>All pastes</span>
         </button>
-        <button
-          className={`${styles.groupItem} ${activeGroupId === 'ungrouped' ? styles.groupActive : ''}`}
-          onClick={() => onGroupFilter('ungrouped')}
-        >
-          <span>Ungrouped</span>
-        </button>
-        {groups.map((group) => (
-          <div
-            key={group.id}
-            className={`${styles.groupItem} ${activeGroupId === group.id ? styles.groupActive : ''}`}
-            onClick={() => onGroupFilter(group.id)}
-            onDoubleClick={() => onEditingGroupChange(group.id)}
+        {buckets.map((bucket) => (
+          <section
+            key={bucket.id ?? 'ungrouped'}
+            className={`${styles.groupSection} ${dropGroupId === bucket.dropId ? styles.groupDropTarget : ''}`}
+            onDragEnter={(e) => allowGroupDrop(e, bucket.dropId)}
+            onDragOver={(e) => allowGroupDrop(e, bucket.dropId)}
+            onDragLeave={leaveGroupDrop}
+            onDrop={(e) => dropOnGroup(e, bucket.id, bucket.filterId)}
           >
-            {editingGroupId === group.id ? (
-              <input
-                className={styles.groupInput}
-                value={pendingGroupName}
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => setPendingGroupName(e.target.value)}
-                onBlur={() => commitGroupName(group.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitGroupName(group.id)
-                  if (e.key === 'Escape') onEditingGroupChange(null)
-                }}
-              />
-            ) : (
-              <span className={styles.groupName}>{group.name}</span>
-            )}
-            <button
-              className={styles.deleteGroup}
-              title="Delete group"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDeleteGroup(group.id)
+            <div
+              className={`${styles.groupItem} ${activeGroupId === bucket.filterId ? styles.groupActive : ''}`}
+              onClick={() => onGroupFilter(bucket.filterId)}
+              onDoubleClick={() => {
+                if (bucket.id != null) onEditingGroupChange(bucket.id)
               }}
             >
-              ×
-            </button>
-          </div>
+              <span
+                className={styles.groupDot}
+                style={{ backgroundColor: bucket.color }}
+              />
+              {bucket.id != null && editingGroupId === bucket.id ? (
+                <input
+                  className={styles.groupInput}
+                  value={pendingGroupName}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setPendingGroupName(e.target.value)}
+                  onBlur={() => commitGroupName(bucket.id!)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitGroupName(bucket.id!)
+                    if (e.key === 'Escape') onEditingGroupChange(null)
+                  }}
+                />
+              ) : (
+                <span className={styles.groupName}>{bucket.name}</span>
+              )}
+              <span className={styles.count}>{bucket.pastes.length}</span>
+              {bucket.id != null && (
+                <button
+                  className={styles.deleteGroup}
+                  title="Delete group"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteGroup(bucket.id!)
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <ul className={styles.groupPastes}>
+              {draggingPaste && dropGroupId === bucket.dropId && draggingPaste.group_id !== bucket.id && (
+                <li className={styles.dropSlot}>{draggingPaste.title || 'Untitled'}</li>
+              )}
+              {bucket.pastes.map(renderPaste)}
+              {bucket.pastes.length === 0 && dropGroupId !== bucket.dropId && (
+                <li className={styles.empty}>Drop notes here</li>
+              )}
+            </ul>
+          </section>
         ))}
       </div>
-      <div className={styles.sectionHeader}>PASTES</div>
-      <ul className={styles.list}>
-        {pastes.map((paste) => (
-          <li
-            key={paste.id}
-            className={`${styles.item} ${activeId === paste.id ? styles.active : ''}`}
-            onClick={() => onSelect(paste.id)}
-          >
-            <span className={styles.title}>{paste.title || 'Untitled'}</span>
-            <select
-              className={styles.groupSelect}
-              title="Assign group"
-              value={paste.group_id ?? ''}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => {
-                const nextValue = e.target.value ? Number(e.target.value) : null
-                onAssignGroup(paste.id, nextValue)
-              }}
-            >
-              <option value="">No group</option>
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-            <button
-              className={styles.discard}
-              title="Discard paste"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDiscard(paste.id)
-              }}
-            >
-              ×
-            </button>
-          </li>
-        ))}
-        {pastes.length === 0 && (
-          <li className={styles.empty}>No pastes in this group</li>
-        )}
-      </ul>
     </div>
   )
 }

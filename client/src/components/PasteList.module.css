@@ -34,13 +34,14 @@
   color: #ddd;
 }
 
-.groupList {
-  padding: 0 8px 8px;
-  border-bottom: 1px solid #333;
-  flex-shrink: 0;
+.groupStack {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 12px;
 }
 
-.groupItem {
+.allPastes {
   width: 100%;
   min-height: 28px;
   border: none;
@@ -50,7 +51,44 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+.allPastes:hover {
+  background: #2d2d2d;
+  color: #bbb;
+}
+
+.groupSection {
+  border-radius: 6px;
+  outline: 1px solid transparent;
+  transition: background 140ms ease, outline-color 140ms ease;
+}
+
+.groupSection + .groupSection {
+  margin-top: 4px;
+}
+
+.groupDropTarget {
+  background: rgba(130, 211, 158, 0.06);
+  outline-color: rgba(130, 211, 158, 0.42);
+}
+
+.groupItem {
+  width: 100%;
+  min-height: 30px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
   padding: 4px 8px;
   font-size: 13px;
   font-family: -apple-system, 'Segoe UI', sans-serif;
@@ -62,9 +100,20 @@
   color: #bbb;
 }
 
+.groupDropTarget .groupItem {
+  color: #e5f5e9;
+}
+
 .groupActive {
   background: #303030;
   color: #ddd;
+}
+
+.groupDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
 }
 
 .groupName {
@@ -73,6 +122,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.count {
+  color: #666;
+  font-size: 11px;
+  margin-left: auto;
 }
 
 .groupInput {
@@ -105,36 +160,66 @@
 }
 
 .deleteGroup:hover {
-  color: #cc4444;
+  color: #cc4444 !important;
   background: rgba(204, 68, 68, 0.1);
 }
 
-.list {
+.groupPastes {
   list-style: none;
-  overflow-y: auto;
-  flex: 1;
-  padding: 0;
   margin: 0;
+  padding: 0 4px 6px 20px;
+}
+
+.item,
+.dropSlot,
+.empty {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
 }
 
 .item {
-  padding: 6px 16px;
-  font-size: 14px;
-  font-family: -apple-system, 'Segoe UI', sans-serif;
+  padding: 0 8px;
   color: #888;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  cursor: grab;
+  user-select: none;
+}
+
+.item:active {
+  cursor: grabbing;
 }
 
 .item:hover {
   color: #bbb;
+  background: #2b2b2b;
 }
 
 .item.active {
   color: #ddd;
   font-weight: 600;
+  background: #303030;
+}
+
+.dragging {
+  color: #555;
+  opacity: 0.42;
+}
+
+.dragHandle {
+  width: 14px;
+  color: #555;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: -0.18em;
+}
+
+.item:hover .dragHandle,
+.item.active .dragHandle {
+  color: #777;
 }
 
 .title {
@@ -145,29 +230,21 @@
   white-space: nowrap;
 }
 
-.groupSelect {
-  width: 72px;
-  min-width: 72px;
-  border: 1px solid #3a3a3a;
+.dropSlot {
+  margin: 2px 0;
+  padding: 0 8px;
+  color: #dff5e5;
+  background: rgba(130, 211, 158, 0.12);
+  outline: 1px solid rgba(130, 211, 158, 0.48);
+}
+
+.dropSlot::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(223, 245, 229, 0.42);
   border-radius: 4px;
-  background: #202020;
-  color: #777;
-  font-size: 11px;
-  font-family: -apple-system, 'Segoe UI', sans-serif;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.item:hover .groupSelect,
-.item.active .groupSelect {
-  opacity: 1;
-}
-
-.groupSelect:focus {
-  opacity: 1;
-  outline: none;
-  border-color: #666;
-  color: #bbb;
+  flex: 0 0 auto;
 }
 
 .discard {
@@ -192,8 +269,12 @@
 }
 
 .empty {
-  padding: 10px 16px;
+  padding: 0 8px;
   color: #666;
-  font-size: 13px;
-  font-family: -apple-system, 'Segoe UI', sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groupSection {
+    transition: none;
+  }
 }
