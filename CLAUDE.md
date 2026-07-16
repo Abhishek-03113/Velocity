@@ -140,6 +140,7 @@ Track feature development status here. Update each item as work is completed.
 ### Core Editor
 - [x] CodeMirror 6 integration
 - [x] Plain text mode (Markdown treated as plain text, no syntax highlighting)
+- [x] Markdown edit mode with CodeMirror Markdown language support
 - [x] "Read Mode" Markdown preview toggle (renders via `marked`)
 - [ ] 1MB soft cap warning in editor status bar
 
@@ -154,19 +155,19 @@ Track feature development status here. Update each item as work is completed.
 - [x] Sidebar paste click opens paste as a new tab
 - [x] Named pastes always preserved in sidebar after tab close
 - [x] Up to 5 MRU unnamed local pastes persisted in sidebar
-- [ ] Sidebar toggle (`Ctrl/Cmd + 1`) with animation
+- [x] Sidebar toggle (`Ctrl/Cmd + 1`) with animation
 - [x] Delete paste from sidebar (discard `×` button on each paste item)
-- [ ] Group list in sidebar
-- [ ] Create / rename / delete group
-- [ ] Assign paste to group
-- [ ] Filter sidebar by group
+- [x] Group list in sidebar
+- [x] Create / rename / delete group
+- [x] Assign paste to group
+- [x] Filter sidebar by group
 
 ### State & Sync
 - [x] Zustand store: pastes slice (title, content, open tabs, activeId)
 - [x] openTabIds slice tracks open tabs independently of full pastes list
 - [x] Tab-local state: each paste holds independent content
 - [x] Lazy content fetch — content loaded on first tab open, not on startup
-- [ ] Zustand store: groups slice
+- [x] Zustand store: groups slice
 - [x] Dirty state flag per paste
 - [x] Unsynced indicator (dot in tab title)
 - [x] On-startup: load all pastes from API into Zustand
@@ -177,55 +178,34 @@ Track feature development status here. Update each item as work is completed.
 ### Search
 - [x] FlexSearch index on title + content
 - [x] Index serialization to `localStorage` on each write
-- [x] Index hydration from `localStorage` on startup
-- [ ] Inline search (`Ctrl/Cmd + F`) — CodeMirror built-in panel (not yet wired)
+- [x] Index hydration from `localStorage` on startup, preserving cached content documents
+- [x] Inline search (`Ctrl/Cmd + F`) — CodeMirror built-in panel
 - [x] Global search (`Ctrl/Cmd + Shift + F`) across all pastes
 
 ### Keyboard Shortcuts
 - [x] `Ctrl/Cmd + N` — new paste (new tab)
-- [ ] `Ctrl/Cmd + F` — inline search (CodeMirror built-in, not yet wired)
+- [x] `Ctrl/Cmd + F` — inline search (CodeMirror built-in)
 - [x] `Ctrl/Cmd + Shift + F` — global search
-- [ ] `Ctrl/Cmd + 1` — toggle sidebar
+- [x] `Ctrl/Cmd + 1` — toggle sidebar
 - [ ] `Alt + Click` — multi-cursor (CodeMirror 6 native, no custom binding needed)
 
 ### UX Polish
 - [ ] Multi-cursor editing verified (CodeMirror 6 native API)
-- [ ] Sidebar toggle animation
-- [ ] CSS Modules applied to all components (no plain global CSS in components)
-- [ ] Responsive layout
+- [x] Sidebar toggle animation
+- [x] CSS Modules applied to all components (global CSS limited to app reset/base styles)
+- [x] Responsive layout
 
 ### Quality & Reliability
 - [x] API response envelope (`{ success, data?, error? }`) on all routes
-- [ ] Input validation on all API routes (Zod)
+- [x] Input validation on all API routes (Zod)
 - [ ] Unit tests: Zustand store logic (dirty flag, retry queue)
 - [ ] Integration tests: API routes (paste CRUD, group CRUD)
 - [ ] E2E tests: paste creation, search, group assignment (Playwright)
 
 ---
 
-## Backend Tasks Required for Current UI
+## Current Durability Status
 
-The UI is fully functional in-memory but **nothing persists across page reloads** — all pastes live only in Zustand. The following backend work is needed to make the current UI durable:
+The current UI is durable across reloads. Migrations run at server startup, paste and group CRUD APIs are wired, client bootstrap loads pastes/groups into Zustand, paste creation/deletion use server IDs, and `setContent` / `setTitle` / group assignment sync through debounced `PUT /api/pastes/:id` calls.
 
-### 1. DB Migration — create tables
-`server/db/migrate.ts` — run once at server startup via `db.exec(...)`.
-Tables needed: `pastes` (id, title, content, group_id, created_at, updated_at) and `groups` (id, name, created_at).
-
-### 2. Pastes API (`/api/pastes`)
-| Method | Route | Purpose |
-|--------|-------|---------|
-| GET | `/api/pastes` | List all pastes (id + title + updated_at, no content) |
-| POST | `/api/pastes` | Create paste → return `{ id, title, content }` |
-| GET | `/api/pastes/:id` | Fetch single paste with content |
-| PUT | `/api/pastes/:id` | Update title and/or content |
-| DELETE | `/api/pastes/:id` | Delete paste |
-
-### 3. Client bootstrap — load pastes on startup
-`editorStore.js` needs an `initialize()` action that calls `GET /api/pastes` and seeds Zustand. Called once in `App.jsx` via `useEffect`.
-
-### 4. Debounced sync — write changes to backend
-After each `setContent` / `setTitle`, debounce 800ms then call `PUT /api/pastes/:id`. Track dirty flag; show dot indicator in tab title when unsynced.
-
-### 5. Create/delete wired to API
-`addPaste` → `POST /api/pastes` → use returned server ID (not local counter).
-`closePaste` (when intent is delete) → `DELETE /api/pastes/:id`.
+Remaining intentionally incomplete areas are tracked above: rich text mode is not implemented, the 1MB editor status warning is not implemented, multi-cursor behavior has not been manually verified, and automated tests have not been added.
