@@ -69,6 +69,13 @@
   text-overflow: ellipsis;
 }
 
+.tabGroupMark {
+  width: 7px;
+  height: 18px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
 .tabDirty {
   width: 6px;
   height: 6px;
@@ -134,11 +141,37 @@
   color: #ccc;
 }
 
-.readModeBtn {
+.shortcutsBtn {
   flex-shrink: 0;
   align-self: center;
-  margin: 0 8px;
-  padding: 3px 12px;
+  margin: 0 0 0 8px;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 50%;
+  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.shortcutsBtn:hover {
+  border-color: #666;
+  color: #bbb;
+}
+
+.sidebarToggle {
+  flex-shrink: 0;
+  align-self: center;
+  width: 28px;
+  height: 24px;
+  margin: 0 4px 0 8px;
   background: transparent;
   border: 1px solid #444;
   border-radius: 4px;
@@ -146,36 +179,119 @@
   font-size: 12px;
   font-family: -apple-system, 'Segoe UI', sans-serif;
   cursor: pointer;
-  white-space: nowrap;
 }
 
-.readModeBtn:hover {
+.sidebarToggle:hover {
   border-color: #666;
   color: #bbb;
 }
 
-.readModeBtnActive {
+.sidebarToggleActive {
   background: #2a2a2a;
   border-color: #555;
   color: #ccc;
 }
 
+.modeTabs {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: 2px;
+  margin: 0 8px 0 4px;
+  padding: 2px;
+  border: 1px solid #444;
+  border-radius: 5px;
+}
+
+.modeBtn {
+  height: 20px;
+  min-width: 44px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #777;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  padding: 0 7px;
+}
+
+.modeBtn:hover {
+  color: #bbb;
+}
+
+.modeBtnActive {
+  background: #3a3a3a;
+  color: #ddd;
+}
+
 /* Body */
 .body {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
   flex: 1;
   overflow: hidden;
+  transition: grid-template-columns 180ms ease;
+}
+
+.bodySidebarClosed {
+  grid-template-columns: minmax(0, 1fr) 0;
 }
 
 .editorPane {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
 }
 
 .listPane {
-  width: 220px;
-  flex-shrink: 0;
+  min-width: 0;
   overflow: hidden;
   border-left: 1px solid #333;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 140ms ease, transform 180ms ease, border-color 180ms ease;
+}
+
+.bodySidebarClosed .listPane {
+  opacity: 0;
+  transform: translateX(10px);
+  pointer-events: none;
+  border-left-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body,
+  .listPane {
+    transition: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .tab {
+    min-width: 92px;
+    max-width: 150px;
+    padding: 0 8px 0 10px;
+  }
+
+  .shortcutsBtn {
+    margin-left: 4px;
+  }
+
+  .modeTabs {
+    margin-right: 4px;
+  }
+
+  .modeBtn {
+    min-width: 34px;
+    padding: 0 5px;
+  }
+
+  .body {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 76vw);
+  }
+
+  .bodySidebarClosed {
+    grid-template-columns: minmax(0, 1fr) 0;
+  }
 }

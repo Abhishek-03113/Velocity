@@ -3,14 +3,19 @@ import { EditorState, Prec } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
+import { markdown } from '@codemirror/lang-markdown'
+import { openSearchPanel, search, searchKeymap } from '@codemirror/search'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useSearchStore } from '../store/searchStore'
 import { useEditorStore } from '../store/editorStore'
 import styles from './Editor.module.css'
 
+export type EditorMode = 'plain' | 'markdown'
+
 interface EditorProps {
   content: string | undefined
   onChange: (content: string) => void
+  mode: EditorMode
 }
 
 const baseTheme = EditorView.theme({
@@ -60,6 +65,7 @@ function buildAppKeybindings() {
 
   return Prec.highest(
     keymap.of([
+      { key: 'Mod-f', run: openSearchPanel },
       { key: 'Mod-Shift-f', run: () => { useSearchStore.getState().openSearch(); return true } },
       { key: 'Mod-n', run: handleNew },
       { key: 'Ctrl-n', run: handleNew },
@@ -69,22 +75,27 @@ function buildAppKeybindings() {
   )
 }
 
-const extensions = [
-  history(),
-  keymap.of([...defaultKeymap, ...historyKeymap]),
-  lineNumbers(),
-  highlightActiveLine(),
-  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-  oneDark,
-  baseTheme,
-  EditorView.lineWrapping,
-  buildAppKeybindings(),
-]
+function buildExtensions(mode: EditorMode) {
+  return [
+    history(),
+    search({ top: true }),
+    keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]),
+    lineNumbers(),
+    highlightActiveLine(),
+    ...(mode === 'markdown' ? [markdown()] : []),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    oneDark,
+    baseTheme,
+    EditorView.lineWrapping,
+    buildAppKeybindings(),
+  ]
+}
 
-export default function Editor({ content, onChange }: EditorProps) {
+export default function Editor({ content, onChange, mode }: EditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
+  const applyingExternalChangeRef = useRef(false)
   onChangeRef.current = onChange
 
   const stableOnChange = useCallback((val: string) => onChangeRef.current(val), [])
@@ -95,9 +106,11 @@ export default function Editor({ content, onChange }: EditorProps) {
     const state = EditorState.create({
       doc: content ?? '',
       extensions: [
-        ...extensions,
+        ...buildExtensions(mode),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged) stableOnChange(update.state.doc.toString())
+          if (update.docChanged && !applyingExternalChangeRef.current) {
+            stableOnChange(update.state.doc.toString())
+          }
         }),
       ],
     })
@@ -110,6 +123,19 @@ export default function Editor({ content, onChange }: EditorProps) {
       viewRef.current = null
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, stableOnChange])
+
+  useEffect(() => {
+    function handleInlineSearch() {
+      const view = viewRef.current
+      if (view) {
+        openSearchPanel(view)
+        view.focus()
+      }
+    }
+
+    window.addEventListener('velocity:open-inline-search', handleInlineSearch)
+    return () => window.removeEventListener('velocity:open-inline-search', handleInlineSearch)
   }, [])
 
   useEffect(() => {
@@ -117,9 +143,11 @@ export default function Editor({ content, onChange }: EditorProps) {
     if (!view) return
     const current = view.state.doc.toString()
     if (current !== content) {
+      applyingExternalChangeRef.current = true
       view.dispatch({
         changes: { from: 0, to: current.length, insert: content ?? '' },
       })
+      applyingExternalChangeRef.current = false
     }
   }, [content])
 

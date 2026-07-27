@@ -8,6 +8,11 @@ const MAX_RETRIES = 3
 const MAX_LOCAL_MRU = 5
 
 const debounceTimers: Record<number, ReturnType<typeof setTimeout>> = {}
+type RetryTask = {
+  attempt: number
+  timer: ReturnType<typeof setTimeout>
+}
+const retryQueue = new Map<number, RetryTask>()
 
 let _localIdCounter = -1
 function localId(): number {
@@ -30,13 +35,31 @@ interface EditorState {
   deletePaste: (id: number) => void
   setContent: (content: string) => void
   setTitle: (id: number, title: string) => void
+  assignGroup: (id: number, groupId: number | null) => void
+  clearGroupFromPastes: (groupId: number) => void
+  replaceGroupId: (oldId: number, newId: number) => void
   clearDirty: (id: number) => void
   setEditingTitleId: (id: number | null) => void
 }
 
+function clearRetry(id: number): void {
+  const task = retryQueue.get(id)
+  if (task) clearTimeout(task.timer)
+  retryQueue.delete(id)
+}
+
 function scheduleSync(id: number, get: () => EditorState): void {
   clearTimeout(debounceTimers[id])
+  clearRetry(id)
   debounceTimers[id] = setTimeout(() => syncPaste(id, get), DEBOUNCE_MS)
+}
+
+function queueRetry(id: number, get: () => EditorState, attempt: number): void {
+  if (attempt >= MAX_RETRIES) return
+
+  const nextAttempt = attempt + 1
+  const timer = setTimeout(() => syncPaste(id, get, nextAttempt), 1000 * 2 ** attempt)
+  retryQueue.set(id, { attempt: nextAttempt, timer })
 }
 
 async function syncPaste(id: number, get: () => EditorState, attempt = 1): Promise<void> {
@@ -50,14 +73,14 @@ async function syncPaste(id: number, get: () => EditorState, attempt = 1): Promi
     await api.put<Paste>(`/api/pastes/${id}`, {
       title: paste.title,
       content: paste.content,
+      group_id: paste.group_id ?? null,
     } satisfies UpdatePastePayload)
+    clearRetry(id)
     clearDirty(id)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'unknown error'
     console.error(`[sync] paste ${id} failed (attempt ${attempt}):`, message)
-    if (attempt < MAX_RETRIES) {
-      setTimeout(() => syncPaste(id, get, attempt + 1), 1000 * 2 ** attempt)
-    }
+    queueRetry(id, get, attempt)
   }
 }
 
@@ -70,6 +93,27 @@ async function deleteFromServer(id: number, attempt = 1): Promise<void> {
     console.error(`[deletePaste] delete ${id} failed (attempt ${attempt}):`, message)
     if (attempt < MAX_RETRIES) {
       setTimeout(() => deleteFromServer(id, attempt + 1), 1000 * 2 ** attempt)
+    }
+  }
+}
+
+async function warmSearchIndex(ids: number[]): Promise<void> {
+  const searchStore = useSearchStore.getState()
+  if (searchStore.hasCachedDocuments()) return
+
+  for (const id of ids) {
+    try {
+      const detail = await api.get<Paste>(`/api/pastes/${id}`)
+      if (detail.data) {
+        searchStore.indexPaste({
+          id,
+          title: detail.data.title,
+          content: detail.data.content ?? '',
+        })
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'unknown error'
+      console.error(`[search:warm] paste ${id}:`, message)
     }
   }
 }
@@ -116,6 +160,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             const created = await api.post<Paste>('/api/pastes', {
               title: local.title,
               content: local.content ?? '',
+              group_id: local.group_id ?? null,
             } satisfies CreatePastePayload)
             if (created.data) {
               const serverPaste = created.data
@@ -148,7 +193,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       const incoming: Paste[] = list.map((p) => ({ ...p, content: undefined, dirty: false }))
       set({ pastes: incoming, openTabIds: [incoming[0].id], activeId: incoming[0].id })
-      useSearchStore.getState().hydrateIndex(incoming.map((p) => ({ id: p.id, title: p.title, content: '' })))
+      await useSearchStore.getState().ensureReady()
+      useSearchStore.getState().hydrateIndex(incoming)
 
       const firstId = incoming[0].id
       try {
@@ -158,11 +204,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           set((state) => ({
             pastes: state.pastes.map((p) => (p.id === firstId ? { ...p, content } : p)),
           }))
+          useSearchStore.getState().indexPaste({
+            id: firstId,
+            title: detail.data.title,
+            content,
+          })
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'unknown error'
         console.error(`[init] failed to load content for paste ${firstId}:`, message)
       }
+
+      void warmSearchIndex(incoming.map((p) => p.id))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'unknown error'
       console.error('[init] failed to load pastes:', message)
@@ -196,6 +249,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           set((state) => ({
             pastes: state.pastes.map((p) => (p.id === id ? { ...p, content } : p)),
           }))
+          useSearchStore.getState().indexPaste({
+            id,
+            title: res.data.title,
+            content,
+          })
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'unknown error'
@@ -214,18 +272,36 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }))
 
     api
-      .post<Paste>('/api/pastes', { title: 'Untitled', content: '' } satisfies CreatePastePayload)
+      .post<Paste>('/api/pastes', {
+        title: 'Untitled',
+        content: '',
+        group_id: paste.group_id ?? null,
+      } satisfies CreatePastePayload)
       .then((res) => {
         if (!res.data) return
         const serverPaste = res.data
         set((state) => ({
-          pastes: state.pastes.map((p) =>
-            p.id === tempId ? { ...serverPaste, dirty: false } : p
-          ),
+          pastes: state.pastes.map((p) => {
+            if (p.id !== tempId) return p
+            const merged = {
+              ...serverPaste,
+              title: p.title,
+              content: p.content,
+              group_id: p.group_id ?? serverPaste.group_id,
+              dirty: p.dirty,
+            }
+            if (p.dirty) setTimeout(() => syncPaste(serverPaste.id, get), 0)
+            return merged
+          }),
           openTabIds: state.openTabIds.map((id) => (id === tempId ? serverPaste.id : id)),
           activeId: state.activeId === tempId ? serverPaste.id : state.activeId,
         }))
-        useSearchStore.getState().indexPaste({ id: serverPaste.id, title: serverPaste.title, content: '' })
+        const current = get().pastes.find((p) => p.id === serverPaste.id)
+        useSearchStore.getState().indexPaste({
+          id: serverPaste.id,
+          title: current?.title ?? serverPaste.title,
+          content: current?.content ?? '',
+        })
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'unknown error'
@@ -237,6 +313,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   closeTab: (id: number) => {
     clearTimeout(debounceTimers[id])
     delete debounceTimers[id]
+    clearRetry(id)
 
     set((state) => {
       const openTabIds = state.openTabIds.filter((tid) => tid !== id)
@@ -264,6 +341,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   deletePaste: (id: number) => {
     clearTimeout(debounceTimers[id])
     delete debounceTimers[id]
+    clearRetry(id)
 
     set((state) => {
       const pastes = state.pastes.filter((p) => p.id !== id)
@@ -308,6 +386,35 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     scheduleSync(id, get)
     const paste = get().pastes.find((p) => p.id === id)
     if (paste) useSearchStore.getState().indexPaste({ id, title, content: paste.content ?? '' })
+  },
+
+  assignGroup: (id: number, groupId: number | null) => {
+    set((state) => ({
+      pastes: state.pastes.map((p) =>
+        p.id === id ? { ...p, group_id: groupId, dirty: true } : p
+      ),
+    }))
+    scheduleSync(id, get)
+  },
+
+  clearGroupFromPastes: (groupId: number) => {
+    set((state) => ({
+      pastes: state.pastes.map((p) =>
+        p.group_id === groupId ? { ...p, group_id: null } : p
+      ),
+    }))
+  },
+
+  replaceGroupId: (oldId: number, newId: number) => {
+    const affected: number[] = []
+    set((state) => ({
+      pastes: state.pastes.map((p) => {
+        if (p.group_id !== oldId) return p
+        affected.push(p.id)
+        return { ...p, group_id: newId, dirty: true }
+      }),
+    }))
+    for (const id of affected) scheduleSync(id, get)
   },
 
   clearDirty: (id: number) => {

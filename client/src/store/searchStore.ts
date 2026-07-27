@@ -3,6 +3,13 @@ import { Document } from 'flexsearch'
 import type { Paste } from '../types'
 
 const STORAGE_KEY = 'velocity:search-index'
+const DOCS_KEY = 'velocity:search-docs'
+
+type SearchDoc = {
+  id: number
+  title: string
+  content: string
+}
 
 interface SearchResult {
   id: number
@@ -22,6 +29,8 @@ interface SearchState {
   indexPaste: (paste: Pick<Paste, 'id' | 'title' | 'content'>) => void
   removePaste: (id: number) => void
   hydrateIndex: (pastes: Array<Pick<Paste, 'id' | 'title' | 'content'>>) => void
+  ensureReady: () => Promise<void>
+  hasCachedDocuments: () => boolean
 }
 
 // Document index: search on both title and content fields
@@ -34,6 +43,8 @@ const index = new Document({
   tokenize: 'forward',
 })
 
+const documents = new Map<number, SearchDoc>()
+
 // Serialized index cache in localStorage
 function persistIndex(): void {
   try {
@@ -42,22 +53,50 @@ function persistIndex(): void {
       exported[key as string] = data
     })
     localStorage.setItem(STORAGE_KEY, JSON.stringify(exported))
+    localStorage.setItem(DOCS_KEY, JSON.stringify([...documents.values()]))
   } catch {
     // localStorage quota exceeded — silently skip
   }
 }
 
+function addOrReplace(doc: SearchDoc): void {
+  try {
+    index.remove(doc.id)
+  } catch {
+    // The document may not exist in a freshly imported index.
+  }
+  index.add(doc)
+}
+
 async function loadIndex(): Promise<void> {
   try {
+    const rawDocs = localStorage.getItem(DOCS_KEY)
+    if (rawDocs) {
+      const parsed = JSON.parse(rawDocs) as SearchDoc[]
+      for (const doc of parsed) {
+        if (Number.isInteger(doc.id)) {
+          documents.set(doc.id, {
+            id: doc.id,
+            title: doc.title ?? '',
+            content: doc.content ?? '',
+          })
+        }
+      }
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
+    if (!raw) {
+      for (const doc of documents.values()) addOrReplace(doc)
+      return
+    }
     const exported = JSON.parse(raw) as Record<string, unknown>
     const imports = Object.entries(exported).map(([key, data]) =>
       index.import(key, data as string)
     )
     await Promise.all(imports)
   } catch {
-    // corrupted cache — ignore, will rebuild from server pastes
+    documents.clear()
+    // corrupted cache — ignore, will rebuild from server/list data
   }
 }
 
@@ -74,7 +113,7 @@ function makeExcerpt(content: string | undefined, query: string): string {
 }
 
 // Load persisted index on module init
-loadIndex()
+const indexReady = loadIndex()
 
 export const useSearchStore = create<SearchState>((set, get) => ({
   query: '',
@@ -118,19 +157,41 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   indexPaste: (paste) => {
-    index.add({ id: paste.id, title: paste.title ?? '', content: paste.content ?? '' })
+    const previous = documents.get(paste.id)
+    const doc = {
+      id: paste.id,
+      title: paste.title ?? previous?.title ?? '',
+      content: paste.content ?? previous?.content ?? '',
+    }
+    documents.set(paste.id, doc)
+    addOrReplace(doc)
     persistIndex()
   },
 
   removePaste: (id: number) => {
-    index.remove(id)
+    documents.delete(id)
+    try {
+      index.remove(id)
+    } catch {
+      // Already absent from the hydrated index.
+    }
     persistIndex()
   },
 
   hydrateIndex: (pastes) => {
     for (const p of pastes) {
-      index.add({ id: p.id, title: p.title ?? '', content: p.content ?? '' })
+      const previous = documents.get(p.id)
+      const doc = {
+        id: p.id,
+        title: p.title ?? previous?.title ?? '',
+        content: p.content ?? previous?.content ?? '',
+      }
+      documents.set(p.id, doc)
+      addOrReplace(doc)
     }
     persistIndex()
   },
+
+  ensureReady: () => indexReady,
+  hasCachedDocuments: () => documents.size > 0,
 }))

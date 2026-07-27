@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Velocity Sliding Grouping Mockup</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        background: #171717;
+        color: #d6d6d6;
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .frame {
+        width: min(1180px, calc(100vw - 32px));
+        height: min(720px, calc(100vh - 32px));
+        margin: 16px auto;
+        border: 1px solid #343434;
+        background: #1f1f1f;
+        overflow: hidden;
+      }
+
+      .tabBar {
+        height: 38px;
+        display: flex;
+        border-bottom: 1px solid #333;
+        background: #262626;
+      }
+
+      .tabs {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .tab {
+        width: 172px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px;
+        border-right: 1px solid #1a1a1a;
+        color: #898989;
+        font-size: 13px;
+      }
+
+      .tab.active {
+        color: #ededed;
+        background: #1f1f1f;
+        box-shadow: inset 0 2px #7aa7ff;
+      }
+
+      .tab span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .groupMark {
+        width: 7px;
+        height: 18px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: #7aa7ff;
+      }
+
+      .groupMark.green {
+        background: #82d39e;
+      }
+
+      .dirty {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: #e6a64a;
+      }
+
+      .add {
+        width: 34px;
+        border: 0;
+        background: transparent;
+        color: #777;
+        font-size: 20px;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 8px;
+      }
+
+      .iconBtn,
+      .mode button {
+        height: 24px;
+        border: 1px solid #444;
+        background: transparent;
+        color: #8d8d8d;
+        font-size: 12px;
+      }
+
+      .iconBtn {
+        width: 28px;
+        border-radius: 5px;
+      }
+
+      .mode {
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        border: 1px solid #414141;
+        border-radius: 6px;
+      }
+
+      .mode button {
+        min-width: 56px;
+        border: 0;
+        border-radius: 4px;
+      }
+
+      .mode .selected {
+        background: #3a3a3a;
+        color: #f0f0f0;
+      }
+
+      .body {
+        height: calc(100% - 38px);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 292px;
+      }
+
+      .editor {
+        display: grid;
+        grid-template-rows: 1fr 30px;
+        min-width: 0;
+        background: #1d1d1d;
+      }
+
+      .code {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr);
+        min-height: 0;
+        overflow: hidden;
+        font-family: "SF Mono", "Cascadia Code", Menlo, monospace;
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .gutter {
+        padding: 14px 10px;
+        color: #505050;
+        text-align: right;
+        border-right: 1px solid #2d2d2d;
+        background: #1b1b1b;
+      }
+
+      .content {
+        padding: 14px 18px;
+      }
+
+      .line.activeLine {
+        margin-left: -18px;
+        padding-left: 15px;
+        border-left: 3px solid #7aa7ff;
+        background: linear-gradient(90deg, rgba(122, 167, 255, 0.12), transparent 48%);
+      }
+
+      .comment {
+        color: #707070;
+      }
+
+      .keyword {
+        color: #c98fda;
+      }
+
+      .string {
+        color: #94ca8e;
+      }
+
+      .status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 14px;
+        border-top: 1px solid #303030;
+        background: #202020;
+        color: #777;
+        font-size: 12px;
+      }
+
+      .status strong {
+        color: #dcdcdc;
+      }
+
+      .sidebar {
+        border-left: 1px solid #333;
+        background: #252525;
+        overflow: hidden;
+      }
+
+      .section {
+        padding: 12px 14px 7px;
+        color: #777;
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .plus {
+        width: 20px;
+        height: 20px;
+        border: 1px solid #474747;
+        border-radius: 5px;
+        background: transparent;
+        color: #aaa;
+      }
+
+      .groupStack {
+        padding: 0 8px;
+      }
+
+      .group {
+        border-radius: 6px;
+      }
+
+      .group + .group {
+        margin-top: 4px;
+      }
+
+      .groupHeader {
+        height: 32px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 9px;
+        color: #a2a2a2;
+        font-size: 13px;
+      }
+
+      .group.over {
+        background: rgba(130, 211, 158, 0.06);
+        outline: 1px solid rgba(130, 211, 158, 0.42);
+      }
+
+      .group.over .groupHeader {
+        color: #e8f7ec;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: #7aa7ff;
+      }
+
+      .dot.green {
+        background: #82d39e;
+      }
+
+      .dot.gray {
+        background: #777;
+      }
+
+      .count {
+        margin-left: auto;
+        color: #666;
+        font-size: 11px;
+      }
+
+      .notes {
+        padding: 0 5px 6px 21px;
+      }
+
+      .note {
+        height: 30px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        border-radius: 5px;
+        color: #929292;
+        font-size: 13px;
+      }
+
+      .note.active {
+        color: #efefef;
+        background: #303030;
+      }
+
+      .note.moving {
+        color: #595959;
+      }
+
+      .slot {
+        height: 30px;
+        display: flex;
+        align-items: center;
+        margin: 2px 0;
+        padding: 0 8px;
+        border-radius: 5px;
+        color: #dff5e5;
+        background: rgba(130, 211, 158, 0.12);
+        outline: 1px solid rgba(130, 211, 158, 0.48);
+        font-size: 13px;
+      }
+
+      .slot::before {
+        content: "";
+        width: 16px;
+        height: 16px;
+        margin-right: 8px;
+        border: 1px solid rgba(223, 245, 229, 0.42);
+        border-radius: 4px;
+      }
+
+      .noteIcon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 auto;
+        border: 1px solid #4c4c4c;
+        border-radius: 4px;
+        background: #303030;
+      }
+
+      .hint {
+        margin: 12px 14px 0;
+        padding-top: 10px;
+        border-top: 1px solid #343434;
+        color: #777;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="frame" aria-label="Velocity sliding grouping mockup">
+      <div class="tabBar">
+        <div class="tabs">
+          <div class="tab active"><i class="groupMark"></i><span>API Notes</span><i class="dirty"></i></div>
+          <div class="tab"><i class="groupMark"></i><span>Migration SQL</span></div>
+          <div class="tab"><span>Deploy checklist</span></div>
+          <div class="tab"><span>Untitled</span></div>
+          <button class="add">+</button>
+        </div>
+        <div class="toolbar">
+          <button class="iconBtn">◧</button>
+          <div class="mode">
+            <button>Plain</button>
+            <button class="selected">Markdown</button>
+            <button>Read</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="body">
+        <section class="editor">
+          <div class="code">
+            <div class="gutter">1<br />2<br />3<br />4<br />5<br />6<br />7<br />8</div>
+            <div class="content">
+              <div class="line"><span class="comment"># Sliding group behavior</span></div>
+              <div class="line"></div>
+              <div class="line activeLine"><span class="keyword">drag</span> Deploy checklist</div>
+              <div class="line"><span class="keyword">hover</span> Research group</div>
+              <div class="line"><span class="keyword">slide</span> notes apart</div>
+              <div class="line"><span class="keyword">drop</span> into the open slot</div>
+              <div class="line"></div>
+              <div class="line"><span class="string">No floating card. No extra controls.</span></div>
+            </div>
+          </div>
+          <footer class="status">
+            <span><strong>API Notes</strong> · Backend · Markdown</span>
+            <span>Sync pending</span>
+          </footer>
+        </section>
+
+        <aside class="sidebar">
+          <div class="section"><span>GROUPS</span><button class="plus">+</button></div>
+          <div class="groupStack">
+            <div class="group">
+              <div class="groupHeader"><i class="dot"></i>Backend <span class="count">2</span></div>
+              <div class="notes">
+                <div class="note active"><i class="noteIcon"></i>API Notes</div>
+                <div class="note"><i class="noteIcon"></i>Migration SQL</div>
+              </div>
+            </div>
+
+            <div class="group over">
+              <div class="groupHeader"><i class="dot green"></i>Research <span class="count">3</span></div>
+              <div class="notes">
+                <div class="note"><i class="noteIcon"></i>Reading list</div>
+                <div class="slot">Deploy checklist</div>
+                <div class="note"><i class="noteIcon"></i>Quote bank</div>
+                <div class="note"><i class="noteIcon"></i>Open questions</div>
+              </div>
+            </div>
+
+            <div class="group">
+              <div class="groupHeader"><i class="dot gray"></i>Ungrouped <span class="count">1</span></div>
+              <div class="notes">
+                <div class="note moving"><i class="noteIcon"></i>Deploy checklist</div>
+                <div class="note"><i class="noteIcon"></i>Untitled</div>
+              </div>
+            </div>
+          </div>
+          <div class="hint">Drag a note over a group. The group opens and notes slide apart to show the exact drop position.</div>
+        </aside>
+      </div>
+    </main>
+  </body>
+</html>

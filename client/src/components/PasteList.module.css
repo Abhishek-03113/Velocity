@@ -5,41 +5,221 @@
   background: #252526;
 }
 
-.header {
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 14px 16px 8px;
   font-size: 11px;
   font-family: -apple-system, 'Segoe UI', sans-serif;
   color: #666;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   flex-shrink: 0;
 }
 
-.list {
-  list-style: none;
-  overflow-y: auto;
-  flex: 1;
-  padding: 0;
-  margin: 0;
+.addGroup {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  line-height: 1;
 }
 
-.item {
-  padding: 6px 16px;
-  font-size: 14px;
-  font-family: -apple-system, 'Segoe UI', sans-serif;
+.addGroup:hover {
+  border-color: #666;
+  color: #ddd;
+}
+
+.groupStack {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 12px;
+}
+
+.allPastes {
+  width: 100%;
+  min-height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
   color: #888;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+.allPastes:hover {
+  background: #2d2d2d;
+  color: #bbb;
+}
+
+.groupSection {
+  border-radius: 6px;
+  outline: 1px solid transparent;
+  transition: background 140ms ease, outline-color 140ms ease;
+}
+
+.groupSection + .groupSection {
+  margin-top: 4px;
+}
+
+.groupDropTarget {
+  background: rgba(130, 211, 158, 0.06);
+  outline-color: rgba(130, 211, 158, 0.42);
+}
+
+.groupItem {
+  width: 100%;
+  min-height: 30px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  text-align: left;
+}
+
+.groupItem:hover {
+  background: #2d2d2d;
+  color: #bbb;
+}
+
+.groupDropTarget .groupItem {
+  color: #e5f5e9;
+}
+
+.groupActive {
+  background: #303030;
+  color: #ddd;
+}
+
+.groupDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.groupName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  color: #666;
+  font-size: 11px;
+  margin-left: auto;
+}
+
+.groupInput {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #ddd;
+  padding: 0 6px;
+  font: inherit;
+  outline: none;
+}
+
+.deleteGroup {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.groupItem:hover .deleteGroup {
+  color: #666;
+}
+
+.deleteGroup:hover {
+  color: #cc4444 !important;
+  background: rgba(204, 68, 68, 0.1);
+}
+
+.groupPastes {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 6px 20px;
+}
+
+.item,
+.dropSlot,
+.empty {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+}
+
+.item {
+  padding: 0 8px;
+  color: #888;
+  cursor: grab;
+  user-select: none;
+}
+
+.item:active {
+  cursor: grabbing;
 }
 
 .item:hover {
   color: #bbb;
+  background: #2b2b2b;
 }
 
 .item.active {
   color: #ddd;
   font-weight: 600;
+  background: #303030;
+}
+
+.dragging {
+  color: #555;
+  opacity: 0.42;
+}
+
+.dragHandle {
+  width: 14px;
+  color: #555;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: -0.18em;
+}
+
+.item:hover .dragHandle,
+.item.active .dragHandle {
+  color: #777;
 }
 
 .title {
@@ -48,6 +228,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dropSlot {
+  margin: 2px 0;
+  padding: 0 8px;
+  color: #dff5e5;
+  background: rgba(130, 211, 158, 0.12);
+  outline: 1px solid rgba(130, 211, 158, 0.48);
+}
+
+.dropSlot::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(223, 245, 229, 0.42);
+  border-radius: 4px;
+  flex: 0 0 auto;
 }
 
 .discard {
@@ -69,4 +266,15 @@
 .discard:hover {
   color: #cc4444 !important;
   background: rgba(204, 68, 68, 0.1);
+}
+
+.empty {
+  padding: 0 8px;
+  color: #666;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groupSection {
+    transition: none;
+  }
 }
