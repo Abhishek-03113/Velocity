@@ -7,8 +7,10 @@ import { runMigrations } from './db/migrate.ts'
 import { pastesRouter } from './routes/pastes.ts'
 import { groupsRouter } from './routes/groups.ts'
 import { errorHandler } from './middleware/error.ts'
+import { startMarkdownSync } from './workers/markdownSync.ts'
 
 runMigrations()
+startMarkdownSync()
 
 const app = new Hono()
 

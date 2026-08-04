@@ -9,6 +9,7 @@ services:
       CLIENT_URL: ${CLIENT_URL:-http://localhost:37801}
     volumes:
       - velocity_data:/app/data
+      - ${HOME}/velocity_docs:/root/velocity_docs
     restart: unless-stopped
 
   client:
