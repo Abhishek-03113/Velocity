@@ -30,10 +30,10 @@ interface EditorState {
   getActivePaste: () => Paste | null
   getOpenTabs: () => Paste[]
   setActiveId: (id: number) => Promise<void>
-  addPaste: () => void
+  addPaste: (title?: string, content?: string, onPersisted?: (id: number) => void) => number
   closeTab: (id: number) => void
   deletePaste: (id: number) => void
-  setContent: (content: string) => void
+  setContent: (content: string, id?: number) => void
   setTitle: (id: number, title: string) => void
   assignGroup: (id: number, groupId: number | null) => void
   clearGroupFromPastes: (groupId: number) => void
@@ -262,9 +262,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
-  addPaste: () => {
+  addPaste: (title = 'Untitled', content = '', onPersisted) => {
     const tempId = localId()
-    const paste: Paste = { id: tempId, title: 'Untitled', content: '', dirty: false }
+    const paste: Paste = { id: tempId, title, content, dirty: false }
     set((state) => ({
       pastes: trimLocalMru([...state.pastes, paste], [...state.openTabIds, tempId]),
       openTabIds: [...state.openTabIds, tempId],
@@ -273,8 +273,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     api
       .post<Paste>('/api/pastes', {
-        title: 'Untitled',
-        content: '',
+        title,
+        content,
         group_id: paste.group_id ?? null,
       } satisfies CreatePastePayload)
       .then((res) => {
@@ -302,11 +302,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           title: current?.title ?? serverPaste.title,
           content: current?.content ?? '',
         })
+        onPersisted?.(serverPaste.id)
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'unknown error'
         console.error('[addPaste] server sync failed:', message)
       })
+    return tempId
   },
 
   // Close a tab without deleting the paste — it remains in the sidebar
@@ -366,17 +368,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     deleteFromServer(id)
   },
 
-  setContent: (content: string) => {
-    const { activeId } = get()
-    if (activeId === null) return
+  setContent: (content: string, id) => {
+    const targetId = id ?? get().activeId
+    if (targetId === null) return
     set((state) => ({
       pastes: state.pastes.map((p) =>
-        p.id === activeId ? { ...p, content, dirty: true } : p
+        p.id === targetId ? { ...p, content, dirty: true } : p
       ),
     }))
-    scheduleSync(activeId, get)
-    const paste = get().pastes.find((p) => p.id === activeId)
-    if (paste) useSearchStore.getState().indexPaste({ id: activeId, title: paste.title, content })
+    scheduleSync(targetId, get)
+    const paste = get().pastes.find((p) => p.id === targetId)
+    if (paste) useSearchStore.getState().indexPaste({ id: targetId, title: paste.title, content })
   },
 
   setTitle: (id: number, title: string) => {

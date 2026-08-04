@@ -141,6 +141,11 @@
   color: #ccc;
 }
 
+.addDrawing {
+  composes: addTab;
+  font-size: 17px;
+}
+
 .shortcutsBtn {
   flex-shrink: 0;
   align-self: center;
@@ -242,6 +247,67 @@
 .editorPane {
   min-width: 0;
   overflow: hidden;
+}
+
+.editorSplit {
+  display: grid;
+  grid-template-columns: 1fr;
+  height: 100%;
+  min-width: 0;
+}
+
+.notePane,
+.drawingPane {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.drawingNotice {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: #888;
+  font: 14px -apple-system, 'Segoe UI', sans-serif;
+}
+
+.drawingPane {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.drawingHeader {
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 12px;
+  background: #252526;
+  color: #ccc;
+  font: 13px -apple-system, 'Segoe UI', sans-serif;
+}
+
+.drawingHeader button {
+  border: 0;
+  background: transparent;
+  color: #999;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.drawingHeader button:hover {
+  color: #fff;
+}
+
+.splitHandle {
+  background: #333;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.splitHandle:hover {
+  background: #7aa7ff;
 }
 
 .listPane {
