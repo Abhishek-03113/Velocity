@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchStore } from '../store/searchStore'
-import styles from './SearchModal.module.css'
 
 interface SearchModalProps {
   onSelect: (id: number) => void
@@ -16,7 +15,6 @@ export default function SearchModal({ onSelect }: SearchModalProps) {
     setFocusedIdx(0)
   }, [])
 
-  // Reset focused index when results change
   useEffect(() => {
     setFocusedIdx(0)
   }, [results])
@@ -40,37 +38,50 @@ export default function SearchModal({ onSelect }: SearchModalProps) {
   }
 
   return (
-    <div className={styles.overlay} onClick={closeSearch}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.inputRow}>
-          <span className={styles.icon}>⌕</span>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-v-bg/70 px-4 pt-[12vh] backdrop-blur-sm"
+      onClick={closeSearch}
+    >
+      <div
+        className="w-full max-w-xl overflow-hidden rounded-xl border border-v-border bg-v-surface shadow-2xl shadow-black/50"
+        onClick={(e) => { e.stopPropagation() }}
+      >
+        <div className="flex items-center gap-3 border-b border-v-border px-4">
+          <svg className="h-4 w-4 shrink-0 text-v-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <input
             ref={inputRef}
-            className={styles.input}
-            placeholder="Search pastes…"
+            className="h-12 min-w-0 flex-1 bg-transparent font-body text-sm text-v-text-strong outline-none placeholder:text-v-faint"
+            placeholder="Search notes…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value) }}
             onKeyDown={handleKeyDown}
           />
+          <kbd className="shrink-0 rounded bg-v-border px-1.5 py-0.5 text-[10px] text-v-muted">esc</kbd>
         </div>
-        <div className={styles.results}>
-          {results.length === 0 && query.trim() ? (
-            <div className={styles.empty}>No results for &quot;{query}&quot;</div>
-          ) : results.length === 0 ? (
-            <div className={styles.empty}>Type to search across all pastes</div>
+        <div className="max-h-80 overflow-y-auto p-1.5">
+          {results.length === 0 ? (
+            <div className="px-3 py-8 text-center text-xs text-v-faint">
+              {query.trim() ? `No results for "${query}"` : 'Type to search across all pastes'}
+            </div>
           ) : (
             results.map((r, i) => (
               <div
                 key={r.id}
-                className={`${styles.item} ${i === focusedIdx ? styles.focused : ''}`}
+                className={`cursor-pointer rounded-lg px-3 py-2 transition-colors duration-100 ${
+                  i === focusedIdx ? 'bg-v-accent/15 text-v-text-strong' : 'text-v-text'
+                }`}
                 onClick={() => {
                   onSelect(r.id)
                   closeSearch()
                 }}
-                onMouseEnter={() => setFocusedIdx(i)}
+                onMouseEnter={() => { setFocusedIdx(i) }}
               >
-                <div className={styles.itemTitle}>{r.title}</div>
-                {r.excerpt && <div className={styles.itemExcerpt}>{r.excerpt}</div>}
+                <div className="truncate text-sm font-medium">{r.title || 'Untitled'}</div>
+                {r.excerpt && (
+                  <div className="mt-0.5 truncate text-xs text-v-muted">{r.excerpt}</div>
+                )}
               </div>
             ))
           )}
