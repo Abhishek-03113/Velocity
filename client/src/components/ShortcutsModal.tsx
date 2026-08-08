@@ -9,6 +9,7 @@ const SHORTCUTS = [
   { action: 'New note', keys: [MOD, 'N'] },
   { action: 'Close tab', keys: [MOD, 'W'] },
   { action: 'Read mode', keys: [MOD, 'E'] },
+  { action: 'Toggle whiteboard', keys: [MOD, '⇧', 'D'] },
   { action: 'Inline search', keys: [MOD, 'F'] },
   { action: 'Global search', keys: [MOD, '⇧', 'F'] },
   { action: 'Toggle sidebar', keys: [MOD, '1'] },

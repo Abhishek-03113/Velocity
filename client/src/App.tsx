@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Editor from './components/Editor'
 import MarkdownPreview from './components/MarkdownPreview'
 import PasteList from './components/PasteList'
@@ -7,7 +7,10 @@ import ShortcutsModal from './components/ShortcutsModal'
 import { useEditorStore } from './store/editorStore'
 import { useGroupStore } from './store/groupStore'
 import { useSearchStore } from './store/searchStore'
+import { hasBoard, useWhiteboardStore } from './store/whiteboardStore'
 import type { Paste } from './types'
+
+const Whiteboard = lazy(() => import('./components/Whiteboard'))
 
 const GROUP_COLORS = ['#818cf8', '#34d399', '#fbbf24', '#c084fc', '#fb7185']
 
@@ -27,6 +30,16 @@ function CloseIcon({ className = 'h-3 w-3' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+function BoardIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <path d="M12 17v3M8.5 20h7" strokeLinecap="round" />
+      <path d="M7 12.5c1.8-3.2 3.2-3.2 5 0s3.2 3.2 5 0" strokeLinecap="round" />
     </svg>
   )
 }
@@ -133,17 +146,60 @@ export default function App() {
     deleteGroup,
   } = useGroupStore()
   const { isOpen: searchOpen, openSearch, closeSearch } = useSearchStore()
+  const {
+    boardNoteId,
+    isOpen: boardOpen,
+    splitRatio,
+    toggleBoard,
+    openBoard,
+    closeBoard,
+    setSplitRatio,
+    removeBoard,
+  } = useWhiteboardStore()
+
   const activePaste = getActivePaste()
   const openTabs = getOpenTabs()
   const [pendingTitle, setPendingTitle] = useState('')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [readMode, setReadMode] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const splitRef = useRef<HTMLDivElement | null>(null)
+
+  const showCompanionBoard = boardOpen && boardNoteId != null
+  const noteHasBoard = activePaste != null && hasBoard(activePaste.id)
+  const boardNoteTitle =
+    (pastes.find((p) => p.id === boardNoteId)?.title ?? '') || 'Untitled'
+  const boardActive = boardOpen && boardNoteId === activePaste?.id
+
   const groupColorById = useMemo(() => {
     return new Map(
       groups.map((group, index) => [group.id, GROUP_COLORS[index % GROUP_COLORS.length]]),
     )
   }, [groups])
+
+  const startDrag = useCallback(() => {
+    setDragging(true)
+  }, [])
+
+  useEffect(() => {
+    if (!dragging) return
+    function onMove(e: MouseEvent) {
+      const el = splitRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setSplitRatio(1 - (e.clientX - rect.left) / rect.width)
+    }
+    function onUp() {
+      setDragging(false)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [dragging, setSplitRatio])
 
   useEffect(() => {
     initialize()
@@ -163,8 +219,13 @@ export default function App() {
       const isW = code === 'KeyW' || keyStr === 'w'
       const isOne = code === 'Digit1' || keyStr === '1'
       const isE = code === 'KeyE' || keyStr === 'e'
+      const isD = code === 'KeyD' || keyStr === 'd'
 
-      if (mod && e.shiftKey && isF) {
+      if (mod && e.shiftKey && isD) {
+        e.preventDefault()
+        const currentId = useEditorStore.getState().activeId
+        if (currentId != null) useWhiteboardStore.getState().toggleBoard(currentId)
+      } else if (mod && e.shiftKey && isF) {
         e.preventDefault()
         openSearch()
       } else if (mod && !e.shiftKey && isF) {
@@ -190,7 +251,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // leave read mode and close search when switching tabs
+  // Leave read mode and close search when switching tabs
   useEffect(() => {
     closeSearch()
     setReadMode(false)
@@ -201,6 +262,11 @@ export default function App() {
     if (pendingTitle.trim()) setTitle(id, pendingTitle.trim())
     setEditingTitleId(null)
     setPendingTitle('')
+  }
+
+  const handleDiscard = (id: number) => {
+    removeBoard(id)
+    deletePaste(id)
   }
 
   const content = activePaste?.content ?? ''
@@ -256,6 +322,20 @@ export default function App() {
         </button>
 
         <button
+          aria-label="Toggle whiteboard"
+          title={`Whiteboard for this note (${MOD}⇧D)`}
+          onClick={() => { toggleBoard(activePaste.id) }}
+          className={`relative shrink-0 rounded-md p-2 transition-all duration-150 hover:bg-v-elevated hover:text-v-text-strong ${
+            boardActive ? 'text-v-accent' : 'text-v-muted'
+          }`}
+        >
+          <BoardIcon />
+          {noteHasBoard && (
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-v-accent" aria-hidden="true" />
+          )}
+        </button>
+
+        <button
           aria-label={readMode ? 'Edit note' : 'Read mode'}
           title={`${readMode ? 'Edit' : 'Read mode'} (${MOD}E)`}
           onClick={() => { setReadMode((r) => !r) }}
@@ -286,8 +366,6 @@ export default function App() {
         </button>
       </header>
 
-
-
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar */}
         {sidebarOpen && (
@@ -309,7 +387,7 @@ export default function App() {
               activeGroupId={activeGroupId}
               editingGroupId={editingGroupId}
               onSelect={(id) => { void setActiveId(id) }}
-              onDiscard={deletePaste}
+              onDiscard={handleDiscard}
               onAssignGroup={assignGroup}
               onGroupFilter={setActiveGroupId}
               onAddGroup={addGroup}
@@ -364,18 +442,81 @@ export default function App() {
             </button>
           </div>
 
-          <div className="relative flex flex-1 overflow-hidden">
-            {readMode ? (
-              <div className="flex-1 overflow-auto">
-                <MarkdownPreview content={activePaste.content} />
-              </div>
-            ) : (
-              <Editor
-                key={String(activePaste.id)}
-                content={activePaste.content}
-                onChange={setContent}
-                mode="markdown"
-              />
+          <div
+            ref={splitRef}
+            className="relative flex min-h-0 flex-1 overflow-hidden"
+          >
+            <div
+              className="min-w-0 overflow-hidden"
+              style={showCompanionBoard ? { flex: '1 1 0' } : { flex: '1 1 auto' }}
+            >
+              {readMode ? (
+                <div className="h-full overflow-auto">
+                  <MarkdownPreview content={activePaste.content} />
+                </div>
+              ) : (
+                <Editor
+                  key={String(activePaste.id)}
+                  content={activePaste.content}
+                  onChange={setContent}
+                  mode="markdown"
+                />
+              )}
+            </div>
+
+            {showCompanionBoard && boardNoteId != null && (
+              <>
+                <div
+                  className={`w-1.5 shrink-0 cursor-col-resize touch-none bg-v-border transition-colors ${
+                    dragging ? 'bg-v-accent' : 'hover:bg-v-accent/70'
+                  }`}
+                  onMouseDown={startDrag}
+                  role="separator"
+                  aria-orientation="vertical"
+                  title="Drag to resize"
+                />
+                <div
+                  className="flex min-w-0 flex-col overflow-hidden border-l border-v-border bg-v-bg"
+                  style={{ width: `${Math.round(splitRatio * 100)}%`, flexShrink: 0 }}
+                >
+                  <div className="flex h-8 shrink-0 items-center gap-2 border-b border-v-border bg-v-surface px-3 text-sm text-v-text">
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+                      <BoardIcon className="h-3.5 w-3.5 shrink-0 text-v-accent" />
+                      <span className="truncate">{boardNoteTitle} — whiteboard</span>
+                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {boardNoteId !== activeId && activeId != null && (
+                        <button
+                          type="button"
+                          className="rounded border border-v-border px-1.5 py-0.5 text-[10px] text-v-muted transition-colors hover:border-v-accent/50 hover:text-v-text"
+                          onClick={() => { openBoard(activeId) }}
+                          title="Open the whiteboard for the note you're viewing"
+                        >
+                          Switch to current note
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="px-1 text-lg leading-none text-v-muted transition-colors hover:text-v-text-strong"
+                        onClick={closeBoard}
+                        title="Close whiteboard"
+                        aria-label="Close whiteboard"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  <div className="min-h-0 flex-1">
+                    <Suspense fallback={
+                      <div className="grid h-full place-items-center text-sm text-v-muted">
+                        Loading board…
+                      </div>
+                    }>
+                      <Whiteboard noteId={boardNoteId} />
+                    </Suspense>
+                  </div>
+                </div>
+              </>
             )}
           </div>
 
@@ -394,7 +535,6 @@ export default function App() {
             </div>
           </footer>
         </main>
-
       </div>
     </div>
   )

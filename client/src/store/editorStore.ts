@@ -33,7 +33,7 @@ interface EditorState {
   addPaste: (groupId?: number | null) => void
   closeTab: (id: number) => void
   deletePaste: (id: number) => void
-  setContent: (content: string) => void
+  setContent: (content: string, id?: number) => void
   setTitle: (id: number, title: string) => void
   assignGroup: (id: number, groupId: number | null) => void
   clearGroupFromPastes: (groupId: number) => void
@@ -399,17 +399,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     deleteFromServer(id)
   },
 
-  setContent: (content: string) => {
-    const { activeId } = get()
-    if (activeId === null) return
+  setContent: (content: string, id) => {
+    const targetId = id ?? get().activeId
+    if (targetId === null) return
     set((state) => ({
       pastes: state.pastes.map((p) =>
-        p.id === activeId ? { ...p, content, dirty: true } : p
+        p.id === targetId ? { ...p, content, dirty: true } : p
       ),
     }))
-    scheduleSync(activeId, get)
-    const paste = get().pastes.find((p) => p.id === activeId)
-    if (paste) useSearchStore.getState().indexPaste({ id: activeId, title: paste.title, content })
+    scheduleSync(targetId, get)
+    const paste = get().pastes.find((p) => p.id === targetId)
+    if (paste) useSearchStore.getState().indexPaste({ id: targetId, title: paste.title, content })
   },
 
   setTitle: (id: number, title: string) => {
