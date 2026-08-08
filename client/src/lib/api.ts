@@ -1,6 +1,13 @@
-import type { ApiResponse } from '../types'
+import type { ApiResponse, Asset } from '../types'
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+/** Configured API origin from env (no trailing slash). Empty ⇒ same-origin / proxy. */
+export function apiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_URL
+  if (typeof raw !== 'string' || !raw.trim()) return ''
+  return raw.trim().replace(/\/$/, '')
+}
+
+const BASE_URL = apiBaseUrl()
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -21,13 +28,37 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
-/** Fire-and-forget durable store for an inline image data URL (B). */
-export function persistAssetDataUrl(dataUrl: string): void {
-  void api
-    .post('/api/assets', { data_url: dataUrl })
-    .catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : 'unknown error'
-      console.error('[assets] persist failed:', message)
-    })
+/** Portable path stored in markdown — never bake host/port into paste content. */
+export function assetMarkdownUrl(asset: Pick<Asset, 'url' | 'id'>): string {
+  if (asset.url.startsWith('/')) return asset.url
+  return `/api/assets/${asset.id}`
 }
 
+/**
+ * Resolve a media href for the browser using `VITE_API_URL`.
+ * Relative `/api/...` paths are prefixed with the configured server origin.
+ */
+export function resolveMediaUrl(href: string): string {
+  const trimmed = href.trim()
+  if (
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:') ||
+    trimmed.startsWith('velocity-pending:') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://')
+  ) {
+    return trimmed
+  }
+  const base = apiBaseUrl()
+  const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  return base ? `${base}${path}` : path
+}
+
+/** Upload a data URL and return the stored asset row. */
+export async function uploadAssetDataUrl(dataUrl: string): Promise<Asset> {
+  const res = await api.post<Asset>('/api/assets', { data_url: dataUrl })
+  if (!res.success || !res.data) {
+    throw new Error(res.error ?? 'Asset upload failed')
+  }
+  return res.data
+}

@@ -9,6 +9,8 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from '@codemirror/view'
+import { resolveMediaUrl } from '../lib/api'
+import { getPendingPreviewUrl, isPendingImageUrl } from '../lib/imageInsert'
 
 /**
  * Obsidian-style "live preview" for CodeMirror markdown:
@@ -47,17 +49,70 @@ class ImageWidget extends WidgetType {
   }
 
   override eq(other: ImageWidget) {
-    return other.url === this.url && other.alt === this.alt
+    // Avoid megabyte string compares when legacy data: URLs are still in a paste.
+    if (this.alt !== other.alt) return false
+    if (this.url === other.url) return true
+    if (this.url.length !== other.url.length) return false
+    if (this.url.length < 256) return false
+    return (
+      this.url.startsWith(other.url.slice(0, 64)) &&
+      this.url.endsWith(other.url.slice(-64))
+    )
   }
 
   toDOM() {
     const wrap = document.createElement('span')
-    wrap.className = 'cm-md-image'
+    wrap.className = 'cm-md-image cm-md-image-loading'
+
+    const placeholder = document.createElement('span')
+    placeholder.className = 'cm-md-image-placeholder'
+    placeholder.setAttribute('aria-busy', 'true')
+    placeholder.setAttribute('aria-label', 'Loading image')
+
+    // Upload in flight: show local blob preview + uploading badge, or skeleton.
+    if (isPendingImageUrl(this.url)) {
+      const previewUrl = getPendingPreviewUrl(this.url)
+      if (previewUrl) {
+        const preview = document.createElement('img')
+        preview.src = previewUrl
+        preview.alt = this.alt
+        preview.className = 'cm-md-image-preview'
+        preview.decoding = 'async'
+        wrap.appendChild(preview)
+      } else {
+        wrap.appendChild(placeholder)
+      }
+      const badge = document.createElement('span')
+      badge.className = 'cm-md-image-badge'
+      badge.textContent = 'Uploading…'
+      wrap.appendChild(badge)
+      return wrap
+    }
+
+    wrap.appendChild(placeholder)
+
     const img = document.createElement('img')
-    img.src = this.url
     img.alt = this.alt
+    img.decoding = 'async'
+    img.hidden = true
+    img.onload = () => {
+      placeholder.remove()
+      img.hidden = false
+      wrap.classList.remove('cm-md-image-loading')
+    }
+    img.onerror = () => {
+      placeholder.classList.add('cm-md-image-error')
+      placeholder.removeAttribute('aria-busy')
+      placeholder.setAttribute('aria-label', 'Failed to load image')
+      placeholder.textContent = 'Image failed to load'
+    }
+    img.src = resolveMediaUrl(this.url)
     wrap.appendChild(img)
     return wrap
+  }
+
+  override ignoreEvent() {
+    return true
   }
 }
 

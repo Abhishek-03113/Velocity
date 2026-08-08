@@ -30,8 +30,7 @@ import { openSearchPanel, search, searchKeymap } from '@codemirror/search'
 import { useSearchStore } from '../store/searchStore'
 import { useEditorStore } from '../store/editorStore'
 import { markdownLivePreview, toggleWrap, insertLink } from './markdownRich'
-import { persistAssetDataUrl } from '../lib/api'
-import { insertImageFiles } from '../lib/imageInsert'
+import { insertImageFiles, migrateEmbeddedDataUrls } from '../lib/imageInsert'
 import styles from './Editor.module.css'
 
 export type EditorMode = 'plain' | 'markdown'
@@ -126,13 +125,59 @@ const catppuccinTheme = EditorView.theme(
     '.cm-md-h4': { fontSize: '1.15em', fontWeight: '600', color: c.lavender },
     '.cm-md-h5': { fontSize: '1.05em', fontWeight: '600', color: c.subtext },
     '.cm-md-h6': { fontSize: '1em', fontWeight: '600', color: c.overlay0 },
-    '.cm-md-image': { display: 'inline-block', maxWidth: '100%' },
-    '.cm-md-image img': {
+    '.cm-md-image': {
+      display: 'inline-block',
       maxWidth: '100%',
+      position: 'relative',
+    },
+    '.cm-md-image img, .cm-md-image-preview': {
+      maxWidth: '100%',
+      maxHeight: '480px',
+      width: 'auto',
+      height: 'auto',
+      objectFit: 'contain',
       borderRadius: '10px',
       border: `1px solid ${c.surface0}`,
       display: 'block',
       margin: '0.4em 0',
+    },
+    '.cm-md-image-preview': {
+      opacity: 0.55,
+      filter: 'saturate(0.85)',
+    },
+    '.cm-md-image-placeholder': {
+      display: 'block',
+      width: 'min(100%, 320px)',
+      height: '160px',
+      margin: '0.4em 0',
+      borderRadius: '10px',
+      border: `1px solid ${c.surface0}`,
+      background: `linear-gradient(90deg, ${c.surface0} 0%, ${c.surface1} 50%, ${c.surface0} 100%)`,
+      backgroundSize: '200% 100%',
+      animation: 'cm-md-shimmer 1.1s linear infinite',
+    },
+    '.cm-md-image-error': {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: c.overlay0,
+      fontSize: '0.85em',
+      fontStyle: 'italic',
+      animation: 'none',
+      background: c.surface0,
+    },
+    '.cm-md-image-badge': {
+      position: 'absolute',
+      left: '10px',
+      bottom: '14px',
+      padding: '2px 8px',
+      borderRadius: '6px',
+      fontSize: '0.75em',
+      letterSpacing: '0.02em',
+      color: c.text,
+      background: 'rgba(36, 39, 58, 0.85)',
+      border: `1px solid ${c.surface1}`,
+      pointerEvents: 'none',
     },
     '.cm-md-task': {
       display: 'inline-flex',
@@ -197,7 +242,7 @@ function buildImageHandlers() {
       const files = Array.from(items)
       if (!files.some((f) => f.type.startsWith('image/'))) return false
       event.preventDefault()
-      void insertImageFiles(view, files, persistAssetDataUrl)
+      void insertImageFiles(view, files)
       return true
     },
     drop(event, view) {
@@ -211,7 +256,7 @@ function buildImageHandlers() {
       if (pos != null) {
         view.dispatch({ selection: { anchor: pos } })
       }
-      void insertImageFiles(view, files, persistAssetDataUrl)
+      void insertImageFiles(view, files)
       return true
     },
   })
@@ -285,6 +330,7 @@ export default function Editor({ content, onChange, mode }: EditorProps) {
 
     const view = new EditorView({ state, parent: containerRef.current })
     viewRef.current = view
+    void migrateEmbeddedDataUrls(view)
 
     return () => {
       view.destroy()
@@ -316,6 +362,7 @@ export default function Editor({ content, onChange, mode }: EditorProps) {
         changes: { from: 0, to: current.length, insert: content ?? '' },
       })
       applyingExternalChangeRef.current = false
+      void migrateEmbeddedDataUrls(view)
     }
   }, [content])
 

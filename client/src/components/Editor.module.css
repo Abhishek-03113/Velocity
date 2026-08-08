@@ -17,3 +17,17 @@
 .editor :global(.cm-content) {
   width: 100%;
 }
+
+@keyframes cm-md-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.editor :global(.cm-md-image-placeholder) {
+  animation-name: cm-md-shimmer;
+}
+
