@@ -1,0 +1,27 @@
+.root {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.root :global(.excalidraw) {
+  --color-primary: #7aa7ff;
+  --color-primary-darker: #5b8def;
+  --color-primary-darkest: #3a3a3a;
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+}
+
+.root :global(.excalidraw .App-menu__left) {
+  max-width: 100%;
+}
+
+.loading {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font: 12px -apple-system, 'Segoe UI', sans-serif;
+}
