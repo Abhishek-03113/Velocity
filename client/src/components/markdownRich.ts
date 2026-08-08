@@ -1,6 +1,11 @@
-import { syntaxTree } from '@codemirror/language'
-import type { EditorState, Range } from '@codemirror/state'
-import { RangeSetBuilder } from '@codemirror/state'
+import { syntaxTree, ensureSyntaxTree } from '@codemirror/language'
+import {
+  EditorState,
+  RangeSetBuilder,
+  StateField,
+  type Extension,
+  type Range,
+} from '@codemirror/state'
 import {
   Decoration,
   EditorView,
@@ -10,18 +15,18 @@ import {
   type ViewUpdate,
 } from '@codemirror/view'
 import { resolveMediaUrl } from '../lib/api'
-import {
-  getLocalPreviewUrl,
-  isPendingImageUrl,
-  releaseLocalPreview,
-} from '../lib/imageInsert'
+import { isPendingImageUrl } from '../lib/imageInsert'
 
 /**
  * Obsidian-style "live preview" for CodeMirror markdown:
  *  - heading / emphasis / code styling applied to the source
  *  - syntax markers hidden unless the cursor is on that line
- *  - inline images rendered
+ *  - images always rendered via StateField block widgets (height-safe)
  *  - task checkboxes rendered and clickable
+ *
+ * Images MUST come from a StateField, not a ViewPlugin: widgets that change
+ * vertical layout are applied after the viewport is computed when provided by
+ * a ViewPlugin, so Image replace widgets never stably paint.
  */
 
 const HEADING_CLASS: Record<string, string> = {
@@ -45,7 +50,7 @@ const MARK_NODES = new Set([
 const hiddenMark = Decoration.replace({})
 
 /** Parse `![alt](url)` / `![alt](url "title")` — returns null when not an image. */
-function parseImageMarkdown(text: string): { alt: string; url: string } | null {
+export function parseImageMarkdown(text: string): { alt: string; url: string } | null {
   const match = /^!\[([^\]]*)\]\(\s*<?([^\s)>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)$/.exec(
     text.trim(),
   )
@@ -53,7 +58,23 @@ function parseImageMarkdown(text: string): { alt: string; url: string } | null {
   return { alt: match[1] ?? '', url: match[2]!.trim() }
 }
 
-class ImageWidget extends WidgetType {
+function imageLineRegex() {
+  return /^(\s*)!\[([^\]]*)\]\(\s*<?([^\s)>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)\s*$/
+}
+
+/** True when markdown image src is a durable/fetchable URL (not an upload stub). */
+export function isReadyImageUrl(url: string): boolean {
+  if (!url || isPendingImageUrl(url)) return false
+  return (
+    url.startsWith('/api/assets/') ||
+    url.startsWith('data:image/') ||
+    url.startsWith('blob:') ||
+    url.startsWith('http://') ||
+    url.startsWith('https://')
+  )
+}
+
+export class ImageWidget extends WidgetType {
   constructor(
     readonly url: string,
     readonly alt: string,
@@ -65,13 +86,12 @@ class ImageWidget extends WidgetType {
     return this.alt === other.alt && this.url === other.url
   }
 
-  // Reserve space so the line doesn't collapse before the image paints.
   override get estimatedHeight() {
     return 180
   }
 
   toDOM() {
-    const wrap = document.createElement('span')
+    const wrap = document.createElement('div')
     wrap.className = 'cm-md-image cm-md-image-loading'
     wrap.setAttribute('contenteditable', 'false')
 
@@ -79,16 +99,28 @@ class ImageWidget extends WidgetType {
     placeholder.className = 'cm-md-image-placeholder'
     placeholder.setAttribute('aria-busy', 'true')
     placeholder.setAttribute('aria-label', 'Loading image')
+    placeholder.innerHTML =
+      '<svg class="cm-md-image-placeholder-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>' +
+      '<circle cx="9" cy="10" r="1.5" fill="currentColor"/>' +
+      '<path d="M4 16l5-5 4 4 3-3 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>'
     wrap.appendChild(placeholder)
 
-    const localPreview = getLocalPreviewUrl(this.url)
-    const pending = isPendingImageUrl(this.url)
-    const remoteSrc = resolveMediaUrl(this.url)
+    // Upload still in flight — keep the generic placeholder until the asset URL lands.
+    if (!isReadyImageUrl(this.url)) {
+      const badge = document.createElement('span')
+      badge.className = 'cm-md-image-badge'
+      badge.textContent = 'Uploading…'
+      wrap.appendChild(badge)
+      return wrap
+    }
 
     const img = document.createElement('img')
-    img.alt = this.alt
+    img.alt = this.alt || 'image'
     img.decoding = 'async'
-    img.className = pending ? 'cm-md-image-preview' : 'cm-md-image-remote'
+    img.className = 'cm-md-image-remote'
+    img.hidden = true
 
     const showImage = () => {
       placeholder.remove()
@@ -105,51 +137,10 @@ class ImageWidget extends WidgetType {
       wrap.classList.remove('cm-md-image-loading')
     }
 
-    if (pending) {
-      const badge = document.createElement('span')
-      badge.className = 'cm-md-image-badge'
-      badge.textContent = 'Uploading…'
-      wrap.appendChild(badge)
-
-      if (localPreview) {
-        img.hidden = false
-        img.onload = () => placeholder.remove()
-        img.onerror = showError
-        img.src = localPreview
-        wrap.appendChild(img)
-        if (img.complete && img.naturalWidth > 0) placeholder.remove()
-      }
-      return wrap
-    }
-
-    // Prefer local handoff blob while the durable asset URL warms up.
-    if (localPreview) {
-      img.hidden = false
-      img.src = localPreview
-      wrap.appendChild(img)
-      placeholder.remove()
-      wrap.classList.remove('cm-md-image-loading')
-
-      const remote = new Image()
-      remote.decoding = 'async'
-      remote.onload = () => {
-        img.onload = () => {
-          releaseLocalPreview(this.url)
-        }
-        img.onerror = () => {
-          // Keep the local preview if the remote swap fails.
-        }
-        img.src = remoteSrc
-      }
-      remote.src = remoteSrc
-      return wrap
-    }
-
-    img.hidden = true
     img.onload = showImage
     img.onerror = showError
     wrap.appendChild(img)
-    img.src = remoteSrc
+    img.src = resolveMediaUrl(this.url)
     if (img.complete && img.naturalWidth > 0) showImage()
     return wrap
   }
@@ -203,7 +194,130 @@ function cursorLines(state: EditorState) {
   return lines
 }
 
-function buildDecorations(view: EditorView): DecorationSet {
+export type ImageRange = {
+  from: number
+  to: number
+  alt: string
+  url: string
+  lineFrom: number
+  lineTo: number
+  soleOnLine: boolean
+}
+
+/** Collect markdown image ranges from the syntax tree (with line-regex fallback). */
+export function collectImageRanges(state: EditorState): ImageRange[] {
+  ensureSyntaxTree(state, state.doc.length, 5000)
+  const found: ImageRange[] = []
+  const covered = new Set<string>()
+
+  syntaxTree(state).iterate({
+    enter: (node) => {
+      if (node.name !== 'Image') return
+      const text = state.doc.sliceString(node.from, node.to)
+      const parsed = parseImageMarkdown(text)
+      if (!parsed) return false
+      const line = state.doc.lineAt(node.from)
+      const key = `${node.from}:${node.to}`
+      covered.add(key)
+      found.push({
+        from: node.from,
+        to: node.to,
+        alt: parsed.alt,
+        url: parsed.url,
+        lineFrom: line.from,
+        lineTo: line.to,
+        soleOnLine: imageLineRegex().test(line.text),
+      })
+      return false
+    },
+  })
+
+  const lineRe = imageLineRegex()
+  for (let n = 1; n <= state.doc.lines; n++) {
+    const line = state.doc.line(n)
+    const m = lineRe.exec(line.text)
+    if (!m) continue
+    const from = line.from + m[1]!.length
+    const to = from + m[0]!.length - m[1]!.length
+    const key = `${from}:${to}`
+    if (covered.has(key)) continue
+    found.push({
+      from,
+      to,
+      alt: m[2] ?? '',
+      url: m[3]!.trim(),
+      lineFrom: line.from,
+      lineTo: line.to,
+      soleOnLine: true,
+    })
+  }
+
+  return found
+}
+
+/**
+ * Build image decorations for live preview.
+ * - Cursor off the image line: block-replace the line with the image (source hidden).
+ * - Cursor on the image line: keep source editable and show a block preview below.
+ */
+export function buildImageDecorations(state: EditorState): DecorationSet {
+  const active = cursorLines(state)
+  const widgets: Range<Decoration>[] = []
+
+  for (const img of collectImageRanges(state)) {
+    const editing = active.has(state.doc.lineAt(img.from).number)
+    const widget = new ImageWidget(img.url, img.alt)
+
+    if (editing) {
+      // Source stays editable; preview remains visible (Read-mode parity on focus).
+      widgets.push(
+        Decoration.widget({
+          widget,
+          block: true,
+          side: 1,
+        }).range(img.lineTo),
+      )
+      continue
+    }
+
+    if (img.soleOnLine) {
+      // Block replacements must cover the trailing line break when present.
+      const end = img.lineTo < state.doc.length ? img.lineTo + 1 : img.lineTo
+      widgets.push(
+        Decoration.replace({
+          widget,
+          block: true,
+        }).range(img.lineFrom, end),
+      )
+    } else {
+      widgets.push(
+        Decoration.replace({
+          widget,
+        }).range(img.from, img.to),
+      )
+    }
+  }
+
+  widgets.sort((a, b) => a.from - b.from || a.value.startSide - b.value.startSide)
+  const builder = new RangeSetBuilder<Decoration>()
+  for (const w of widgets) builder.add(w.from, w.to, w.value)
+  return builder.finish()
+}
+
+/** Height-changing image widgets — must be a StateField (not a ViewPlugin). */
+export const markdownImagePreview = StateField.define<DecorationSet>({
+  create: buildImageDecorations,
+  update(deco, tr) {
+    if (tr.docChanged || tr.selection) return buildImageDecorations(tr.state)
+    return deco.map(tr.changes)
+  },
+  provide: (field) => [
+    EditorView.decorations.from(field),
+    EditorView.atomicRanges.of((view) => view.state.field(field)),
+  ],
+})
+
+function buildMarkDecorations(view: EditorView): DecorationSet {
   const { state } = view
   const active = cursorLines(state)
   const widgets: Range<Decoration>[] = []
@@ -224,38 +338,22 @@ function buildDecorations(view: EditorView): DecorationSet {
         const headingClass = HEADING_CLASS[name]
         if (headingClass) {
           widgets.push(
-            Decorations.line({ class: headingClass }).range(
+            Decoration.line({ class: headingClass }).range(
               state.doc.lineAt(node.from).from,
             ),
           )
           return
         }
 
-        if (name === 'Image') {
-          const text = state.doc.sliceString(node.from, node.to)
-          const parsed = parseImageMarkdown(text)
-          if (!parsed) return false
-          // Keep upload placeholders visible; reveal source only when editing settled images.
-          if (isActive(node.from, node.to) && !isPendingImageUrl(parsed.url)) {
-            // Skip LinkMark children so the raw markdown stays fully editable.
-            return false
-          }
-          widgets.push(
-            Decorations.replace({
-              widget: new ImageWidget(parsed.url, parsed.alt),
-            }).range(node.from, node.to),
-          )
-          // Critical: skip LinkMark children — nested replace decorations inside an
-          // Image replace hide the widget (marks collapse, no placeholder paints).
-          return false
-        }
+        // Images are owned by markdownImagePreview (StateField).
+        if (name === 'Image') return false
 
         if (name === 'FencedCode' || name === 'CodeBlock') {
           const first = state.doc.lineAt(node.from).number
           const last = state.doc.lineAt(node.to).number
           for (let n = first; n <= last; n++) {
             widgets.push(
-              Decorations.line({ class: 'cm-md-code' }).range(state.doc.line(n).from),
+              Decoration.line({ class: 'cm-md-code' }).range(state.doc.line(n).from),
             )
           }
           return false
@@ -265,7 +363,7 @@ function buildDecorations(view: EditorView): DecorationSet {
           const text = state.doc.sliceString(node.from, node.to)
           const checked = /[xX]/.test(text)
           widgets.push(
-            Decorations.replace({
+            Decoration.replace({
               widget: new CheckboxWidget(checked, node.from),
             }).range(node.from, node.to),
           )
@@ -275,7 +373,6 @@ function buildDecorations(view: EditorView): DecorationSet {
         if (MARK_NODES.has(name)) {
           // keep ``` fences visible — hiding them makes code blocks confusing
           if (node.node.parent?.name === 'FencedCode') return
-          // Image branch owns its marks; never nest LinkMark replaces inside Image.
           if (node.node.parent?.name === 'Image') return
           if (isActive(node.from, node.to)) return
           if (node.to > node.from) widgets.push(hiddenMark.range(node.from, node.to))
@@ -284,54 +381,20 @@ function buildDecorations(view: EditorView): DecorationSet {
     })
   }
 
-  // Fallback: decorate image markdown even if the syntax tree has not labeled
-  // Image nodes yet (otherwise widgets only appear after a selection/viewport reset).
-  const covered = new Set(widgets.map((w) => `${w.from}:${w.to}`))
-  for (const { from, to } of view.visibleRanges) {
-    let pos = from
-    while (pos <= to) {
-      const line = state.doc.lineAt(pos)
-      const m =
-        /^(\s*)!\[([^\]]*)\]\(\s*<?([^\s)>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)\s*$/.exec(
-          line.text,
-        )
-      if (m) {
-        const start = line.from + m[1]!.length
-        const end = start + m[0]!.length - m[1]!.length
-        const key = `${start}:${end}`
-        if (!covered.has(key)) {
-          const url = m[3]!.trim()
-          if (!(isActive(start, end) && !isPendingImageUrl(url))) {
-            widgets.push(
-              Decorations.replace({
-                widget: new ImageWidget(url, m[2] ?? ''),
-              }).range(start, end),
-            )
-            covered.add(key)
-          }
-        }
-      }
-      if (line.to >= to) break
-      pos = line.to + 1
-    }
-  }
-
   widgets.sort((a, b) => a.from - b.from || a.value.startSide - b.value.startSide)
   const builder = new RangeSetBuilder<Decoration>()
   for (const w of widgets) builder.add(w.from, w.to, w.value)
   return builder.finish()
 }
 
-class LivePreviewPlugin {
+class MarkPreviewPlugin {
   decorations: DecorationSet
 
   constructor(view: EditorView) {
-    this.decorations = buildDecorations(view)
+    this.decorations = buildMarkDecorations(view)
   }
 
   update(update: ViewUpdate) {
-    // Rebuild when the markdown tree catches up — otherwise Image widgets never
-    // appear until the next selection/viewport change ("reset").
     const treeChanged =
       syntaxTree(update.state) !== syntaxTree(update.startState)
     if (
@@ -340,14 +403,20 @@ class LivePreviewPlugin {
       update.viewportChanged ||
       treeChanged
     ) {
-      this.decorations = buildDecorations(update.view)
+      this.decorations = buildMarkDecorations(update.view)
     }
   }
 }
 
-export const markdownLivePreview = ViewPlugin.fromClass(LivePreviewPlugin, {
+const markdownMarkPreview = ViewPlugin.fromClass(MarkPreviewPlugin, {
   decorations: (v) => v.decorations,
 })
+
+/** Live-preview extension set: images (StateField) + marks/headings/tasks (ViewPlugin). */
+export const markdownLivePreview: Extension = [
+  markdownImagePreview,
+  markdownMarkPreview,
+]
 
 /** Wrap (or unwrap) the selection with `mark` — bold, italic, inline code. */
 export function toggleWrap(mark: string) {

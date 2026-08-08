@@ -21,58 +21,12 @@ const DATA_IMAGE_MD =
 /** In-doc marker while an asset upload is in flight. */
 export const PENDING_IMAGE_PREFIX = 'velocity-pending:'
 
-type PreviewEntry = {
-  blobUrl: string
-}
-
-/** pending id → local blob preview while uploading */
-const pendingPreviews = new Map<string, PreviewEntry>()
-/** final markdown url → local blob kept until the remote image paints */
-const handoffPreviews = new Map<string, PreviewEntry>()
-
 export function isPendingImageUrl(url: string): boolean {
   return url.startsWith(PENDING_IMAGE_PREFIX)
 }
 
-/** Local object URL to show while uploading or until the remote asset loads. */
-export function getLocalPreviewUrl(url: string): string | null {
-  if (isPendingImageUrl(url)) {
-    const id = url.slice(PENDING_IMAGE_PREFIX.length)
-    return pendingPreviews.get(id)?.blobUrl ?? null
-  }
-  return handoffPreviews.get(url)?.blobUrl ?? null
-}
-
-export function releaseLocalPreview(url: string): void {
-  const entry = handoffPreviews.get(url)
-  if (!entry) return
-  URL.revokeObjectURL(entry.blobUrl)
-  handoffPreviews.delete(url)
-}
-
-function registerPendingPreview(id: string, blobUrl: string): string {
-  pendingPreviews.set(id, { blobUrl })
+function pendingUrlFor(id: string): string {
   return `${PENDING_IMAGE_PREFIX}${id}`
-}
-
-function promotePendingToHandoff(pendingUrl: string, finalUrl: string): void {
-  if (!isPendingImageUrl(pendingUrl)) return
-  const id = pendingUrl.slice(PENDING_IMAGE_PREFIX.length)
-  const entry = pendingPreviews.get(id)
-  if (!entry) return
-  pendingPreviews.delete(id)
-  // Keep the blob available under the final asset path until <img> loads it remotely.
-  handoffPreviews.set(finalUrl, entry)
-}
-
-function dropPendingPreview(pendingUrl: string): void {
-  if (!isPendingImageUrl(pendingUrl)) return
-  const id = pendingUrl.slice(PENDING_IMAGE_PREFIX.length)
-  const entry = pendingPreviews.get(id)
-  if (entry) {
-    URL.revokeObjectURL(entry.blobUrl)
-    pendingPreviews.delete(id)
-  }
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -182,7 +136,8 @@ export async function migrateEmbeddedDataUrls(view: EditorView): Promise<void> {
 }
 
 /**
- * Insert images with an immediate local preview, then swap to `/api/assets/:id`.
+ * Insert images with a pending placeholder URL, then swap to `/api/assets/:id`.
+ * Live preview shows a generic placeholder until the durable URL is ready.
  */
 export async function insertImageFiles(view: EditorView, files: File[]): Promise<boolean> {
   const images = files.filter(isImageFile)
@@ -190,32 +145,25 @@ export async function insertImageFiles(view: EditorView, files: File[]): Promise
 
   for (const file of images) {
     const alt = altFromFilename(file.name)
-    const pendingId = crypto.randomUUID()
-    const blobUrl = URL.createObjectURL(file)
-    const pendingUrl = registerPendingPreview(pendingId, blobUrl)
+    const pendingUrl = pendingUrlFor(crypto.randomUUID())
     insertImageMarkdown(view, alt, pendingUrl)
 
     try {
       const dataUrl = await fileToUploadDataUrl(file)
       const asset = await uploadAssetDataUrl(dataUrl)
       const url = assetMarkdownUrl(asset)
-      promotePendingToHandoff(pendingUrl, url)
       if (!replaceUrlInDoc(view, pendingUrl, url)) {
         console.error('[editor:image] pending URL missing after upload')
-        dropPendingPreview(pendingUrl)
-        releaseLocalPreview(url)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'unknown error'
       console.error('[editor:image] upload failed:', message)
       try {
         const dataUrl = await readFileAsDataUrl(file)
-        promotePendingToHandoff(pendingUrl, dataUrl)
         if (!replaceUrlInDoc(view, pendingUrl, dataUrl)) {
-          dropPendingPreview(pendingUrl)
+          console.error('[editor:image] pending URL missing after fallback')
         }
       } catch (fallbackErr) {
-        dropPendingPreview(pendingUrl)
         const fallbackMsg =
           fallbackErr instanceof Error ? fallbackErr.message : 'unknown error'
         console.error('[editor:image] fallback embed failed:', fallbackMsg)
