@@ -30,12 +30,12 @@ Target: `client/src/`
 
 ## Modules
 
-- [ ] Styling infrastructure (Tailwind, styles.css, velocity.css, vite, index.html, main.tsx)
-- [ ] State management (editorStore — group-aware addPaste)
-- [ ] Editor (Editor.tsx, markdownRich.ts, Editor.module.css)
-- [ ] Sidebar & modals (PasteList, SearchModal, ShortcutsModal, MarkdownPreview)
-- [ ] Layout & shell (App.tsx)
-- [ ] Cleanup (remove obsolete CSS modules, verify build)
+- [x] Styling infrastructure (Tailwind, styles.css, velocity.css, vite, index.html, main.tsx)
+- [x] State management (editorStore — group-aware addPaste)
+- [x] Editor (Editor.tsx, markdownRich.ts, Editor.module.css)
+- [x] Sidebar & modals (PasteList, SearchModal, ShortcutsModal, MarkdownPreview)
+- [x] Layout & shell (App.tsx)
+- [x] Cleanup (remove obsolete CSS modules, verify build)
 
 ## Notes
 
