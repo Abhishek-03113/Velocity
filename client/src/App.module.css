@@ -403,8 +403,33 @@
   background: #7aa7ff;
 }
 
+.newNoteWrap {
+  flex-shrink: 0;
+  padding: 12px 12px 8px;
+  background: #252526;
+}
 
+.newNote {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #3a4558;
+  border-radius: 6px;
+  background: rgba(122, 167, 255, 0.08);
+  color: #a8b4c8;
+  font: 500 13px -apple-system, 'Segoe UI', sans-serif;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
 
+.newNote:hover {
+  background: rgba(122, 167, 255, 0.14);
+  border-color: #4a5a78;
+  color: #c5d0e0;
+}
 
 .listPane {
   display: flex;
@@ -417,6 +442,11 @@
   transition: opacity 140ms ease, transform 180ms ease, border-color 180ms ease;
 }
 
+.listBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 
 .bodySidebarClosed .listPane {
   opacity: 0;
