@@ -30,7 +30,7 @@ interface EditorState {
   getActivePaste: () => Paste | null
   getOpenTabs: () => Paste[]
   setActiveId: (id: number) => Promise<void>
-  addPaste: () => void
+  addPaste: (groupId?: number | null) => void
   closeTab: (id: number) => void
   deletePaste: (id: number) => void
   setContent: (content: string) => void
@@ -262,9 +262,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
-  addPaste: () => {
+  addPaste: (groupId?: number | null) => {
     const tempId = localId()
-    const paste: Paste = { id: tempId, title: 'Untitled', content: '', dirty: false }
+    const paste: Paste = {
+      id: tempId,
+      title: 'Untitled',
+      content: '',
+      dirty: false,
+      group_id: groupId ?? null,
+    }
     set((state) => ({
       pastes: trimLocalMru([...state.pastes, paste], [...state.openTabIds, tempId]),
       openTabIds: [...state.openTabIds, tempId],
