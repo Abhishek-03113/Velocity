@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Velocity** is a self-hosted paste manager with a **local-first architecture**. The guiding philosophy is _"Backend stores. Frontend thinks."_ — the UI never waits for the server; all interactions resolve instantly in Zustand state, with async debounced persistence to a SQLite backend.
+**Velocity** is a self-hosted notes manager with a **local-first architecture**. The guiding philosophy is _"Backend stores. Frontend thinks."_ — the UI never waits for the server; all interactions resolve instantly in Zustand state, with async debounced persistence to a SQLite backend.
 
 ---
 

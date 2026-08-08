@@ -160,8 +160,8 @@ export default function PasteList({
         <span className="truncate">{paste.title || 'Untitled'}</span>
         {paste.dirty && <span className="h-1 w-1 shrink-0 rounded-full bg-v-warn" />}
         <button
-          aria-label="Discard paste"
-          title="Discard paste"
+          aria-label="Discard note"
+          title="Discard note"
           className="ml-auto shrink-0 rounded p-0.5 opacity-0 transition-all duration-150 hover:bg-v-border hover:text-v-danger focus-visible:opacity-100 group-hover:opacity-100"
           onClick={(e) => {
             e.stopPropagation()
