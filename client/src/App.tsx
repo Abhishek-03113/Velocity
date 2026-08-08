@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Editor, { type EditorMode } from './components/Editor'
 import DrawingCanvas from './components/DrawingCanvas'
 import MarkdownPreview from './components/MarkdownPreview'
@@ -8,9 +8,26 @@ import ShortcutsModal from './components/ShortcutsModal'
 import { useEditorStore } from './store/editorStore'
 import { useGroupStore } from './store/groupStore'
 import { useSearchStore } from './store/searchStore'
+import { hasBoard, useWhiteboardStore } from './store/whiteboardStore'
 import type { Paste } from './types'
-import { createDrawing, parseDrawing } from './lib/drawing'
+import { parseDrawing } from './lib/drawing'
 import styles from './App.module.css'
+
+const Whiteboard = lazy(() => import('./components/Whiteboard'))
+
+const isMac =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+const MOD = isMac ? '⌘' : 'Ctrl'
+
+function BoardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="13" rx="2" />
+      <path d="M12 17v3M8.5 20h7" strokeLinecap="round" />
+      <path d="M7 12.5c1.8-3.2 3.2-3.2 5 0s3.2 3.2 5 0" strokeLinecap="round" />
+    </svg>
+  )
+}
 
 interface TabProps {
   paste: Paste
@@ -108,6 +125,16 @@ export default function App() {
     deleteGroup,
   } = useGroupStore()
   const { isOpen: searchOpen, openSearch, closeSearch } = useSearchStore()
+  const {
+    boardNoteId,
+    isOpen: boardOpen,
+    splitRatio,
+    toggleBoard,
+    openBoard,
+    closeBoard,
+    setSplitRatio,
+    removeBoard,
+  } = useWhiteboardStore()
   const activePaste = getActivePaste()
   const openTabs = getOpenTabs()
   const activeDrawing = parseDrawing(activePaste?.content)
@@ -117,13 +144,39 @@ export default function App() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [splitDrawingId, setSplitDrawingId] = useState<number | null>(null)
-  const [drawingWidth, setDrawingWidth] = useState(50)
+  const [dragging, setDragging] = useState(false)
   const lastNoteId = useRef<number | null>(null)
+  const splitRef = useRef<HTMLDivElement | null>(null)
   const splitDrawingPaste = pastes.find((paste) => paste.id === splitDrawingId)
   const splitDrawing = parseDrawing(splitDrawingPaste?.content)
+  const showCompanionBoard = boardOpen && boardNoteId != null
+  const showLegacyDrawing = !showCompanionBoard && splitDrawing != null && splitDrawingId != null
   const groupColorById = useMemo(() => {
     return new Map(groups.map((group, index) => [group.id, GROUP_COLORS[index % GROUP_COLORS.length]]))
   }, [groups])
+
+  const startDrag = useCallback(() => {
+    setDragging(true)
+  }, [])
+
+  useEffect(() => {
+    if (!dragging) return
+    function onMove(e: MouseEvent) {
+      const el = splitRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setSplitRatio(1 - (e.clientX - rect.left) / rect.width)
+    }
+    function onUp() {
+      setDragging(false)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [dragging, setSplitRatio])
 
   useEffect(() => {
     initialize()
@@ -142,8 +195,13 @@ export default function App() {
       const isN = code === 'KeyN' || keyStr === 'n'
       const isW = code === 'KeyW' || keyStr === 'w'
       const isOne = code === 'Digit1' || keyStr === '1'
+      const isD = code === 'KeyD' || keyStr === 'd'
 
-      if (mod && e.shiftKey && isF) {
+      if (mod && e.shiftKey && isD) {
+        e.preventDefault()
+        const currentId = useEditorStore.getState().activeId
+        if (currentId != null) useWhiteboardStore.getState().toggleBoard(currentId)
+      } else if (mod && e.shiftKey && isF) {
         e.preventDefault()
         openSearch()
       } else if (mod && !e.shiftKey && isF) {
@@ -188,30 +246,18 @@ export default function App() {
     setPendingTitle('')
   }
 
-  const openDrawing = () => {
-    if (!activePaste) return
-    const drawingId = addPaste('Drawing', createDrawing(), setSplitDrawingId)
-    setSplitDrawingId(drawingId)
-    void setActiveId(activePaste.id)
-  }
-
-  const startResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    event.currentTarget.setPointerCapture(event.pointerId)
-    const bounds = event.currentTarget.parentElement?.getBoundingClientRect()
-    if (!bounds) return
-    const resize = (moveEvent: PointerEvent) => {
-      const width = ((bounds.right - moveEvent.clientX) / bounds.width) * 100
-      setDrawingWidth(Math.min(75, Math.max(25, width)))
-    }
-    const stopResize = () => {
-      window.removeEventListener('pointermove', resize)
-      window.removeEventListener('pointerup', stopResize)
-    }
-    window.addEventListener('pointermove', resize)
-    window.addEventListener('pointerup', stopResize)
+  const handleDiscard = (id: number) => {
+    removeBoard(id)
+    if (splitDrawingId === id) setSplitDrawingId(null)
+    deletePaste(id)
   }
 
   if (!activePaste) return null
+
+  const noteHasBoard = hasBoard(activePaste.id)
+  const boardNoteTitle =
+    (pastes.find((p) => p.id === boardNoteId)?.title ?? '') || 'Untitled'
+  const boardActive = boardOpen && boardNoteId === activePaste.id
 
   return (
     <div className={styles.app}>
@@ -247,17 +293,19 @@ export default function App() {
               }}
             />
           ))}
-          <button className={styles.addTab} onClick={() => addPaste()} title="New paste">
+          <button className={styles.addTab} onClick={() => addPaste()} title={`New note (${MOD}N)`}>
             +
           </button>
-          <button
-            className={styles.addDrawing}
-            onClick={openDrawing}
-            title="New drawing"
-          >
-            ✎
-          </button>
         </div>
+        <button
+          className={`${styles.boardToggle} ${boardActive ? styles.boardToggleActive : ''}`}
+          onClick={() => toggleBoard(activePaste.id)}
+          title={`Whiteboard for this note (${MOD}⇧D)`}
+          aria-label="Toggle whiteboard"
+        >
+          <BoardIcon className={styles.boardIcon} />
+          {noteHasBoard && <span className={styles.boardDot} />}
+        </button>
         <button
           className={styles.shortcutsBtn}
           onClick={() => setShortcutsOpen(true)}
@@ -302,10 +350,20 @@ export default function App() {
       <div className={`${styles.body} ${sidebarOpen ? '' : styles.bodySidebarClosed}`}>
         <div className={styles.editorPane}>
           <div
+            ref={splitRef}
             className={styles.editorSplit}
-            style={splitDrawing ? { gridTemplateColumns: `${100 - drawingWidth}% 6px ${drawingWidth}%` } : undefined}
+            style={
+              showCompanionBoard
+                ? { display: 'flex' }
+                : showLegacyDrawing
+                  ? { gridTemplateColumns: `${100 - Math.round(splitRatio * 100)}% 6px ${Math.round(splitRatio * 100)}%` }
+                  : undefined
+            }
           >
-            <div className={styles.notePane}>
+            <div
+              className={styles.notePane}
+              style={showCompanionBoard ? { flex: '1 1 0', minWidth: 0 } : undefined}
+            >
               {activeDrawing ? (
                 <div className={styles.drawingNotice}>This drawing is open in the right pane.</div>
               ) : readMode ? (
@@ -319,15 +377,68 @@ export default function App() {
                 />
               )}
             </div>
-            {splitDrawing && splitDrawingId != null && (
+
+            {showCompanionBoard && boardNoteId != null && (
               <>
-                <div className={styles.splitHandle} onPointerDown={startResize} title="Drag to resize" />
+                <div
+                  className={`${styles.splitHandle} ${dragging ? styles.splitHandleActive : ''}`}
+                  onMouseDown={startDrag}
+                  role="separator"
+                  aria-orientation="vertical"
+                  title="Drag to resize"
+                />
+                <div
+                  className={styles.drawingPane}
+                  style={{ width: `${Math.round(splitRatio * 100)}%`, flexShrink: 0 }}
+                >
+                  <div className={styles.drawingHeader}>
+                    <span className={styles.boardHeaderTitle}>
+                      <BoardIcon className={styles.boardHeaderIcon} />
+                      {boardNoteTitle} — whiteboard
+                    </span>
+                    <div className={styles.drawingHeaderActions}>
+                      {boardNoteId !== activeId && activeId != null && (
+                        <button
+                          className={styles.switchBoard}
+                          onClick={() => openBoard(activeId)}
+                          title="Open the whiteboard for the note you're viewing"
+                        >
+                          Switch to current note
+                        </button>
+                      )}
+                      <button className={styles.drawingHeaderClose} onClick={closeBoard} title="Close whiteboard">×</button>
+                    </div>
+                  </div>
+                  <div className={styles.boardBody}>
+                    <Suspense fallback={<div className={styles.drawingNotice}>Loading board…</div>}>
+                      <Whiteboard noteId={boardNoteId} />
+                    </Suspense>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {showLegacyDrawing && splitDrawing && splitDrawingId != null && (
+              <>
+                <div
+                  className={styles.splitHandle}
+                  onMouseDown={startDrag}
+                  role="separator"
+                  aria-orientation="vertical"
+                  title="Drag to resize"
+                />
                 <div className={styles.drawingPane}>
                   <div className={styles.drawingHeader}>
-                    <span>{splitDrawingPaste?.title || 'Drawing'}</span>
-                    <button onClick={() => setSplitDrawingId(null)} title="Close drawing">×</button>
+                    <span className={styles.boardHeaderTitle}>{splitDrawingPaste?.title || 'Drawing'}</span>
+                    <div className={styles.drawingHeaderActions}>
+                      <button className={styles.drawingHeaderClose} onClick={() => setSplitDrawingId(null)} title="Close drawing">×</button>
+                    </div>
                   </div>
-                  <DrawingCanvas key={splitDrawingId} drawing={splitDrawing} onChange={(content) => setContent(content, splitDrawingId)} />
+                  <DrawingCanvas
+                    key={splitDrawingId}
+                    drawing={splitDrawing}
+                    onChange={(content) => setContent(content, splitDrawingId)}
+                  />
                 </div>
               </>
             )}
@@ -341,7 +452,7 @@ export default function App() {
             activeGroupId={activeGroupId}
             editingGroupId={editingGroupId}
             onSelect={setActiveId}
-            onDiscard={deletePaste}
+            onDiscard={handleDiscard}
             onAssignGroup={assignGroup}
             onGroupFilter={setActiveGroupId}
             onAddGroup={addGroup}
