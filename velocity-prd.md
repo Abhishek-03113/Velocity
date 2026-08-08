@@ -7,9 +7,9 @@
 
 ## 1. Overview
 
-**Velocity** is a self-hosted paste management application designed with a relentless focus on **speed, simplicity, and reliability**.
+**Velocity** is a self-hosted notes manager designed with a relentless focus on **speed, simplicity, and reliability**.
 
-It provides a lightweight environment where users can quickly create, organize, search, and manage text-based content with support for both Markdown and rich text formatting.
+It provides a lightweight environment where users can quickly create, organize, search, and manage notes with support for both Markdown and rich text formatting.
 
 The system is built around a **local-first architecture**, ensuring that user interactions feel instantaneous and are never blocked by backend latency.
 
@@ -17,8 +17,8 @@ The system is built around a **local-first architecture**, ensuring that user in
 
 ## 2. Product Goals
 
-- Deliver a fast, minimal, and reliable paste manager
-- Enable efficient organization and retrieval of pastes
+- Deliver a fast, minimal, and reliable notes manager
+- Enable efficient organization and retrieval of notes
 - Support Markdown and rich text workflows seamlessly
 - Achieve near-zero perceived latency
 - Maintain a clean, distraction-free UI
