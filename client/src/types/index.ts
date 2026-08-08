@@ -47,3 +47,17 @@ export interface CreateGroupPayload {
 export interface UpdateGroupPayload {
   name: string
 }
+
+export interface Asset {
+  id: number
+  mime_type: string
+  ext: string
+  byte_size: number
+  sha256: string
+  url: string
+  created_at: string
+}
+
+export interface CreateAssetPayload {
+  data_url: string
+}

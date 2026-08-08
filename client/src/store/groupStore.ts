@@ -68,12 +68,36 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       .then((res) => {
         if (!res.data) return
         const serverGroup = res.data
+        // Preserve any rename that happened while the POST was in flight.
+        const latestName = get().groups.find((g) => g.id === tempId)?.name ?? serverGroup.name
+
         set((state) => ({
-          groups: state.groups.map((g) => (g.id === tempId ? serverGroup : g)),
+          groups: state.groups.map((g) =>
+            g.id === tempId ? { ...serverGroup, name: latestName } : g
+          ),
           activeGroupId: state.activeGroupId === tempId ? serverGroup.id : state.activeGroupId,
           editingGroupId: state.editingGroupId === tempId ? serverGroup.id : state.editingGroupId,
         }))
         useEditorStore.getState().replaceGroupId(tempId, serverGroup.id)
+
+        if (latestName !== name) {
+          api
+            .put<Group>(`/api/groups/${serverGroup.id}`, {
+              name: latestName,
+            } satisfies UpdateGroupPayload)
+            .then((renameRes) => {
+              if (!renameRes.data) return
+              set((state) => ({
+                groups: state.groups.map((g) =>
+                  g.id === serverGroup.id ? renameRes.data! : g
+                ),
+              }))
+            })
+            .catch((err: unknown) => {
+              const message = err instanceof Error ? err.message : 'unknown error'
+              console.error(`[groups:rename] group ${serverGroup.id} failed:`, message)
+            })
+        }
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'unknown error'
@@ -89,6 +113,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       groups: state.groups.map((g) => (g.id === id ? { ...g, name: trimmed } : g)),
     }))
 
+    // Temp groups: local rename is kept; addGroup's POST handler flushes via PUT.
     if (id < 0) return
 
     api

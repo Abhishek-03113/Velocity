@@ -6,6 +6,7 @@ import 'dotenv/config'
 import { runMigrations } from './db/migrate.ts'
 import { pastesRouter } from './routes/pastes.ts'
 import { groupsRouter } from './routes/groups.ts'
+import { assetsRouter } from './routes/assets.ts'
 import { errorHandler } from './middleware/error.ts'
 import { startMarkdownSync } from './workers/markdownSync.ts'
 
@@ -21,6 +22,7 @@ app.use('*', errorHandler)
 app.get('/', (c) => c.json({ message: 'Velocity API' }))
 app.route('/api/pastes', pastesRouter)
 app.route('/api/groups', groupsRouter)
+app.route('/api/assets', assetsRouter)
 
 const PORT = Number(process.env.PORT ?? 3000)
 
