@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import Editor, { type EditorMode } from './components/Editor'
+import Editor from './components/Editor'
 import MarkdownPreview from './components/MarkdownPreview'
 import PasteList from './components/PasteList'
 import SearchModal from './components/SearchModal'
@@ -8,7 +8,28 @@ import { useEditorStore } from './store/editorStore'
 import { useGroupStore } from './store/groupStore'
 import { useSearchStore } from './store/searchStore'
 import type { Paste } from './types'
-import styles from './App.module.css'
+
+const GROUP_COLORS = ['#818cf8', '#34d399', '#fbbf24', '#c084fc', '#fb7185']
+
+const isMac =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+const MOD = isMac ? '⌘' : 'Ctrl'
+
+function PlusIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+    </svg>
+  )
+}
+
+function CloseIcon({ className = 'h-3 w-3' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
 
 interface TabProps {
   paste: Paste
@@ -37,45 +58,51 @@ function Tab({
 }: TabProps) {
   return (
     <div
-      className={`${styles.tab} ${isActive ? styles.tabActive : ''}`}
       onClick={onActivate}
+      className={`group flex h-9 min-w-0 max-w-56 cursor-pointer items-center gap-2.5 rounded-t-lg px-3.5 text-sm transition-colors duration-150 ${
+        isActive
+          ? 'border-x border-t border-v-border bg-v-bg text-v-text-strong'
+          : 'border-x border-t border-transparent text-v-muted hover:bg-v-surface hover:text-v-text'
+      }`}
     >
       {groupColor && (
         <span
-          className={styles.tabGroupMark}
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
           style={{ backgroundColor: groupColor }}
+          aria-hidden="true"
         />
       )}
       {isEditing ? (
         <input
-          className={styles.tabInput}
+          className="w-32 rounded border border-v-accent/60 bg-v-bg px-1 py-0.5 text-sm text-v-text-strong outline-none"
           defaultValue={paste.title}
           autoFocus
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => onTitleChange(e.target.value)}
+          onClick={(e) => { e.stopPropagation() }}
+          onChange={(e) => { onTitleChange(e.target.value) }}
           onBlur={onTitleBlur}
           onKeyDown={onTitleKeyDown}
         />
       ) : (
-        <span className={styles.tabTitle} onDoubleClick={onDoubleClick}>
+        <span className="truncate" onDoubleClick={onDoubleClick}>
           {paste.title || 'Untitled'}
         </span>
       )}
-      {paste.dirty && <span className={styles.tabDirty} title="Unsaved changes" />}
+      {paste.dirty && (
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-v-warn" title="Unsaved changes" />
+      )}
       <button
-        className={styles.tabClose}
+        aria-label="Close tab"
+        className="shrink-0 rounded p-0.5 text-v-muted opacity-0 transition-all duration-150 hover:bg-v-border hover:text-v-text-strong focus-visible:opacity-100 group-hover:opacity-100"
         onClick={(e) => {
           e.stopPropagation()
           onClose()
         }}
       >
-        ×
+        <CloseIcon />
       </button>
     </div>
   )
 }
-
-const GROUP_COLORS = ['#7aa7ff', '#82d39e', '#d4a96a', '#c58de2', '#d97878']
 
 export default function App() {
   const {
@@ -109,18 +136,19 @@ export default function App() {
   const activePaste = getActivePaste()
   const openTabs = getOpenTabs()
   const [pendingTitle, setPendingTitle] = useState('')
-  const [editorMode, setEditorMode] = useState<EditorMode>('plain')
-  const [readMode, setReadMode] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [readMode, setReadMode] = useState(false)
   const groupColorById = useMemo(() => {
-    return new Map(groups.map((group, index) => [group.id, GROUP_COLORS[index % GROUP_COLORS.length]]))
+    return new Map(
+      groups.map((group, index) => [group.id, GROUP_COLORS[index % GROUP_COLORS.length]]),
+    )
   }, [groups])
 
   useEffect(() => {
     initialize()
     initializeGroups()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Global keyboard shortcuts
@@ -134,6 +162,7 @@ export default function App() {
       const isN = code === 'KeyN' || keyStr === 'n'
       const isW = code === 'KeyW' || keyStr === 'w'
       const isOne = code === 'Digit1' || keyStr === '1'
+      const isE = code === 'KeyE' || keyStr === 'e'
 
       if (mod && e.shiftKey && isF) {
         e.preventDefault()
@@ -151,18 +180,21 @@ export default function App() {
       } else if (mod && !e.shiftKey && isOne) {
         e.preventDefault()
         setSidebarOpen((open) => !open)
+      } else if (mod && !e.shiftKey && isE) {
+        e.preventDefault()
+        setReadMode((r) => !r)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { window.removeEventListener('keydown', handleKeyDown) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // leave read mode and close search when switching tabs
   useEffect(() => {
-    setReadMode(false)
     closeSearch()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setReadMode(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId])
 
   const commitTitle = (id: number) => {
@@ -171,114 +203,198 @@ export default function App() {
     setPendingTitle('')
   }
 
+  const content = activePaste?.content ?? ''
+  const stats = useMemo(() => {
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0
+    return {
+      words,
+      chars: content.length,
+      lines: content ? content.split('\n').length : 0,
+    }
+  }, [content])
+
   if (!activePaste) return null
 
+  const activeGroupName =
+    activePaste.group_id != null
+      ? (groups.find((g) => g.id === activePaste.group_id)?.name ?? 'Ungrouped')
+      : 'Ungrouped'
+
   return (
-    <div className={styles.app}>
-      {searchOpen && (
-        <SearchModal onSelect={(id) => setActiveId(id)} />
-      )}
-      {shortcutsOpen && (
-        <ShortcutsModal onClose={() => setShortcutsOpen(false)} />
-      )}
-      <div className={styles.tabBar}>
-        <div className={styles.tabs}>
-          {openTabs.map((paste) => (
-            <Tab
-              key={paste.id}
-              paste={paste}
-              isActive={paste.id === activeId}
-              isEditing={paste.id === editingTitleId}
-              groupColor={paste.group_id ? groupColorById.get(paste.group_id) : undefined}
-              onActivate={() => setActiveId(paste.id)}
-              onClose={() => closeTab(paste.id)}
-              onDoubleClick={() => {
-                setPendingTitle(paste.title)
-                setEditingTitleId(paste.id)
-              }}
-              onTitleChange={setPendingTitle}
-              onTitleBlur={() => commitTitle(paste.id)}
-              onTitleKeyDown={(e) => {
-                if (e.key === 'Enter') commitTitle(paste.id)
-                if (e.key === 'Escape') setEditingTitleId(null)
-              }}
-            />
-          ))}
-          <button className={styles.addTab} onClick={addPaste}>
-            +
-          </button>
-        </div>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-v-bg font-body text-v-text">
+      {searchOpen && <SearchModal onSelect={(id) => { void setActiveId(id) }} />}
+      {shortcutsOpen && <ShortcutsModal onClose={() => { setShortcutsOpen(false) }} />}
+
+      {/* Top command bar */}
+      <header className="z-20 flex h-14 shrink-0 items-center gap-4 border-b border-v-border bg-v-bg px-4">
         <button
-          className={styles.shortcutsBtn}
-          onClick={() => setShortcutsOpen(true)}
-          title="Keyboard shortcuts"
+          aria-label="Toggle sidebar"
+          title={`Toggle sidebar (${MOD}1)`}
+          onClick={() => { setSidebarOpen((o) => !o) }}
+          className={`shrink-0 rounded-md p-2 transition-all duration-150 hover:bg-v-elevated hover:text-v-text-strong ${
+            sidebarOpen ? 'text-v-accent' : 'text-v-muted'
+          }`}
         >
-          ?
+          <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2.5" />
+            <path d="M9.5 4v16" strokeLinecap="round" />
+            <path d="M5.75 8.25h1.5M5.75 11.25h1.5" strokeLinecap="round" />
+          </svg>
         </button>
+
         <button
-          className={`${styles.sidebarToggle} ${sidebarOpen ? styles.sidebarToggleActive : ''}`}
-          onClick={() => setSidebarOpen((open) => !open)}
-          title="Toggle sidebar"
+          onClick={openSearch}
+          className="flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-v-border bg-v-surface px-3.5 text-sm text-v-muted transition-colors duration-150 hover:border-v-accent/50 hover:bg-v-elevated hover:text-v-text"
         >
-          ◧
+          <svg className="h-4 w-4 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span className="truncate">Search notes...</span>
+          <span className="ml-auto shrink-0 rounded border border-v-border bg-v-bg px-1.5 py-0.5 font-mono text-[10px] opacity-70">
+            {MOD}⇧F
+          </span>
         </button>
-        <div className={styles.modeTabs} aria-label="Editor mode">
-          <button
-            className={`${styles.modeBtn} ${!readMode && editorMode === 'plain' ? styles.modeBtnActive : ''}`}
-            onClick={() => {
-              setEditorMode('plain')
-              setReadMode(false)
-            }}
-          >
-            Plain
-          </button>
-          <button
-            className={`${styles.modeBtn} ${!readMode && editorMode === 'markdown' ? styles.modeBtnActive : ''}`}
-            onClick={() => {
-              setEditorMode('markdown')
-              setReadMode(false)
-            }}
-          >
-            Markdown
-          </button>
-          <button
-            className={`${styles.modeBtn} ${readMode ? styles.modeBtnActive : ''}`}
-            onClick={() => setReadMode(true)}
-          >
-            Read
-          </button>
-        </div>
-      </div>
-      <div className={`${styles.body} ${sidebarOpen ? '' : styles.bodySidebarClosed}`}>
-        <div className={styles.editorPane}>
+
+        <button
+          aria-label={readMode ? 'Edit note' : 'Read mode'}
+          title={`${readMode ? 'Edit' : 'Read mode'} (${MOD}E)`}
+          onClick={() => { setReadMode((r) => !r) }}
+          className={`shrink-0 rounded-md p-2 transition-all duration-150 hover:bg-v-elevated hover:text-v-text-strong ${
+            readMode ? 'text-v-accent' : 'text-v-muted'
+          }`}
+        >
           {readMode ? (
-            <MarkdownPreview content={activePaste.content} />
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
           ) : (
-            <Editor
-              key={`${activePaste.id}:${editorMode}`}
-              content={activePaste.content}
-              onChange={setContent}
-              mode={editorMode}
-            />
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
           )}
-        </div>
-        <div className={styles.listPane}>
-          <PasteList
-            pastes={pastes}
-            groups={groups}
-            activeId={activeId}
-            activeGroupId={activeGroupId}
-            editingGroupId={editingGroupId}
-            onSelect={setActiveId}
-            onDiscard={deletePaste}
-            onAssignGroup={assignGroup}
-            onGroupFilter={setActiveGroupId}
-            onAddGroup={addGroup}
-            onRenameGroup={setGroupName}
-            onDeleteGroup={deleteGroup}
-            onEditingGroupChange={setEditingGroupId}
-          />
-        </div>
+        </button>
+
+        <button
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts"
+          onClick={() => { setShortcutsOpen(true) }}
+          className="shrink-0 rounded-md p-2 text-v-muted transition-all duration-150 hover:bg-v-elevated hover:text-v-text-strong"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </header>
+
+
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar */}
+        {sidebarOpen && (
+          <aside className="flex w-60 shrink-0 flex-col border-r border-v-border bg-v-surface">
+            <div className="p-4">
+              <button
+                onClick={() => { addPaste() }}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-v-accent px-4 py-2 text-sm font-medium text-v-text-strong shadow-lg shadow-v-accent/10 transition-all duration-150 hover:bg-v-accent-hover"
+              >
+                <PlusIcon />
+                New Note
+              </button>
+            </div>
+
+            <PasteList
+              pastes={pastes}
+              groups={groups}
+              activeId={activeId}
+              activeGroupId={activeGroupId}
+              editingGroupId={editingGroupId}
+              onSelect={(id) => { void setActiveId(id) }}
+              onDiscard={deletePaste}
+              onAssignGroup={assignGroup}
+              onGroupFilter={setActiveGroupId}
+              onAddGroup={addGroup}
+              onAddNote={(groupId) => { addPaste(groupId) }}
+              onRenameGroup={setGroupName}
+              onDeleteGroup={deleteGroup}
+              onEditingGroupChange={setEditingGroupId}
+            />
+
+            <div className="border-t border-v-border p-4">
+              <div className="flex items-center gap-3 px-2 py-1 opacity-60">
+                <div className="h-2 w-2 rounded-full bg-v-ok" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-v-text">
+                  Local Mode
+                </span>
+              </div>
+            </div>
+          </aside>
+        )}
+
+        {/* Editor column */}
+        <main className="flex min-w-0 flex-1 flex-col bg-v-bg">
+          <div className="flex h-10 shrink-0 items-end overflow-x-auto border-b border-v-border bg-v-surface/30 px-2">
+            {openTabs.map((paste) => (
+              <Tab
+                key={paste.id}
+                paste={paste}
+                isActive={paste.id === activeId}
+                isEditing={paste.id === editingTitleId}
+                groupColor={paste.group_id ? groupColorById.get(paste.group_id) : undefined}
+                onActivate={() => { void setActiveId(paste.id) }}
+                onClose={() => { closeTab(paste.id) }}
+                onDoubleClick={() => {
+                  setPendingTitle(paste.title)
+                  setEditingTitleId(paste.id)
+                }}
+                onTitleChange={setPendingTitle}
+                onTitleBlur={() => { commitTitle(paste.id) }}
+                onTitleKeyDown={(e) => {
+                  if (e.key === 'Enter') commitTitle(paste.id)
+                  if (e.key === 'Escape') setEditingTitleId(null)
+                }}
+              />
+            ))}
+            <button
+              aria-label="New note"
+              title={`New note (${MOD}N)`}
+              onClick={() => { addPaste() }}
+              className="mb-2 ml-2 shrink-0 rounded p-1 text-v-muted transition-colors duration-150 hover:bg-v-border hover:text-v-text-strong"
+            >
+              <PlusIcon />
+            </button>
+          </div>
+
+          <div className="relative flex flex-1 overflow-hidden">
+            {readMode ? (
+              <div className="flex-1 overflow-auto">
+                <MarkdownPreview content={activePaste.content} />
+              </div>
+            ) : (
+              <Editor
+                key={String(activePaste.id)}
+                content={activePaste.content}
+                onChange={setContent}
+                mode="markdown"
+              />
+            )}
+          </div>
+
+          {/* Status footer */}
+          <footer className="flex h-7 shrink-0 items-center justify-between border-t border-v-border bg-v-surface/30 px-4 text-[11px] text-v-muted">
+            <div className="flex min-w-0 items-center gap-4">
+              <span className="truncate">{activePaste.title || 'Untitled'}</span>
+              <span className="hidden sm:inline">{activeGroupName}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-4">
+              <span>{stats.words} words</span>
+              <span className="hidden sm:inline">{stats.lines} lines</span>
+              <span className={activePaste.dirty ? 'text-v-warn' : 'text-v-ok'}>
+                {activePaste.dirty ? 'Saving…' : 'Saved'}
+              </span>
+            </div>
+          </footer>
+        </main>
+
       </div>
     </div>
   )
