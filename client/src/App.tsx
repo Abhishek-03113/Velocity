@@ -445,21 +445,32 @@ export default function App() {
           </div>
         </div>
         <div className={styles.listPane}>
-          <PasteList
-            pastes={pastes}
-            groups={groups}
-            activeId={activeId}
-            activeGroupId={activeGroupId}
-            editingGroupId={editingGroupId}
-            onSelect={setActiveId}
-            onDiscard={handleDiscard}
-            onAssignGroup={assignGroup}
-            onGroupFilter={setActiveGroupId}
-            onAddGroup={addGroup}
-            onRenameGroup={setGroupName}
-            onDeleteGroup={deleteGroup}
-            onEditingGroupChange={setEditingGroupId}
-          />
+          <div className={styles.newNoteWrap}>
+            <button
+              className={styles.newNote}
+              onClick={() => addPaste()}
+              title={`New note (${MOD}N)`}
+            >
+              + New Note
+            </button>
+          </div>
+          <div className={styles.listBody}>
+            <PasteList
+              pastes={pastes}
+              groups={groups}
+              activeId={activeId}
+              activeGroupId={activeGroupId}
+              editingGroupId={editingGroupId}
+              onSelect={setActiveId}
+              onDiscard={handleDiscard}
+              onAssignGroup={assignGroup}
+              onGroupFilter={setActiveGroupId}
+              onAddGroup={addGroup}
+              onRenameGroup={setGroupName}
+              onDeleteGroup={deleteGroup}
+              onEditingGroupChange={setEditingGroupId}
+            />
+          </div>
         </div>
       </div>
     </div>
