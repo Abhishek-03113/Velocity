@@ -105,9 +105,9 @@ cp .env.example .env
 make up
 ```
 
-| Service | URL |
-|---|---|
-| Client | http://localhost:37801 |
+| Service         | URL                    |
+| --------------- | ---------------------- |
+| Client          | http://localhost:37801 |
 | API (via proxy) | http://localhost:37800 |
 
 ```bash
@@ -128,10 +128,10 @@ cp .env.example .env
 npm run dev
 ```
 
-| Service | URL |
-|---|---|
-| Client | http://localhost:5173 |
-| Server | http://localhost:3000 |
+| Service | URL                   |
+| ------- | --------------------- |
+| Client  | http://localhost:5173 |
+| Server  | http://localhost:3000 |
 
 ```bash
 npm run dev:client   # Vite only
