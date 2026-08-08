@@ -12,6 +12,7 @@ const SHORTCUTS = [
   { action: 'Inline search', keys: [`${MOD}`, 'F'] },
   { action: 'Global search', keys: [`${MOD}`, '⇧', 'F'] },
   { action: 'Toggle sidebar', keys: [`${MOD}`, '1'] },
+  { action: 'Toggle whiteboard', keys: [`${MOD}`, '⇧', 'D'] },
   { action: 'Multi-cursor', keys: [OPT, 'Click'] },
   { action: 'Undo', keys: [`${MOD}`, 'Z'] },
   { action: 'Redo', keys: [`${MOD}`, '⇧', 'Z'] },
