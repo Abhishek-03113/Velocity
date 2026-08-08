@@ -16,5 +16,14 @@ export function runMigrations() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS assets (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      mime_type  TEXT NOT NULL,
+      ext        TEXT NOT NULL,
+      byte_size  INTEGER NOT NULL,
+      sha256     TEXT NOT NULL UNIQUE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `)
 }

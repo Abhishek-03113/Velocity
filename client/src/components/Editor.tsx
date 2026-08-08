@@ -30,6 +30,8 @@ import { openSearchPanel, search, searchKeymap } from '@codemirror/search'
 import { useSearchStore } from '../store/searchStore'
 import { useEditorStore } from '../store/editorStore'
 import { markdownLivePreview, toggleWrap, insertLink } from './markdownRich'
+import { persistAssetDataUrl } from '../lib/api'
+import { insertImageFiles } from '../lib/imageInsert'
 import styles from './Editor.module.css'
 
 export type EditorMode = 'plain' | 'markdown'
@@ -187,6 +189,34 @@ function buildAppKeybindings() {
   )
 }
 
+function buildImageHandlers() {
+  return EditorView.domEventHandlers({
+    paste(event, view) {
+      const items = event.clipboardData?.files
+      if (!items || items.length === 0) return false
+      const files = Array.from(items)
+      if (!files.some((f) => f.type.startsWith('image/'))) return false
+      event.preventDefault()
+      void insertImageFiles(view, files, persistAssetDataUrl)
+      return true
+    },
+    drop(event, view) {
+      const items = event.dataTransfer?.files
+      if (!items || items.length === 0) return false
+      const files = Array.from(items)
+      if (!files.some((f) => f.type.startsWith('image/'))) return false
+      event.preventDefault()
+      // Place cursor at drop position when possible
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY })
+      if (pos != null) {
+        view.dispatch({ selection: { anchor: pos } })
+      }
+      void insertImageFiles(view, files, persistAssetDataUrl)
+      return true
+    },
+  })
+}
+
 function buildExtensions(mode: EditorMode) {
   const isMarkdown = mode === 'markdown'
   return [
@@ -218,6 +248,7 @@ function buildExtensions(mode: EditorMode) {
             addKeymap: false,
           }),
           markdownLivePreview,
+          buildImageHandlers(),
         ]
       : []),
     syntaxHighlighting(catppuccinHighlight, { fallback: true }),

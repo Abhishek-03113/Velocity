@@ -68,6 +68,8 @@ async function syncPaste(id: number, get: () => EditorState, attempt = 1): Promi
   const { pastes, clearDirty } = get()
   const paste = pastes.find((p) => p.id === id)
   if (!paste) return
+  // Never PUT a temp client group id — backend Zod rejects non-positive ids.
+  if (isTempGroupId(paste.group_id)) return
 
   try {
     await api.put<Paste>(`/api/pastes/${id}`, {
@@ -95,6 +97,64 @@ async function deleteFromServer(id: number, attempt = 1): Promise<void> {
       setTimeout(() => deleteFromServer(id, attempt + 1), 1000 * 2 ** attempt)
     }
   }
+}
+
+/** True when group_id is a client-only temp id that the API will reject. */
+function isTempGroupId(groupId: number | null | undefined): boolean {
+  return groupId != null && groupId < 0
+}
+
+type EditorSet = (
+  partial: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>),
+) => void
+
+/**
+ * Persist a local-only paste (id < 0) via POST. Skips if the paste still points
+ * at a temp group — wait for replaceGroupId / clearGroupFromPastes to resolve it.
+ */
+function createPasteOnServer(tempId: number, get: () => EditorState, set: EditorSet): void {
+  if (tempId >= 0) return
+
+  const paste = get().pastes.find((p) => p.id === tempId)
+  if (!paste) return
+  if (isTempGroupId(paste.group_id)) return
+
+  api
+    .post<Paste>('/api/pastes', {
+      title: paste.title || 'Untitled',
+      content: paste.content ?? '',
+      group_id: paste.group_id ?? null,
+    } satisfies CreatePastePayload)
+    .then((res) => {
+      if (!res.data) return
+      const serverPaste = res.data
+      set((state) => ({
+        pastes: state.pastes.map((p) => {
+          if (p.id !== tempId) return p
+          const merged = {
+            ...serverPaste,
+            title: p.title,
+            content: p.content,
+            group_id: p.group_id ?? serverPaste.group_id,
+            dirty: p.dirty,
+          }
+          if (p.dirty) setTimeout(() => syncPaste(serverPaste.id, get), 0)
+          return merged
+        }),
+        openTabIds: state.openTabIds.map((id) => (id === tempId ? serverPaste.id : id)),
+        activeId: state.activeId === tempId ? serverPaste.id : state.activeId,
+      }))
+      const current = get().pastes.find((p) => p.id === serverPaste.id)
+      useSearchStore.getState().indexPaste({
+        id: serverPaste.id,
+        title: current?.title ?? serverPaste.title,
+        content: current?.content ?? '',
+      })
+    })
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : 'unknown error'
+      console.error('[addPaste] server sync failed:', message)
+    })
 }
 
 async function warmSearchIndex(ids: number[]): Promise<void> {
@@ -277,42 +337,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeId: tempId,
     }))
 
-    api
-      .post<Paste>('/api/pastes', {
-        title: 'Untitled',
-        content: '',
-        group_id: paste.group_id ?? null,
-      } satisfies CreatePastePayload)
-      .then((res) => {
-        if (!res.data) return
-        const serverPaste = res.data
-        set((state) => ({
-          pastes: state.pastes.map((p) => {
-            if (p.id !== tempId) return p
-            const merged = {
-              ...serverPaste,
-              title: p.title,
-              content: p.content,
-              group_id: p.group_id ?? serverPaste.group_id,
-              dirty: p.dirty,
-            }
-            if (p.dirty) setTimeout(() => syncPaste(serverPaste.id, get), 0)
-            return merged
-          }),
-          openTabIds: state.openTabIds.map((id) => (id === tempId ? serverPaste.id : id)),
-          activeId: state.activeId === tempId ? serverPaste.id : state.activeId,
-        }))
-        const current = get().pastes.find((p) => p.id === serverPaste.id)
-        useSearchStore.getState().indexPaste({
-          id: serverPaste.id,
-          title: current?.title ?? serverPaste.title,
-          content: current?.content ?? '',
-        })
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : 'unknown error'
-        console.error('[addPaste] server sync failed:', message)
-      })
+    // Defer POST until the group has a real server id (temp ids are rejected by Zod).
+    if (isTempGroupId(paste.group_id)) return
+    createPasteOnServer(tempId, get, set)
   },
 
   // Close a tab without deleting the paste — it remains in the sidebar
@@ -400,27 +427,45 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         p.id === id ? { ...p, group_id: groupId, dirty: true } : p
       ),
     }))
+    // Temp group ids are invalid for PUT — wait for replaceGroupId after group POST.
+    if (isTempGroupId(groupId)) return
+    // Local-only pastes need POST, not PUT.
+    if (id < 0) {
+      createPasteOnServer(id, get, set)
+      return
+    }
     scheduleSync(id, get)
   },
 
   clearGroupFromPastes: (groupId: number) => {
+    const pendingCreates: number[] = []
     set((state) => ({
-      pastes: state.pastes.map((p) =>
-        p.group_id === groupId ? { ...p, group_id: null } : p
-      ),
+      pastes: state.pastes.map((p) => {
+        if (p.group_id !== groupId) return p
+        if (p.id < 0) pendingCreates.push(p.id)
+        return { ...p, group_id: null }
+      }),
     }))
+    // Pastes that were waiting on a deleted temp group can now POST as ungrouped.
+    for (const tempId of pendingCreates) createPasteOnServer(tempId, get, set)
   },
 
   replaceGroupId: (oldId: number, newId: number) => {
-    const affected: number[] = []
+    const pendingCreates: number[] = []
+    const affectedServer: number[] = []
     set((state) => ({
       pastes: state.pastes.map((p) => {
         if (p.group_id !== oldId) return p
-        affected.push(p.id)
+        if (p.id < 0) {
+          pendingCreates.push(p.id)
+          return { ...p, group_id: newId }
+        }
+        affectedServer.push(p.id)
         return { ...p, group_id: newId, dirty: true }
       }),
     }))
-    for (const id of affected) scheduleSync(id, get)
+    for (const id of affectedServer) scheduleSync(id, get)
+    for (const tempId of pendingCreates) createPasteOnServer(tempId, get, set)
   },
 
   clearDirty: (id: number) => {

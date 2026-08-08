@@ -20,3 +20,14 @@ export const api = {
     request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
+
+/** Fire-and-forget durable store for an inline image data URL (B). */
+export function persistAssetDataUrl(dataUrl: string): void {
+  void api
+    .post('/api/assets', { data_url: dataUrl })
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : 'unknown error'
+      console.error('[assets] persist failed:', message)
+    })
+}
+

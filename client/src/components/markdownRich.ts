@@ -136,11 +136,13 @@ function buildDecorations(view: EditorView): DecorationSet {
         if (name === 'Image') {
           if (isActive(node.from, node.to)) return
           const text = state.doc.sliceString(node.from, node.to)
-          const match = /^!\[([^\]]*)\]\(([^)\s]+)/.exec(text)
+          // Support both http(s) and data:image/...;base64,... URLs
+          const match = /^!\[([^\]]*)\]\((.+?)\)$/.exec(text)
           if (!match) return
+          const url = match[2]!.trim()
           widgets.push(
             Decoration.replace({
-              widget: new ImageWidget(match[2]!, match[1] ?? ''),
+              widget: new ImageWidget(url, match[1] ?? ''),
             }).range(node.from, node.to),
           )
           return
