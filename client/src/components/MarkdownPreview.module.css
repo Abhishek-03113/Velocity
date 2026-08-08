@@ -1,12 +1,13 @@
 .preview {
   height: 100%;
   overflow-y: auto;
-  padding: 24px 32px;
-  color: #ccc;
-  font-family: -apple-system, 'Segoe UI', sans-serif;
-  font-size: 15px;
-  line-height: 1.7;
-  background: #1e1e1e;
+  padding: 32px 40px 64px;
+  color: #cad3f5;
+  font-family: var(--font-body), -apple-system, 'Segoe UI', sans-serif;
+  font-size: 1.02rem;
+  line-height: 1.8;
+  letter-spacing: 0.005em;
+  background: #24273a;
 }
 
 .preview h1,
@@ -15,21 +16,27 @@
 .preview h4,
 .preview h5,
 .preview h6 {
-  color: #ddd;
-  margin: 1.4em 0 0.5em;
-  line-height: 1.3;
+  color: #f4f5fb;
+  font-family: var(--font-display), inherit;
+  margin: 1.8em 0 0.6em;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
 }
 
-.preview h1 { font-size: 2em; border-bottom: 1px solid #333; padding-bottom: 0.3em; }
-.preview h2 { font-size: 1.5em; border-bottom: 1px solid #2a2a2a; padding-bottom: 0.2em; }
+.preview > :first-child {
+  margin-top: 0;
+}
+
+.preview h1 { font-size: 2em; border-bottom: 1px solid #494d64; padding-bottom: 0.35em; }
+.preview h2 { font-size: 1.5em; border-bottom: 1px solid #363a4f; padding-bottom: 0.25em; }
 .preview h3 { font-size: 1.25em; }
 
 .preview p {
-  margin: 0 0 1em;
+  margin: 0 0 1.2em;
 }
 
 .preview a {
-  color: #4e9ce8;
+  color: #8aadf4;
   text-decoration: none;
 }
 
@@ -38,69 +45,70 @@
 }
 
 .preview code {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--font-code), 'JetBrains Mono', monospace;
   font-size: 0.875em;
-  background: #2a2a2a;
-  padding: 2px 5px;
-  border-radius: 3px;
-  color: #d19a66;
+  background: #363a4f;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #f5a97f;
 }
 
 .preview pre {
-  background: #252526;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 16px;
+  background: #1e2030;
+  border: 1px solid #494d64;
+  border-radius: 8px;
+  padding: 18px 20px;
   overflow-x: auto;
-  margin: 0 0 1em;
+  margin: 0 0 1.3em;
+  line-height: 1.7;
 }
 
 .preview pre code {
   background: none;
   padding: 0;
   border-radius: 0;
-  color: #abb2bf;
+  color: #cad3f5;
 }
 
 .preview blockquote {
-  border-left: 3px solid #444;
-  margin: 0 0 1em;
-  padding: 0 0 0 16px;
-  color: #888;
+  border-left: 3px solid #6e738d;
+  margin: 0 0 1.3em;
+  padding: 0.1em 0 0.1em 18px;
+  color: #b8c0e0;
 }
 
 .preview ul,
 .preview ol {
-  margin: 0 0 1em;
-  padding-left: 1.5em;
+  margin: 0 0 1.2em;
+  padding-left: 1.6em;
 }
 
 .preview li {
-  margin-bottom: 0.25em;
+  margin-bottom: 0.4em;
 }
 
 .preview hr {
   border: none;
-  border-top: 1px solid #333;
-  margin: 1.5em 0;
+  border-top: 1px solid #494d64;
+  margin: 2em 0;
 }
 
 .preview table {
   border-collapse: collapse;
   width: 100%;
-  margin: 0 0 1em;
+  margin: 0 0 1.3em;
 }
 
 .preview th,
 .preview td {
-  border: 1px solid #333;
-  padding: 8px 12px;
+  border: 1px solid #494d64;
+  padding: 10px 14px;
   text-align: left;
 }
 
 .preview th {
-  background: #252526;
-  color: #ddd;
+  background: #1e2030;
+  color: #f4f5fb;
 }
 
 .preview img {
