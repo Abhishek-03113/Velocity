@@ -36,7 +36,8 @@ export function assetMarkdownUrl(asset: Pick<Asset, 'url' | 'id'>): string {
 
 /**
  * Resolve a media href for the browser using `VITE_API_URL`.
- * Relative `/api/...` paths are prefixed with the configured server origin.
+ * Relative `/api/...` paths stay same-origin when possible (Vite proxy / client
+ * nginx both forward `/api`), so <img> loads don't depend on a second host/port.
  */
 export function resolveMediaUrl(href: string): string {
   const trimmed = href.trim()
@@ -49,8 +50,12 @@ export function resolveMediaUrl(href: string): string {
   ) {
     return trimmed
   }
-  const base = apiBaseUrl()
   const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  // Browser: prefer same-origin /api so docker client (:37801) and vite proxy work.
+  if (typeof window !== 'undefined' && path.startsWith('/api/')) {
+    return path
+  }
+  const base = apiBaseUrl()
   return base ? `${base}${path}` : path
 }
 

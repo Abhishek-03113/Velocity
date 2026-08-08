@@ -2,31 +2,52 @@ import type { EditorView } from '@codemirror/view'
 import { assetMarkdownUrl, uploadAssetDataUrl } from './api'
 
 const IMAGE_MIME = /^image\/(png|jpe?g|gif|webp|svg\+xml)$/i
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg)$/i
 /** Downscale large screenshots so upload + decode stay cheap. */
 const MAX_EDGE = 1600
 const JPEG_QUALITY = 0.82
+
+function isImageFile(file: File): boolean {
+  if (IMAGE_MIME.test(file.type)) return true
+  // Some clipboard sources omit MIME — fall back to extension.
+  if (file.type) return false
+  return IMAGE_EXT.test(file.name)
+}
 
 /** Markdown image whose src is an embedded data URL (the slow path). */
 const DATA_IMAGE_MD =
   /!\[([^\]]*)\]\((data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+)\)/g
 
-/** In-doc marker while an asset upload is in flight — never persisted long-term. */
+/** In-doc marker while an asset upload is in flight. */
 export const PENDING_IMAGE_PREFIX = 'velocity-pending:'
 
-type PendingPreview = {
+type PreviewEntry = {
   blobUrl: string
 }
 
-const pendingPreviews = new Map<string, PendingPreview>()
+/** pending id → local blob preview while uploading */
+const pendingPreviews = new Map<string, PreviewEntry>()
+/** final markdown url → local blob kept until the remote image paints */
+const handoffPreviews = new Map<string, PreviewEntry>()
 
 export function isPendingImageUrl(url: string): boolean {
   return url.startsWith(PENDING_IMAGE_PREFIX)
 }
 
-export function getPendingPreviewUrl(url: string): string | null {
-  if (!isPendingImageUrl(url)) return null
-  const id = url.slice(PENDING_IMAGE_PREFIX.length)
-  return pendingPreviews.get(id)?.blobUrl ?? null
+/** Local object URL to show while uploading or until the remote asset loads. */
+export function getLocalPreviewUrl(url: string): string | null {
+  if (isPendingImageUrl(url)) {
+    const id = url.slice(PENDING_IMAGE_PREFIX.length)
+    return pendingPreviews.get(id)?.blobUrl ?? null
+  }
+  return handoffPreviews.get(url)?.blobUrl ?? null
+}
+
+export function releaseLocalPreview(url: string): void {
+  const entry = handoffPreviews.get(url)
+  if (!entry) return
+  URL.revokeObjectURL(entry.blobUrl)
+  handoffPreviews.delete(url)
 }
 
 function registerPendingPreview(id: string, blobUrl: string): string {
@@ -34,7 +55,17 @@ function registerPendingPreview(id: string, blobUrl: string): string {
   return `${PENDING_IMAGE_PREFIX}${id}`
 }
 
-function clearPendingPreview(pendingUrl: string): void {
+function promotePendingToHandoff(pendingUrl: string, finalUrl: string): void {
+  if (!isPendingImageUrl(pendingUrl)) return
+  const id = pendingUrl.slice(PENDING_IMAGE_PREFIX.length)
+  const entry = pendingPreviews.get(id)
+  if (!entry) return
+  pendingPreviews.delete(id)
+  // Keep the blob available under the final asset path until <img> loads it remotely.
+  handoffPreviews.set(finalUrl, entry)
+}
+
+function dropPendingPreview(pendingUrl: string): void {
   if (!isPendingImageUrl(pendingUrl)) return
   const id = pendingUrl.slice(PENDING_IMAGE_PREFIX.length)
   const entry = pendingPreviews.get(id)
@@ -65,6 +96,7 @@ function insertImageMarkdown(view: EditorView, alt: string, url: string): void {
   const before = from > 0 ? view.state.doc.sliceString(from - 1, from) : '\n'
   const prefix = before === '\n' || from === 0 ? '' : '\n'
   const markdown = `${prefix}![${alt}](${url})\n`
+  // Leave the caret on the following line so live-preview can render the image widget.
   view.dispatch({
     changes: { from, to, insert: markdown },
     selection: { anchor: from + markdown.length },
@@ -110,7 +142,6 @@ async function fileToUploadDataUrl(file: File): Promise<string> {
     if (!ctx) return readFileAsDataUrl(file)
     ctx.drawImage(bitmap, 0, 0, w, h)
 
-    // Screenshots often keep alpha; photos compress better as JPEG.
     if (file.type === 'image/png') {
       return canvas.toDataURL('image/png')
     }
@@ -122,7 +153,6 @@ async function fileToUploadDataUrl(file: File): Promise<string> {
 
 /**
  * Rewrite legacy `data:image/...` embeds to short `/api/assets/:id` URLs.
- * Runs in the background so opening an old paste stops lagging after one pass.
  */
 export async function migrateEmbeddedDataUrls(view: EditorView): Promise<void> {
   const text = view.state.doc.toString()
@@ -131,7 +161,6 @@ export async function migrateEmbeddedDataUrls(view: EditorView): Promise<void> {
   const matches = [...text.matchAll(DATA_IMAGE_MD)]
   if (matches.length === 0) return
 
-  // normalized data URL → uploaded asset src (dedupe identical embeds)
   const uploaded = new Map<string, string>()
 
   for (const match of matches) {
@@ -153,11 +182,10 @@ export async function migrateEmbeddedDataUrls(view: EditorView): Promise<void> {
 }
 
 /**
- * Insert images with an immediate local preview placeholder, then swap to
- * `/api/assets/:id` once the upload finishes.
+ * Insert images with an immediate local preview, then swap to `/api/assets/:id`.
  */
 export async function insertImageFiles(view: EditorView, files: File[]): Promise<boolean> {
-  const images = files.filter((f) => IMAGE_MIME.test(f.type))
+  const images = files.filter(isImageFile)
   if (images.length === 0) return false
 
   for (const file of images) {
@@ -171,23 +199,27 @@ export async function insertImageFiles(view: EditorView, files: File[]): Promise
       const dataUrl = await fileToUploadDataUrl(file)
       const asset = await uploadAssetDataUrl(dataUrl)
       const url = assetMarkdownUrl(asset)
+      promotePendingToHandoff(pendingUrl, url)
       if (!replaceUrlInDoc(view, pendingUrl, url)) {
         console.error('[editor:image] pending URL missing after upload')
+        dropPendingPreview(pendingUrl)
+        releaseLocalPreview(url)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'unknown error'
       console.error('[editor:image] upload failed:', message)
-      // Offline / upload failure: fall back to data URL so the paste stays durable.
       try {
         const dataUrl = await readFileAsDataUrl(file)
-        replaceUrlInDoc(view, pendingUrl, dataUrl)
+        promotePendingToHandoff(pendingUrl, dataUrl)
+        if (!replaceUrlInDoc(view, pendingUrl, dataUrl)) {
+          dropPendingPreview(pendingUrl)
+        }
       } catch (fallbackErr) {
+        dropPendingPreview(pendingUrl)
         const fallbackMsg =
           fallbackErr instanceof Error ? fallbackErr.message : 'unknown error'
         console.error('[editor:image] fallback embed failed:', fallbackMsg)
       }
-    } finally {
-      clearPendingPreview(pendingUrl)
     }
   }
   return true

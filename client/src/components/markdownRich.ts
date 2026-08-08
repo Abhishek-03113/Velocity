@@ -10,7 +10,11 @@ import {
   type ViewUpdate,
 } from '@codemirror/view'
 import { resolveMediaUrl } from '../lib/api'
-import { getPendingPreviewUrl, isPendingImageUrl } from '../lib/imageInsert'
+import {
+  getLocalPreviewUrl,
+  isPendingImageUrl,
+  releaseLocalPreview,
+} from '../lib/imageInsert'
 
 /**
  * Obsidian-style "live preview" for CodeMirror markdown:
@@ -40,6 +44,15 @@ const MARK_NODES = new Set([
 
 const hiddenMark = Decoration.replace({})
 
+/** Parse `![alt](url)` / `![alt](url "title")` — returns null when not an image. */
+function parseImageMarkdown(text: string): { alt: string; url: string } | null {
+  const match = /^!\[([^\]]*)\]\(\s*<?([^\s)>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)$/.exec(
+    text.trim(),
+  )
+  if (!match) return null
+  return { alt: match[1] ?? '', url: match[2]!.trim() }
+}
+
 class ImageWidget extends WidgetType {
   constructor(
     readonly url: string,
@@ -49,65 +62,95 @@ class ImageWidget extends WidgetType {
   }
 
   override eq(other: ImageWidget) {
-    // Avoid megabyte string compares when legacy data: URLs are still in a paste.
-    if (this.alt !== other.alt) return false
-    if (this.url === other.url) return true
-    if (this.url.length !== other.url.length) return false
-    if (this.url.length < 256) return false
-    return (
-      this.url.startsWith(other.url.slice(0, 64)) &&
-      this.url.endsWith(other.url.slice(-64))
-    )
+    return this.alt === other.alt && this.url === other.url
+  }
+
+  // Reserve space so the line doesn't collapse before the image paints.
+  override get estimatedHeight() {
+    return 180
   }
 
   toDOM() {
     const wrap = document.createElement('span')
     wrap.className = 'cm-md-image cm-md-image-loading'
+    wrap.setAttribute('contenteditable', 'false')
 
     const placeholder = document.createElement('span')
     placeholder.className = 'cm-md-image-placeholder'
     placeholder.setAttribute('aria-busy', 'true')
     placeholder.setAttribute('aria-label', 'Loading image')
-
-    // Upload in flight: show local blob preview + uploading badge, or skeleton.
-    if (isPendingImageUrl(this.url)) {
-      const previewUrl = getPendingPreviewUrl(this.url)
-      if (previewUrl) {
-        const preview = document.createElement('img')
-        preview.src = previewUrl
-        preview.alt = this.alt
-        preview.className = 'cm-md-image-preview'
-        preview.decoding = 'async'
-        wrap.appendChild(preview)
-      } else {
-        wrap.appendChild(placeholder)
-      }
-      const badge = document.createElement('span')
-      badge.className = 'cm-md-image-badge'
-      badge.textContent = 'Uploading…'
-      wrap.appendChild(badge)
-      return wrap
-    }
-
     wrap.appendChild(placeholder)
+
+    const localPreview = getLocalPreviewUrl(this.url)
+    const pending = isPendingImageUrl(this.url)
+    const remoteSrc = resolveMediaUrl(this.url)
 
     const img = document.createElement('img')
     img.alt = this.alt
     img.decoding = 'async'
-    img.hidden = true
-    img.onload = () => {
+    img.className = pending ? 'cm-md-image-preview' : 'cm-md-image-remote'
+
+    const showImage = () => {
       placeholder.remove()
       img.hidden = false
       wrap.classList.remove('cm-md-image-loading')
     }
-    img.onerror = () => {
+
+    const showError = () => {
+      img.remove()
       placeholder.classList.add('cm-md-image-error')
       placeholder.removeAttribute('aria-busy')
       placeholder.setAttribute('aria-label', 'Failed to load image')
       placeholder.textContent = 'Image failed to load'
+      wrap.classList.remove('cm-md-image-loading')
     }
-    img.src = resolveMediaUrl(this.url)
+
+    if (pending) {
+      const badge = document.createElement('span')
+      badge.className = 'cm-md-image-badge'
+      badge.textContent = 'Uploading…'
+      wrap.appendChild(badge)
+
+      if (localPreview) {
+        img.hidden = false
+        img.onload = () => placeholder.remove()
+        img.onerror = showError
+        img.src = localPreview
+        wrap.appendChild(img)
+        if (img.complete && img.naturalWidth > 0) placeholder.remove()
+      }
+      return wrap
+    }
+
+    // Prefer local handoff blob while the durable asset URL warms up.
+    if (localPreview) {
+      img.hidden = false
+      img.src = localPreview
+      wrap.appendChild(img)
+      placeholder.remove()
+      wrap.classList.remove('cm-md-image-loading')
+
+      const remote = new Image()
+      remote.decoding = 'async'
+      remote.onload = () => {
+        img.onload = () => {
+          releaseLocalPreview(this.url)
+        }
+        img.onerror = () => {
+          // Keep the local preview if the remote swap fails.
+        }
+        img.src = remoteSrc
+      }
+      remote.src = remoteSrc
+      return wrap
+    }
+
+    img.hidden = true
+    img.onload = showImage
+    img.onerror = showError
     wrap.appendChild(img)
+    img.src = remoteSrc
+    if (img.complete && img.naturalWidth > 0) showImage()
     return wrap
   }
 
@@ -181,7 +224,7 @@ function buildDecorations(view: EditorView): DecorationSet {
         const headingClass = HEADING_CLASS[name]
         if (headingClass) {
           widgets.push(
-            Decoration.line({ class: headingClass }).range(
+            Decorations.line({ class: headingClass }).range(
               state.doc.lineAt(node.from).from,
             ),
           )
@@ -189,18 +232,22 @@ function buildDecorations(view: EditorView): DecorationSet {
         }
 
         if (name === 'Image') {
-          if (isActive(node.from, node.to)) return
           const text = state.doc.sliceString(node.from, node.to)
-          // Support both http(s) and data:image/...;base64,... URLs
-          const match = /^!\[([^\]]*)\]\((.+?)\)$/.exec(text)
-          if (!match) return
-          const url = match[2]!.trim()
+          const parsed = parseImageMarkdown(text)
+          if (!parsed) return false
+          // Keep upload placeholders visible; reveal source only when editing settled images.
+          if (isActive(node.from, node.to) && !isPendingImageUrl(parsed.url)) {
+            // Skip LinkMark children so the raw markdown stays fully editable.
+            return false
+          }
           widgets.push(
-            Decoration.replace({
-              widget: new ImageWidget(url, match[1] ?? ''),
+            Decorations.replace({
+              widget: new ImageWidget(parsed.url, parsed.alt),
             }).range(node.from, node.to),
           )
-          return
+          // Critical: skip LinkMark children — nested replace decorations inside an
+          // Image replace hide the widget (marks collapse, no placeholder paints).
+          return false
         }
 
         if (name === 'FencedCode' || name === 'CodeBlock') {
@@ -208,31 +255,65 @@ function buildDecorations(view: EditorView): DecorationSet {
           const last = state.doc.lineAt(node.to).number
           for (let n = first; n <= last; n++) {
             widgets.push(
-              Decoration.line({ class: 'cm-md-code' }).range(state.doc.line(n).from),
+              Decorations.line({ class: 'cm-md-code' }).range(state.doc.line(n).from),
             )
           }
-          return
+          return false
         }
 
         if (name === 'TaskMarker') {
           const text = state.doc.sliceString(node.from, node.to)
           const checked = /[xX]/.test(text)
           widgets.push(
-            Decoration.replace({
+            Decorations.replace({
               widget: new CheckboxWidget(checked, node.from),
             }).range(node.from, node.to),
           )
-          return
+          return false
         }
 
         if (MARK_NODES.has(name)) {
           // keep ``` fences visible — hiding them makes code blocks confusing
           if (node.node.parent?.name === 'FencedCode') return
+          // Image branch owns its marks; never nest LinkMark replaces inside Image.
+          if (node.node.parent?.name === 'Image') return
           if (isActive(node.from, node.to)) return
           if (node.to > node.from) widgets.push(hiddenMark.range(node.from, node.to))
         }
       },
     })
+  }
+
+  // Fallback: decorate image markdown even if the syntax tree has not labeled
+  // Image nodes yet (otherwise widgets only appear after a selection/viewport reset).
+  const covered = new Set(widgets.map((w) => `${w.from}:${w.to}`))
+  for (const { from, to } of view.visibleRanges) {
+    let pos = from
+    while (pos <= to) {
+      const line = state.doc.lineAt(pos)
+      const m =
+        /^(\s*)!\[([^\]]*)\]\(\s*<?([^\s)>]+)>?(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)\s*$/.exec(
+          line.text,
+        )
+      if (m) {
+        const start = line.from + m[1]!.length
+        const end = start + m[0]!.length - m[1]!.length
+        const key = `${start}:${end}`
+        if (!covered.has(key)) {
+          const url = m[3]!.trim()
+          if (!(isActive(start, end) && !isPendingImageUrl(url))) {
+            widgets.push(
+              Decorations.replace({
+                widget: new ImageWidget(url, m[2] ?? ''),
+              }).range(start, end),
+            )
+            covered.add(key)
+          }
+        }
+      }
+      if (line.to >= to) break
+      pos = line.to + 1
+    }
   }
 
   widgets.sort((a, b) => a.from - b.from || a.value.startSide - b.value.startSide)
@@ -249,7 +330,16 @@ class LivePreviewPlugin {
   }
 
   update(update: ViewUpdate) {
-    if (update.docChanged || update.selectionSet || update.viewportChanged) {
+    // Rebuild when the markdown tree catches up — otherwise Image widgets never
+    // appear until the next selection/viewport change ("reset").
+    const treeChanged =
+      syntaxTree(update.state) !== syntaxTree(update.startState)
+    if (
+      update.docChanged ||
+      update.selectionSet ||
+      update.viewportChanged ||
+      treeChanged
+    ) {
       this.decorations = buildDecorations(update.view)
     }
   }

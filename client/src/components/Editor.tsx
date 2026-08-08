@@ -235,23 +235,33 @@ function buildAppKeybindings() {
 }
 
 function buildImageHandlers() {
+  const collectImages = (data: DataTransfer | null): File[] => {
+    if (!data) return []
+    const fromFiles = Array.from(data.files ?? []).filter((f) =>
+      f.type.startsWith('image/') || (!f.type && /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name)),
+    )
+    if (fromFiles.length > 0) return fromFiles
+    const fromItems: File[] = []
+    for (const item of Array.from(data.items ?? [])) {
+      if (!item.type.startsWith('image/')) continue
+      const file = item.getAsFile()
+      if (file) fromItems.push(file)
+    }
+    return fromItems
+  }
+
   return EditorView.domEventHandlers({
     paste(event, view) {
-      const items = event.clipboardData?.files
-      if (!items || items.length === 0) return false
-      const files = Array.from(items)
-      if (!files.some((f) => f.type.startsWith('image/'))) return false
+      const files = collectImages(event.clipboardData)
+      if (files.length === 0) return false
       event.preventDefault()
       void insertImageFiles(view, files)
       return true
     },
     drop(event, view) {
-      const items = event.dataTransfer?.files
-      if (!items || items.length === 0) return false
-      const files = Array.from(items)
-      if (!files.some((f) => f.type.startsWith('image/'))) return false
+      const files = collectImages(event.dataTransfer)
+      if (files.length === 0) return false
       event.preventDefault()
-      // Place cursor at drop position when possible
       const pos = view.posAtCoords({ x: event.clientX, y: event.clientY })
       if (pos != null) {
         view.dispatch({ selection: { anchor: pos } })
@@ -309,13 +319,19 @@ export default function Editor({ content, onChange, mode }: EditorProps) {
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   const applyingExternalChangeRef = useRef(false)
+  /** Last doc string we pushed to Zustand — ignore stale prop echoes. */
+  const lastEmittedRef = useRef<string | null>(null)
   onChangeRef.current = onChange
 
-  const stableOnChange = useCallback((val: string) => onChangeRef.current(val), [])
+  const stableOnChange = useCallback((val: string) => {
+    lastEmittedRef.current = val
+    onChangeRef.current(val)
+  }, [])
 
   useEffect(() => {
     if (!containerRef.current) return
 
+    lastEmittedRef.current = content ?? ''
     const state = EditorState.create({
       doc: content ?? '',
       extensions: [
@@ -355,15 +371,27 @@ export default function Editor({ content, onChange, mode }: EditorProps) {
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
+    const incoming = content ?? ''
     const current = view.state.doc.toString()
-    if (current !== content) {
-      applyingExternalChangeRef.current = true
-      view.dispatch({
-        changes: { from: 0, to: current.length, insert: content ?? '' },
-      })
-      applyingExternalChangeRef.current = false
-      void migrateEmbeddedDataUrls(view)
+
+    // Already in sync, or React echoed the doc we just pushed to Zustand.
+    if (incoming === current || incoming === lastEmittedRef.current) {
+      lastEmittedRef.current = incoming
+      return
     }
+
+    // Editor already shows our latest emit while props disagree → stale echo
+    // (e.g. pending image URL after upload swapped to /api/assets/...).
+    // Must NOT block empty→loaded: lazy fetch mounts with '' then fills content.
+    if (current.length > 0 && current === lastEmittedRef.current) return
+
+    applyingExternalChangeRef.current = true
+    view.dispatch({
+      changes: { from: 0, to: current.length, insert: incoming },
+    })
+    applyingExternalChangeRef.current = false
+    lastEmittedRef.current = incoming
+    void migrateEmbeddedDataUrls(view)
   }, [content])
 
   return <div ref={containerRef} className={styles.editor} />
