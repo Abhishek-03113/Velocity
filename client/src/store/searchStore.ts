@@ -31,6 +31,7 @@ interface SearchState {
   hydrateIndex: (pastes: Array<Pick<Paste, 'id' | 'title' | 'content'>>) => void
   ensureReady: () => Promise<void>
   hasCachedDocuments: () => boolean
+  flushIndex: () => void
 }
 
 // Document index: search on both title and content fields
@@ -45,8 +46,16 @@ const index = new Document({
 
 const documents = new Map<number, SearchDoc>()
 
-// Serialized index cache in localStorage
-function persistIndex(): void {
+const PERSIST_DEBOUNCE_MS = 2000
+let persistTimer: ReturnType<typeof setTimeout> | null = null
+
+// Serialized index cache in localStorage — export/stringify/write is expensive,
+// so this must never run synchronously on a hot path (e.g. every keystroke).
+function persistIndexNow(): void {
+  if (persistTimer !== null) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
   try {
     const exported: Record<string, unknown> = {}
     index.export((key, data) => {
@@ -57,6 +66,23 @@ function persistIndex(): void {
   } catch {
     // localStorage quota exceeded — silently skip
   }
+}
+
+// Debounced persist for hot paths (e.g. indexPaste on every keystroke) — the
+// in-memory index is still updated synchronously, only the expensive
+// export/stringify/write to localStorage is batched.
+function schedulePersistIndex(): void {
+  if (persistTimer !== null) clearTimeout(persistTimer)
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    persistIndexNow()
+  }, PERSIST_DEBOUNCE_MS)
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    if (persistTimer !== null) persistIndexNow()
+  })
 }
 
 function addOrReplace(doc: SearchDoc): void {
@@ -165,7 +191,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     }
     documents.set(paste.id, doc)
     addOrReplace(doc)
-    persistIndex()
+    schedulePersistIndex()
   },
 
   removePaste: (id: number) => {
@@ -175,7 +201,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     } catch {
       // Already absent from the hydrated index.
     }
-    persistIndex()
+    persistIndexNow()
   },
 
   hydrateIndex: (pastes) => {
@@ -189,9 +215,10 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       documents.set(p.id, doc)
       addOrReplace(doc)
     }
-    persistIndex()
+    persistIndexNow()
   },
 
   ensureReady: () => indexReady,
   hasCachedDocuments: () => documents.size > 0,
+  flushIndex: () => persistIndexNow(),
 }))
