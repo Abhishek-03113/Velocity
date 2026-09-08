@@ -176,6 +176,8 @@ async function warmSearchIndex(ids: number[]): Promise<void> {
       console.error(`[search:warm] paste ${id}:`, message)
     }
   }
+
+  searchStore.flushIndex()
 }
 
 // Trim local-only (id < 0) pastes in the sidebar to the MRU cap.
