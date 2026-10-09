@@ -1,9 +1,15 @@
 import { expect, type Page } from '@playwright/test'
+import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const API = 'http://localhost:3199'
-const SHOTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/screenshots/after')
+export const API = `http://localhost:${process.env.E2E_API_PORT ?? 3199}`
+// E2E_SHOTS_DIR lets feature branches save review screenshots without touching the canonical set.
+const SHOTS = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../docs/screenshots',
+  process.env.E2E_SHOTS_DIR ?? 'after',
+)
 
 let counter = 0
 /** Save a review screenshot to docs/screenshots/after (numbered in run order). */
@@ -11,6 +17,7 @@ export async function shot(page: Page, name: string) {
   counter += 1
   // Let springs / fades settle so screenshots are deterministic.
   await page.waitForTimeout(350)
+  mkdirSync(SHOTS, { recursive: true })
   await page.screenshot({ path: path.join(SHOTS, `${String(counter).padStart(2, '0')}-${name}.png`) })
 }
 
