@@ -4,6 +4,7 @@ import StatusBar from './components/chrome/StatusBar'
 import TabBar from './components/chrome/TabBar'
 import Toolbar from './components/chrome/Toolbar'
 import Alert from './components/overlays/Alert'
+import CommandPalette from './components/overlays/CommandPalette'
 import Sidebar from './components/sidebar/Sidebar'
 import Workspace from './components/workspace/Workspace'
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts'
@@ -12,18 +13,15 @@ import { useGroupStore } from './store/groupStore'
 import { useUiStore } from './store/uiStore'
 import styles from './App.module.css'
 
-// Overlays and read mode are split out of the startup bundle and prefetched
-// once the app is idle, so they still open instantly.
-const loadPalette = () => import('./components/overlays/CommandPalette')
+// Sheets and read mode are split out of the startup bundle and prefetched once
+// the app is idle. The palette stays eager: keys typed right after ⌘P must land.
 const loadSettings = () => import('./components/overlays/SettingsSheet')
 const loadShortcuts = () => import('./components/overlays/ShortcutsSheet')
-const CommandPalette = lazy(loadPalette)
 const SettingsSheet = lazy(loadSettings)
 const ShortcutsSheet = lazy(loadShortcuts)
 
 function prefetchOnIdle() {
   const run = () => {
-    void loadPalette()
     void loadSettings()
     void loadShortcuts()
     void import('./components/MarkdownPreview')

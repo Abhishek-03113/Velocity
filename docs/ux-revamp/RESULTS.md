@@ -45,7 +45,7 @@ What changed:
 * **Editor and React.** CodeMirror owns its document. Keystrokes flow out to the store, and only external changes flow back in through a subscription, so typing never re-renders the editor's React tree.
 * **Shell subscriptions.** The old `App` subscribed to the whole store, so the sidebar, tabs and toolbar all re-rendered on every keystroke. Each component now selects only what it shows. The notes list follows a throttled (300 ms), deferred view of the data and caches title and preview text per note object.
 * **Search indexing.** FlexSearch re-tokenising moved off the keystroke path (250 ms idle debounce). Startup no longer re-indexes cached documents.
-* **Bundle.** Tailwind was removed. CodeMirror has its own cacheable chunk, and Excalidraw stays lazy-loaded.
+* **Bundle.** Tailwind was removed. CodeMirror has its own cacheable chunk, and Excalidraw stays lazy-loaded. Read mode (marked + DOMPurify) and the Settings and Shortcuts sheets are lazy-loaded and prefetched when the browser is idle. Initial JS is 296 KB gzip, against 286 KB on `main`, with all the new features included. The command palette stays in the startup bundle on purpose, so that keys typed straight after ⌘P are never dropped.
 
 ## Workers
 
