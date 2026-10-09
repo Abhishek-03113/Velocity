@@ -8,7 +8,7 @@ import type { Paste, CreatePastePayload, UpdatePastePayload } from '../types'
 import { focusedNoteId, markLayoutRestored, useLayoutStore, visibleNoteIds } from './layoutStore'
 import type { SplitRequest } from './layoutStore'
 import { cachedContent, useSearchStore } from './searchStore'
-import { remapBoard, removeBoardScene } from './whiteboardStore'
+import { migrateLocalBoards, remapBoard, removeBoardScene, seedBoardFlags } from './whiteboardStore'
 
 const MAX_LOCAL_MRU = 5
 const INDEX_DEBOUNCE_MS = 250
@@ -330,7 +330,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     let list: Paste[]
     try {
       const res = await api.get<Paste[]>('/api/pastes')
-      list = (res.data ?? []).map((p) => ({ ...p, content: undefined, dirty: false }))
+      list = (res.data ?? []).map((p) => ({
+        ...p,
+        // SQLite returns 0/1.
+        has_whiteboard: Boolean(p.has_whiteboard),
+        content: undefined,
+        dirty: false,
+      }))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'unknown error'
       console.error('[init] failed to load pastes:', message)
@@ -339,6 +345,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       get().addPaste(null, { focus: true })
       return
     }
+
+    seedBoardFlags(list)
+    // Move pre-SQLite localStorage boards to the server (idempotent, in the background).
+    void migrateLocalBoards(list)
 
     if (list.length === 0) {
       set({ loaded: true })
