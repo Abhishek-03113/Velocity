@@ -5,6 +5,7 @@ import { comboLabel } from '../../lib/platform'
 import { leaves } from '../../lib/tiling'
 import { useEditorStore } from '../../store/editorStore'
 import { useLayoutStore } from '../../store/layoutStore'
+import { placeNoteInTile } from '../../lib/workspace'
 import { cachedContent, searchNotes } from '../../store/searchStore'
 import { Icon } from '../Icon'
 import styles from './Workspace.module.css'
@@ -41,10 +42,7 @@ export function EmptyTile({ tileId, focused }: { tileId: string; focused: boolea
       .slice(0, 8)
   }, [pastes, query])
 
-  const open = (id: number) => {
-    useLayoutStore.getState().focus(tileId)
-    void useEditorStore.getState().setActiveId(id)
-  }
+  const open = (id: number) => placeNoteInTile(tileId, id)
 
   const createHere = () => {
     useLayoutStore.getState().focus(tileId)

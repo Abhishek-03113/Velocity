@@ -252,7 +252,10 @@ test('read mode renders Markdown with checklists', async ({ page }) => {
   await expect(article.getByRole('heading', { name: 'Q4 Product Roadmap' })).toBeVisible()
   await expect(article.locator('input[type=checkbox]')).toHaveCount(3)
   await shot(page, 'read-mode')
-  await page.keyboard.press('Control+KeyE')
+  // Clicking the already-selected segment must not flip the mode.
+  await page.getByRole('radio', { name: 'Read' }).click()
+  await expect(article).toBeVisible()
+  await page.getByRole('radio', { name: 'Edit' }).click()
   await expect(editorIn(page)).toBeVisible()
 })
 

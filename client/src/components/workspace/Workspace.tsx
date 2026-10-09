@@ -5,7 +5,7 @@ import { NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { computeGeometry, leaves, type Rect, type SplitGeometry } from '../../lib/tiling'
 import { useLayoutStore } from '../../store/layoutStore'
 import { useEditorStore } from '../../store/editorStore'
-import { focusTile } from '../../lib/workspace'
+import { placeNoteInTile } from '../../lib/workspace'
 import { Tile, type DropZone } from './Tile'
 import styles from './Workspace.module.css'
 
@@ -147,12 +147,7 @@ export default function Workspace() {
     const layout = useLayoutStore.getState()
     const visible = leaves(layout.root).find((l) => l.content.kind === 'note' && l.content.noteId === noteId)
     if (zone === 'center') {
-      if (visible) {
-        focusTile(visible.id, { dom: true })
-        return
-      }
-      layout.focus(tileId)
-      void useEditorStore.getState().setActiveId(noteId)
+      placeNoteInTile(tileId, noteId)
       return
     }
     // Dragging a visible note to another tile's edge moves it there.

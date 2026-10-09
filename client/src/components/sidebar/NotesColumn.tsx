@@ -100,6 +100,19 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu }: NoteRow
   prev.row.dirty === next.row.dirty,
 )
 
+/** Per-paste cache: unchanged notes keep their object identity across keystrokes. */
+const textCache = new WeakMap<Paste, { source: string | undefined; title: string; preview: string }>()
+
+function rowText(p: Paste): { title: string; preview: string } {
+  const content = p.content ?? cachedContent(p.id)
+  const hit = textCache.get(p)
+  if (hit && hit.source === content) return hit
+  const title = displayTitle(p, content)
+  const entry = { source: content, title, preview: snippet(content, title) }
+  textCache.set(p, entry)
+  return entry
+}
+
 function filterName(filter: number | 'ungrouped' | null, groups: Group[]): string {
   if (filter === null) return 'All Notes'
   if (filter === 'ungrouped') return 'Unfiled'
@@ -110,7 +123,7 @@ function sortPastes(list: Paste[], order: 'updated' | 'title'): Paste[] {
   const decorated = list.map((p) => ({
     p,
     stamp: parseTimestamp(p.updated_at),
-    title: order === 'title' ? displayTitle(p, cachedContent(p.id)).toLocaleLowerCase() : '',
+    title: order === 'title' ? rowText(p).title.toLocaleLowerCase() : '',
   }))
   decorated.sort((a, b) =>
     order === 'title' ? a.title.localeCompare(b.title) : b.stamp - a.stamp || b.p.id - a.p.id,
@@ -161,8 +174,7 @@ export function NotesColumn({
     })
     const now = Date.now()
     return sortPastes(filtered, sort).map((p) => {
-      const content = p.content ?? cachedContent(p.id)
-      const title = displayTitle(p, content)
+      const { title, preview } = rowText(p)
       const groupName =
         activeGroupId === null && p.group_id != null
           ? groups.find((g) => g.id === p.group_id)?.name
@@ -173,7 +185,7 @@ export function NotesColumn({
         section: sort === 'updated' ? dateSection(stamp, now) : '',
         title,
         date: relativeTime(stamp, now),
-        preview: snippet(content, title),
+        preview,
         folder: groupName,
         folderColor: groupColorFor(groups, p.group_id),
         dirty: p.dirty,

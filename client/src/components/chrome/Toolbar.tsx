@@ -165,7 +165,9 @@ export default function Toolbar() {
             label="Mode"
             iconOnly
             value={tileMode}
-            onChange={() => toggleReadMode()}
+            onChange={(mode) => {
+              if (mode !== tileMode) toggleReadMode()
+            }}
             options={[
               { value: 'edit', label: 'Edit', icon: 'pencil', title: `Edit` },
               { value: 'read', label: 'Read', icon: 'book', title: `Read` },

@@ -32,6 +32,27 @@ export function newNote(opts: { split?: SplitRequest | false; groupId?: number |
   afterOpenOnNarrow()
 }
 
+/**
+ * Put a note into a specific tile. A note shows in at most one editor tile,
+ * so if it is already visible elsewhere it *moves* here (Hyprland-style).
+ */
+export function placeNoteInTile(tileId: string, noteId: number) {
+  const layout = useLayoutStore.getState()
+  const existing = leaves(layout.root).find(
+    (l) => l.content.kind === 'note' && l.content.noteId === noteId,
+  )
+  if (existing?.id === tileId) {
+    focusTile(tileId, { dom: true })
+    return
+  }
+  if (existing && leaves(layout.root).length > 1) layout.close(existing.id)
+  const target = useLayoutStore.getState()
+  if (!findLeaf(target.root, tileId)) return
+  target.setContent(tileId, { kind: 'note', noteId, mode: 'edit' })
+  target.focus(tileId)
+  void useEditorStore.getState().setActiveId(noteId)
+}
+
 export function currentNoteId(): number | null {
   return focusedNoteId(useLayoutStore.getState()) ?? useEditorStore.getState().activeId
 }
