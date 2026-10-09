@@ -401,3 +401,49 @@ test('typing stays fast in a large note', async ({ page }) => {
   await waitForSaved(page)
   expect(await noteContent(big.id)).toContain('fast typing check')
 })
+
+test('empty, unnamed, inactive notes are pruned (LRU, keep 5); named and non-empty notes stay', async ({ page }) => {
+  test.setTimeout(120_000)
+  type Row = { id: number; title: string; is_empty: boolean }
+  const list = () => api<Row[]>('GET', '/api/pastes')
+  const isEmptyUnnamed = (n: Row) => n.is_empty && (n.title === 'Untitled' || !n.title.trim())
+  const emptyUnnamed = async () => (await list()).filter(isEmptyUnnamed)
+
+  const created: number[] = []
+  for (let i = 0; i < 8; i++) created.push((await api<{ id: number }>('POST', '/api/pastes', {})).id)
+  const titledEmpty = await api<{ id: number }>('POST', '/api/pastes', { title: 'Reminders' })
+  const whitespaceOnly = await api<{ id: number }>('POST', '/api/pastes', { content: '  \n  ' })
+  const anchor = await api<{ id: number }>('POST', '/api/pastes', {
+    title: 'Cleanup anchor',
+    content: '# Cleanup anchor\n\nKeep me.',
+  })
+  const before = await list()
+  expect((await emptyUnnamed()).length).toBeGreaterThanOrEqual(9)
+
+  // Fresh notes are inside the 30 s grace period: loading the app right now must not touch them.
+  await open(page)
+  await page.waitForTimeout(2500)
+  expect((await list()).length).toBe(before.length)
+
+  // Let the grace period lapse, then reload: the initial-load pass prunes the surplus.
+  await page.waitForTimeout(30_000)
+  await open(page)
+  await expect.poll(async () => (await emptyUnnamed()).length, { timeout: 15_000 }).toBeLessThanOrEqual(6)
+
+  const after = await list()
+  const survivors = new Set(after.map((n) => n.id))
+  // Named and non-empty notes are untouched.
+  for (const n of before.filter((b) => !isEmptyUnnamed(b))) {
+    expect(survivors.has(n.id), `note ${n.id} (${n.title}) must survive`).toBe(true)
+  }
+  expect(survivors.has(titledEmpty.id)).toBe(true)
+  expect(survivors.has(anchor.id)).toBe(true)
+  // The kept empties are the most recently used ones.
+  const remaining = (await emptyUnnamed()).map((n) => n.id)
+  const newestFive = [...created, whitespaceOnly.id].sort((a, b) => b - a).slice(0, 5)
+  for (const id of newestFive) expect(remaining).toContain(id)
+
+  // The sidebar mirrors the server.
+  await expect(noteRows(page)).toHaveCount(after.length)
+  await shot(page, 'empty-notes-pruned')
+})

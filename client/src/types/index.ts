@@ -8,6 +8,12 @@ export interface Paste {
   group_id?: number | null
   created_at?: string
   updated_at?: string
+  /** Server list rows: body is blank (empty / whitespace-only). Lets cleanup skip loading content. */
+  is_empty?: boolean
+  /** Server list rows: body size in bytes. */
+  content_length?: number
+  /** Set by the server once whiteboards live in SQLite. */
+  has_whiteboard?: boolean
 }
 
 export interface Group {
