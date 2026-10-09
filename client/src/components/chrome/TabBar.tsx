@@ -133,7 +133,21 @@ export default function TabBar() {
   if (tabs.length < 2) return null
 
   return (
-    <div className={styles.tabBar} role="tablist" aria-label="Open notes">
+    <div
+      className={styles.tabBar}
+      role="tablist"
+      aria-label="Open notes"
+      onKeyDown={(e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+        const tabsEls = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]'))
+        const index = tabsEls.indexOf(e.target as HTMLElement)
+        if (index < 0) return
+        e.preventDefault()
+        const next = tabsEls[(index + (e.key === 'ArrowRight' ? 1 : -1) + tabsEls.length) % tabsEls.length]
+        next?.focus()
+        next?.click()
+      }}
+    >
       {tabs.map((key, index) => {
         if (!key) return null
         const [idStr, title, dirty] = key.split('\u0000')

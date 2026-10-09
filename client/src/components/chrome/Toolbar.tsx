@@ -90,6 +90,10 @@ export default function Toolbar() {
     }),
   )
   const groupName = useGroupStore((s) => s.groups.find((g) => g.id === groupId)?.name)
+
+  useEffect(() => {
+    document.title = title ? `${title} — Velocity` : 'Velocity'
+  }, [title])
   const setEditingTitleId = useEditorStore((s) => s.setEditingTitleId)
   const [menu, setMenu] = useState<MenuState | null>(null)
 
