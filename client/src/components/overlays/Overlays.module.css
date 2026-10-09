@@ -601,13 +601,16 @@
 }
 
 .themeName {
+  display: -webkit-box;
+  min-height: 2.4em;
   margin-top: 6px;
   overflow: hidden;
   color: var(--label);
   font-size: var(--text-subheadline);
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .themeModes {

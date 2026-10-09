@@ -11,6 +11,12 @@
   --color-primary-darkest: var(--accent-hover);
   --color-primary-light: var(--accent-soft);
   --ui-font: var(--font-system);
+  --island-bg-color: var(--bg-elevated);
+  --color-surface-lowest: var(--bg-content);
+  --color-surface-low: var(--bg-secondary);
+  --color-surface-mid: var(--bg-tertiary);
+  --color-surface-high: var(--bg-tertiary);
+  background: var(--bg-content);
   font-family: var(--font-system);
 }
 

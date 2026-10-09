@@ -54,6 +54,14 @@
   --selection-inactive: color-mix(in srgb, #586e75 9%, transparent);
   --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
 
+  --syntax-keyword: #859900;
+  --syntax-string: #2aa198;
+  --syntax-number: #d33682;
+  --syntax-function: #268bd2;
+  --syntax-type: #b58900;
+  --syntax-property: #cb4b16;
+  --syntax-comment: #93a1a1;
+
   --theme-accent: #268bd2;
   --theme-accent-contrast: #fdf6e3;
 }
@@ -109,6 +117,14 @@
   --selection-alpha: 30%;
   --selection-inactive: color-mix(in srgb, #93a1a1 9%, transparent);
   --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --syntax-keyword: #859900;
+  --syntax-string: #2aa198;
+  --syntax-number: #d33682;
+  --syntax-function: #268bd2;
+  --syntax-type: #b58900;
+  --syntax-property: #cb4b16;
+  --syntax-comment: #657b83;
 
   --theme-accent: #268bd2;
   --theme-accent-contrast: #fdf6e3;

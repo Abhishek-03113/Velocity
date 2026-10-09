@@ -1,6 +1,70 @@
-/* Nord — dark only (Polar Night / Snow Storm / Frost / Aurora)
+/* Nord — dark (Polar Night) and light (Snow Storm); Frost + Aurora accents, darkened on light for contrast
  * Only semantic tokens are overridden — see tokens.css for the full list.
  * --theme-accent is the "Theme default" accent; --on-system is text drawn on system colours. */
+
+:root[data-theme-family='nord'][data-theme='light'] {
+  color-scheme: light;
+
+  --bg-window: #eceff4;
+  --bg-content: #eceff4;
+  --bg-secondary: #e5e9f0;
+  --bg-tertiary: #d8dee9;
+  --bg-elevated: #ffffff;
+  --bg-sidebar: color-mix(in srgb, #e5e9f0 80%, transparent);
+  --bg-sidebar-solid: #e5e9f0;
+  --bg-notes-list: color-mix(in srgb, #eceff4 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #eceff4 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #ffffff 95%, transparent);
+  --bg-scrim: color-mix(in srgb, #2e3440 28%, transparent);
+  --bg-workspace: #d8dee9;
+  --bg-code: color-mix(in srgb, #2e3440 7%, transparent);
+
+  --label: #2e3440;
+  --label-secondary: color-mix(in srgb, #2e3440 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #2e3440 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #2e3440 26%, transparent);
+
+  --separator: color-mix(in srgb, #2e3440 16%, transparent);
+  --separator-opaque: #d8dee9;
+
+  --fill: color-mix(in srgb, #2e3440 20%, transparent);
+  --fill-secondary: color-mix(in srgb, #2e3440 14%, transparent);
+  --fill-tertiary: color-mix(in srgb, #2e3440 10%, transparent);
+  --fill-quaternary: color-mix(in srgb, #2e3440 6%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 0 0.5px color-mix(in srgb, #2e3440 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.1), 0 0 0 0.5px color-mix(in srgb, #2e3440 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.2), 0 0 0 0.5px color-mix(in srgb, #2e3440 16%, transparent);
+
+  --system-red: #bf616a;
+  --system-orange: #c4694a;
+  --system-yellow: #b5832a;
+  --system-green: #6b8f52;
+  --system-mint: #4f9a97;
+  --system-teal: #4f8f9a;
+  --system-cyan: #3f8fa6;
+  --system-blue: #5e81ac;
+  --system-indigo: #4c6a94;
+  --system-purple: #97678f;
+  --system-pink: #b0689a;
+  --system-gray: #7b88a1;
+  --on-system: #eceff4;
+
+  --selection-alpha: 20%;
+  --selection-inactive: color-mix(in srgb, #2e3440 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  --syntax-keyword: #5e81ac;
+  --syntax-string: #6b8f52;
+  --syntax-number: #97678f;
+  --syntax-function: #3f8fa6;
+  --syntax-type: #4f8f9a;
+  --syntax-property: #2e3440;
+  --syntax-comment: #8a94a8;
+
+  --theme-accent: #5e81ac;
+  --theme-accent-contrast: #eceff4;
+}
 
 :root[data-theme-family='nord'][data-theme='dark'] {
   color-scheme: dark;
@@ -53,6 +117,14 @@
   --selection-alpha: 30%;
   --selection-inactive: color-mix(in srgb, #e5e9f0 9%, transparent);
   --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --syntax-keyword: #81a1c1;
+  --syntax-string: #a3be8c;
+  --syntax-number: #b48ead;
+  --syntax-function: #88c0d0;
+  --syntax-type: #8fbcbb;
+  --syntax-property: #d8dee9;
+  --syntax-comment: #6b7794;
 
   --theme-accent: #88c0d0;
   --theme-accent-contrast: #2e3440;

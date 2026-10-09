@@ -335,52 +335,58 @@ test('settings: accent, font and appearance persist across reloads', async ({ pa
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'orange')
 })
 
-test('themes: picker switches families, falls back for dark-only, persists', async ({ page }) => {
+test('themes: picker switches families, supports light and dark, persists', async ({ page }) => {
   await open(page)
   await openNoteByTitle(page, 'Q4 Product Roadmap')
+  // Move focus into the editor so the list row doesn't show a keyboard focus ring in screenshots.
+  await editorIn(page).click()
   const html = page.locator('html')
   await expect(html).toHaveAttribute('data-theme-family', 'apple')
   await page.keyboard.press('Control+Comma')
   const sheet = page.getByRole('dialog', { name: 'Settings' })
   const themes = sheet.getByRole('radiogroup', { name: 'Theme' })
   const appearance = sheet.getByRole('radiogroup', { name: 'Appearance' })
+  await expect(sheet.getByRole('radio', { name: /^Theme default/ })).toHaveAttribute('title', /Theme default/)
   await shot(page, 'theme-picker-apple')
 
-  const families: Array<[string, string, boolean]> = [
-    ['Catppuccin', 'catppuccin', true],
-    ['Macchiato', 'catppuccin-macchiato', true],
-    ['Gruvbox', 'gruvbox', true],
-    ['Everforest', 'everforest', true],
-    ['Solarized', 'solarized', true],
-    ['Nord', 'nord', false],
+  const families: Array<[string, string]> = [
+    ['Catppuccin', 'catppuccin'],
+    ['Catppuccin Macchiato', 'catppuccin-macchiato'],
+    ['Gruvbox', 'gruvbox'],
+    ['Everforest', 'everforest'],
+    ['Solarized', 'solarized'],
+    ['Nord', 'nord'],
   ]
-  for (const [name, id, hasLight] of families) {
-    await themes.getByRole('radio', { name }).click()
+  for (const [name, id] of families) {
+    await themes.getByRole('radio', { name, exact: true }).click()
     await expect(html).toHaveAttribute('data-theme-family', id)
     await expect(html).toHaveAttribute('data-accent', 'theme')
-    if (hasLight) {
-      await appearance.getByRole('radio', { name: 'Light' }).click()
-      await expect(html).toHaveAttribute('data-theme', 'light')
-      await shot(page, `theme-picker-${id}-light`)
+    for (const mode of ['Light', 'Dark']) {
+      await appearance.getByRole('radio', { name: mode }).click()
+      await expect(html).toHaveAttribute('data-theme', mode.toLowerCase())
+      await shot(page, `theme-picker-${id}-${mode.toLowerCase()}`)
       await page.keyboard.press('Escape')
-      await shot(page, `app-${id}-light`)
+      await shot(page, `app-${id}-${mode.toLowerCase()}`)
       await page.keyboard.press('Control+Comma')
     }
-    await appearance.getByRole('radio', { name: 'Dark' }).click()
-    await expect(html).toHaveAttribute('data-theme', 'dark')
-    await shot(page, `theme-picker-${id}-dark`)
-    await page.keyboard.press('Escape')
-    await shot(page, `app-${id}-dark`)
-    await page.keyboard.press('Control+Comma')
   }
 
-  // Nord ships only dark: asking for light still renders dark.
-  await appearance.getByRole('radio', { name: 'Light' }).click()
-  await expect(html).toHaveAttribute('data-theme', 'dark')
-  await expect(sheet).toContainText('Nord only has a dark appearance')
+  // Gruvbox dark: whiteboard canvas and find panel follow the theme background.
+  await themes.getByRole('radio', { name: 'Gruvbox', exact: true }).click()
+  await appearance.getByRole('radio', { name: 'Dark' }).click()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Control+Shift+KeyD')
+  await expect(page.locator('[data-tile-kind="board"] .excalidraw')).toBeVisible({ timeout: 20_000 })
+  await shot(page, 'whiteboard-gruvbox-dark')
+  await page.keyboard.press('Control+Shift+KeyD')
+  await editorIn(page).click()
+  await page.keyboard.press('Control+KeyF')
+  await expect(page.locator('.cm-panel.cm-search')).toBeVisible()
+  await shot(page, 'find-panel-gruvbox-dark')
+  await page.keyboard.press('Escape')
 
   // Gruvbox light survives a reload with no flash of the wrong family.
-  await themes.getByRole('radio', { name: 'Gruvbox' }).click()
+  await page.keyboard.press('Control+Comma')
   await appearance.getByRole('radio', { name: 'Light' }).click()
   await page.keyboard.press('Escape')
   await page.reload()

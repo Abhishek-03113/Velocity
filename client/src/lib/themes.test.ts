@@ -1,9 +1,11 @@
+import indexHtml from '../../index.html?raw'
 import { describe, expect, it } from 'vitest'
 import { COMMANDS } from './commands'
 import {
   THEME_FAMILIES,
   getThemeFamily,
   resolveAppearance,
+  resolveFamilyAppearance,
   sanitizeAppearancePref,
   sanitizeThemeFamily,
   themeIndex,
@@ -27,8 +29,14 @@ describe('theme registry', () => {
     }
   })
 
+  it('keeps the pre-paint script in index.html in sync with the registry', () => {
+    const m = /var THEMES = (\{.*\})/.exec(indexHtml)
+    expect(m).toBeTruthy()
+    expect(JSON.parse(m![1]!)).toEqual(JSON.parse(JSON.stringify(themeIndex())))
+  })
+
   it('exposes an index for the pre-paint script', () => {
-    expect(themeIndex()['nord']).toEqual(['dark'])
+    expect(themeIndex()['nord']).toEqual(['light', 'dark'])
   })
 })
 
@@ -41,9 +49,16 @@ describe('appearance resolution', () => {
   })
 
   it('falls back to the appearance a family actually has', () => {
-    expect(resolveAppearance('nord', 'light', false)).toBe('dark')
-    expect(resolveAppearance('nord', 'system', false)).toBe('dark')
-    expect(resolveAppearance('nord', 'dark', false)).toBe('dark')
+    const darkOnly = { appearances: ['dark'] as const }
+    expect(resolveFamilyAppearance(darkOnly, 'light', false)).toBe('dark')
+    expect(resolveFamilyAppearance(darkOnly, 'system', false)).toBe('dark')
+    expect(resolveFamilyAppearance(darkOnly, 'dark', false)).toBe('dark')
+    const lightOnly = { appearances: ['light'] as const }
+    expect(resolveFamilyAppearance(lightOnly, 'dark', true)).toBe('light')
+  })
+
+  it('every shipped family supports light and dark', () => {
+    for (const f of THEME_FAMILIES) expect(resolveAppearance(f.id, 'light', true)).toBe('light')
   })
 
   it('treats unknown families as Apple', () => {

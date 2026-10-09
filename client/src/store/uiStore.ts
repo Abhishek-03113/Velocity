@@ -1,13 +1,11 @@
 import { create } from 'zustand'
 import {
   DEFAULT_THEME_FAMILY,
-  THEME_INDEX_KEY,
   getThemeFamily,
   resolveAppearance,
   sanitizeAppearancePref,
   sanitizeThemeFamily,
   swatchFor,
-  themeIndex,
   type Appearance,
 } from '../lib/themes'
 
@@ -155,8 +153,6 @@ export function applyPreferences(prefs: Preferences, theme: Appearance): void {
   root.style.setProperty('--tile-gap', prefs.tileGaps ? '8px' : '0px')
   const meta = document.querySelector('meta[name="theme-color"]')
   meta?.setAttribute('content', swatchFor(getThemeFamily(prefs.themeFamily), theme).bg)
-  // Lets the inline script in index.html resolve appearance fallbacks before first paint.
-  writeJson(THEME_INDEX_KEY, themeIndex())
 }
 
 const initialPrefs = sanitizePrefs(readJson<Preferences>(PREFS_KEY))

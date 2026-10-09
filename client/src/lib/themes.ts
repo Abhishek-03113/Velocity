@@ -52,7 +52,7 @@ export const THEME_FAMILIES: readonly ThemeFamily[] = [
   },
   {
     id: 'catppuccin-macchiato',
-    name: 'Macchiato',
+    name: 'Catppuccin Macchiato',
     appearances: ['light', 'dark'],
     accentName: 'Lavender',
     swatches: {
@@ -83,9 +83,10 @@ export const THEME_FAMILIES: readonly ThemeFamily[] = [
   {
     id: 'nord',
     name: 'Nord',
-    appearances: ['dark'],
+    appearances: ['light', 'dark'],
     accentName: 'Frost blue',
     swatches: {
+      light: { bg: '#eceff4', sidebar: '#e5e9f0', accent: '#5e81ac', text: '#2e3440' },
       dark: { bg: '#2e3440', sidebar: '#272c36', accent: '#88c0d0', text: '#e5e9f0' },
     },
   },
@@ -119,7 +120,14 @@ export function sanitizeAppearancePref(value: unknown, fallback: AppearancePref 
  * 'system'), falling back to what the family actually ships.
  */
 export function resolveAppearance(familyId: string, pref: AppearancePref, systemDark: boolean): Appearance {
-  const family = getThemeFamily(familyId)
+  return resolveFamilyAppearance(getThemeFamily(familyId), pref, systemDark)
+}
+
+export function resolveFamilyAppearance(
+  family: Pick<ThemeFamily, 'appearances'>,
+  pref: AppearancePref,
+  systemDark: boolean,
+): Appearance {
   const wanted: Appearance = pref === 'system' ? (systemDark ? 'dark' : 'light') : pref
   return family.appearances.includes(wanted) ? wanted : family.appearances[0]!
 }
@@ -129,9 +137,7 @@ export function swatchFor(family: ThemeFamily, appearance: Appearance): ThemeSwa
   return (family.swatches[appearance] ?? family.swatches[family.appearances[0]!])!
 }
 
-/** localStorage key holding `{ [familyId]: appearances[] }` so index.html can resolve fallbacks pre-paint. */
-export const THEME_INDEX_KEY = 'velocity.themes.v1'
-
+/** Family -> appearances map; embedded in index.html's pre-paint script (checked by a unit test). */
 export function themeIndex(): Record<string, readonly Appearance[]> {
   return Object.fromEntries(THEME_FAMILIES.map((f) => [f.id, f.appearances]))
 }

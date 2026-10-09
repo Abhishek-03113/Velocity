@@ -54,6 +54,14 @@
   --selection-inactive: color-mix(in srgb, #3c3836 9%, transparent);
   --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
 
+  --syntax-keyword: #9d0006;
+  --syntax-string: #79740e;
+  --syntax-number: #8f3f71;
+  --syntax-function: #b57614;
+  --syntax-type: #b57614;
+  --syntax-property: #076678;
+  --syntax-comment: #7c6f64;
+
   --theme-accent: #af3a03;
   --theme-accent-contrast: #fbf1c7;
 }
@@ -109,6 +117,14 @@
   --selection-alpha: 30%;
   --selection-inactive: color-mix(in srgb, #ebdbb2 9%, transparent);
   --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --syntax-keyword: #fb4934;
+  --syntax-string: #b8bb26;
+  --syntax-number: #d3869b;
+  --syntax-function: #fabd2f;
+  --syntax-type: #fabd2f;
+  --syntax-property: #83a598;
+  --syntax-comment: #928374;
 
   --theme-accent: #fe8019;
   --theme-accent-contrast: #282828;

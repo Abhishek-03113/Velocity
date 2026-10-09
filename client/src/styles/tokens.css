@@ -175,6 +175,18 @@
   --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
 }
 
+/* Syntax colours (code blocks, CodeMirror). Defaults follow the Apple palette;
+   theme families override them to match their own conventions. */
+:root {
+  --syntax-keyword: var(--system-pink);
+  --syntax-string: var(--system-red);
+  --syntax-number: var(--system-purple);
+  --syntax-function: var(--system-blue);
+  --syntax-type: var(--system-indigo);
+  --syntax-property: var(--system-teal);
+  --syntax-comment: var(--label-tertiary);
+}
+
 /* ===================================================================== */
 /* Accent colors (macOS System Settings → Appearance → Accent color)      */
 /* The eight swatches follow the active theme's --system-* palette.        */

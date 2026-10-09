@@ -34,7 +34,7 @@ interface EditorProps {
   spellcheck: boolean
 }
 
-/** Syntax colours reference semantic tokens so light/dark/accent just work. */
+/** Syntax colours reference --syntax-* tokens (defaults in tokens.css, overridden per theme family). */
 const highlight = HighlightStyle.define([
   { tag: t.heading, color: 'var(--label)', fontWeight: '700' },
   { tag: t.strong, fontWeight: '700' },
@@ -43,13 +43,13 @@ const highlight = HighlightStyle.define([
   { tag: [t.link, t.url], color: 'var(--accent-text)', textDecoration: 'underline' },
   { tag: [t.monospace, t.literal], fontFamily: 'var(--font-mono)', fontSize: '0.88em', color: 'var(--label-secondary)' },
   { tag: t.quote, color: 'var(--label-secondary)' },
-  { tag: [t.comment, t.meta, t.processingInstruction], color: 'var(--label-tertiary)' },
-  { tag: [t.keyword, t.operator, t.modifier], color: 'var(--system-pink)' },
-  { tag: [t.string, t.special(t.string)], color: 'var(--system-red)' },
-  { tag: [t.number, t.bool, t.atom], color: 'var(--system-purple)' },
-  { tag: [t.variableName, t.propertyName, t.attributeName], color: 'var(--system-teal)' },
-  { tag: [t.typeName, t.className, t.namespace], color: 'var(--system-indigo)' },
-  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: 'var(--system-blue)' },
+  { tag: [t.comment, t.meta, t.processingInstruction], color: 'var(--syntax-comment)' },
+  { tag: [t.keyword, t.operator, t.modifier], color: 'var(--syntax-keyword)' },
+  { tag: [t.string, t.special(t.string)], color: 'var(--syntax-string)' },
+  { tag: [t.number, t.bool, t.atom], color: 'var(--syntax-number)' },
+  { tag: [t.variableName, t.propertyName, t.attributeName], color: 'var(--syntax-property)' },
+  { tag: [t.typeName, t.className, t.namespace], color: 'var(--syntax-type)' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: 'var(--syntax-function)' },
   { tag: t.invalid, color: 'var(--system-red)' },
 ])
 

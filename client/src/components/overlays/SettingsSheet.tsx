@@ -141,21 +141,24 @@ export default function SettingsSheet() {
         </Row>
         <Row label="Accent colour">
           <div className={styles.swatches} role="radiogroup" aria-label="Accent colour">
-            {ACCENTS.map((a) => (
+            {ACCENTS.map((a) => {
+              const label = a === 'theme' ? `Theme default (${family.name}: ${family.accentName})` : ACCENT_LABELS[a]
+              return (
               <button
                 key={a}
                 type="button"
                 role="radio"
                 aria-checked={prefs.accent === a}
-                aria-label={ACCENT_LABELS[a]}
-                title={ACCENT_LABELS[a]}
+                aria-label={label}
+                title={label}
                 className={`${styles.swatch} ${prefs.accent === a ? styles.swatchSelected : ''}`}
                 data-swatch={a}
                 onClick={() => setPref('accent', a)}
               >
                 {prefs.accent === a && a !== 'theme' && <Icon name="checkmark" size={11} strokeWidth={2.6} />}
               </button>
-            ))}
+              )
+            })}
           </div>
         </Row>
         <Row label="Gaps between tiles" hint="Floating tiles with an accent border on the focused one">
