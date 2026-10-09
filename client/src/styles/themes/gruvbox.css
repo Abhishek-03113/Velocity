@@ -1,0 +1,115 @@
+/* Gruvbox — dark and light (medium contrast)
+ * Only semantic tokens are overridden — see tokens.css for the full list.
+ * --theme-accent is the "Theme default" accent; --on-system is text drawn on system colours. */
+
+:root[data-theme-family='gruvbox'][data-theme='light'] {
+  color-scheme: light;
+
+  --bg-window: #fbf1c7;
+  --bg-content: #fbf1c7;
+  --bg-secondary: #f2e5bc;
+  --bg-tertiary: #ebdbb2;
+  --bg-elevated: #f9f5d7;
+  --bg-sidebar: color-mix(in srgb, #ebdbb2 80%, transparent);
+  --bg-sidebar-solid: #ebdbb2;
+  --bg-notes-list: color-mix(in srgb, #fbf1c7 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #fbf1c7 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #f9f5d7 95%, transparent);
+  --bg-scrim: color-mix(in srgb, #3c3836 28%, transparent);
+  --bg-workspace: #d5c4a1;
+  --bg-code: color-mix(in srgb, #3c3836 7%, transparent);
+
+  --label: #3c3836;
+  --label-secondary: color-mix(in srgb, #3c3836 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #3c3836 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #3c3836 26%, transparent);
+
+  --separator: color-mix(in srgb, #3c3836 16%, transparent);
+  --separator-opaque: #d5c4a1;
+
+  --fill: color-mix(in srgb, #3c3836 20%, transparent);
+  --fill-secondary: color-mix(in srgb, #3c3836 14%, transparent);
+  --fill-tertiary: color-mix(in srgb, #3c3836 10%, transparent);
+  --fill-quaternary: color-mix(in srgb, #3c3836 6%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 0 0.5px color-mix(in srgb, #3c3836 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.1), 0 0 0 0.5px color-mix(in srgb, #3c3836 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.2), 0 0 0 0.5px color-mix(in srgb, #3c3836 16%, transparent);
+
+  --system-red: #9d0006;
+  --system-orange: #af3a03;
+  --system-yellow: #b57614;
+  --system-green: #79740e;
+  --system-mint: #427b58;
+  --system-teal: #427b58;
+  --system-cyan: #076678;
+  --system-blue: #076678;
+  --system-indigo: #3c6e8a;
+  --system-purple: #8f3f71;
+  --system-pink: #b16286;
+  --system-gray: #7c6f64;
+  --on-system: #fbf1c7;
+
+  --selection-alpha: 20%;
+  --selection-inactive: color-mix(in srgb, #3c3836 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  --theme-accent: #af3a03;
+  --theme-accent-contrast: #fbf1c7;
+}
+
+:root[data-theme-family='gruvbox'][data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-window: #282828;
+  --bg-content: #282828;
+  --bg-secondary: #32302f;
+  --bg-tertiary: #3c3836;
+  --bg-elevated: #3c3836;
+  --bg-sidebar: color-mix(in srgb, #1d2021 80%, transparent);
+  --bg-sidebar-solid: #1d2021;
+  --bg-notes-list: color-mix(in srgb, #282828 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #282828 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #3c3836 95%, transparent);
+  --bg-scrim: rgba(0, 0, 0, 0.5);
+  --bg-workspace: #1d2021;
+  --bg-code: color-mix(in srgb, #ebdbb2 8%, transparent);
+
+  --label: #ebdbb2;
+  --label-secondary: color-mix(in srgb, #ebdbb2 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #ebdbb2 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #ebdbb2 26%, transparent);
+
+  --separator: color-mix(in srgb, #ebdbb2 14%, transparent);
+  --separator-opaque: #504945;
+
+  --fill: color-mix(in srgb, #ebdbb2 24%, transparent);
+  --fill-secondary: color-mix(in srgb, #ebdbb2 18%, transparent);
+  --fill-tertiary: color-mix(in srgb, #ebdbb2 13%, transparent);
+  --fill-quaternary: color-mix(in srgb, #ebdbb2 9%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #ebdbb2 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #ebdbb2 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 0.5px color-mix(in srgb, #ebdbb2 16%, transparent);
+
+  --system-red: #fb4934;
+  --system-orange: #fe8019;
+  --system-yellow: #fabd2f;
+  --system-green: #b8bb26;
+  --system-mint: #8ec07c;
+  --system-teal: #8ec07c;
+  --system-cyan: #83a598;
+  --system-blue: #83a598;
+  --system-indigo: #7c9bb5;
+  --system-purple: #d3869b;
+  --system-pink: #d3869b;
+  --system-gray: #928374;
+  --on-system: #282828;
+
+  --selection-alpha: 30%;
+  --selection-inactive: color-mix(in srgb, #ebdbb2 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --theme-accent: #fe8019;
+  --theme-accent-contrast: #282828;
+}

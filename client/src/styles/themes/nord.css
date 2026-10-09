@@ -1,0 +1,59 @@
+/* Nord — dark only (Polar Night / Snow Storm / Frost / Aurora)
+ * Only semantic tokens are overridden — see tokens.css for the full list.
+ * --theme-accent is the "Theme default" accent; --on-system is text drawn on system colours. */
+
+:root[data-theme-family='nord'][data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-window: #2e3440;
+  --bg-content: #2e3440;
+  --bg-secondary: #343b49;
+  --bg-tertiary: #3b4252;
+  --bg-elevated: #3b4252;
+  --bg-sidebar: color-mix(in srgb, #272c36 80%, transparent);
+  --bg-sidebar-solid: #272c36;
+  --bg-notes-list: color-mix(in srgb, #2e3440 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #2e3440 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #3b4252 95%, transparent);
+  --bg-scrim: rgba(0, 0, 0, 0.5);
+  --bg-workspace: #242933;
+  --bg-code: color-mix(in srgb, #e5e9f0 8%, transparent);
+
+  --label: #e5e9f0;
+  --label-secondary: color-mix(in srgb, #e5e9f0 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #e5e9f0 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #e5e9f0 26%, transparent);
+
+  --separator: color-mix(in srgb, #e5e9f0 14%, transparent);
+  --separator-opaque: #434c5e;
+
+  --fill: color-mix(in srgb, #e5e9f0 24%, transparent);
+  --fill-secondary: color-mix(in srgb, #e5e9f0 18%, transparent);
+  --fill-tertiary: color-mix(in srgb, #e5e9f0 13%, transparent);
+  --fill-quaternary: color-mix(in srgb, #e5e9f0 9%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #e5e9f0 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #e5e9f0 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 0.5px color-mix(in srgb, #e5e9f0 16%, transparent);
+
+  --system-red: #bf616a;
+  --system-orange: #d08770;
+  --system-yellow: #ebcb8b;
+  --system-green: #a3be8c;
+  --system-mint: #8fbcbb;
+  --system-teal: #8fbcbb;
+  --system-cyan: #88c0d0;
+  --system-blue: #81a1c1;
+  --system-indigo: #5e81ac;
+  --system-purple: #b48ead;
+  --system-pink: #c9a0c4;
+  --system-gray: #7b88a1;
+  --on-system: #2e3440;
+
+  --selection-alpha: 30%;
+  --selection-inactive: color-mix(in srgb, #e5e9f0 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --theme-accent: #88c0d0;
+  --theme-accent-contrast: #2e3440;
+}

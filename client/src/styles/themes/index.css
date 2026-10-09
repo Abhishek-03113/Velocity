@@ -1,0 +1,6 @@
+/* One import per theme family (Apple lives in ../tokens.css). Register new families in lib/themes.ts. */
+@import './catppuccin.css';
+@import './gruvbox.css';
+@import './everforest.css';
+@import './nord.css';
+@import './solarized.css';

@@ -2,8 +2,9 @@
  * Velocity design tokens — modelled on Apple HIG dynamic system colors.
  *
  * Theme resolution:
- *   <html data-theme="light|dark">   set by uiStore (System follows prefers-color-scheme)
- *   <html data-accent="blue|…">      one of the eight macOS accent colors
+ *   <html data-theme-family="apple|…"> colour theme family (see lib/themes.ts, styles/themes/*.css)
+ *   <html data-theme="light|dark">   resolved appearance (System follows prefers-color-scheme)
+ *   <html data-accent="blue|…">      one of the eight macOS accent colors, or 'theme'
  *
  * Components must only consume these semantic tokens — never raw hex values —
  * so every surface adapts to light/dark and to the chosen accent.
@@ -176,16 +177,23 @@
 
 /* ===================================================================== */
 /* Accent colors (macOS System Settings → Appearance → Accent color)      */
+/* The eight swatches follow the active theme's --system-* palette.        */
+/* --on-system is the text colour drawn on them (white for Apple).         */
 /* ===================================================================== */
 :root,
-:root[data-accent='blue'] { --accent: var(--system-blue); --accent-contrast: #fff; }
-:root[data-accent='purple'] { --accent: var(--system-purple); --accent-contrast: #fff; }
-:root[data-accent='pink'] { --accent: var(--system-pink); --accent-contrast: #fff; }
-:root[data-accent='red'] { --accent: var(--system-red); --accent-contrast: #fff; }
-:root[data-accent='orange'] { --accent: var(--system-orange); --accent-contrast: #fff; }
+:root[data-accent='blue'] { --accent: var(--system-blue); --accent-contrast: var(--on-system, #fff); }
+:root[data-accent='purple'] { --accent: var(--system-purple); --accent-contrast: var(--on-system, #fff); }
+:root[data-accent='pink'] { --accent: var(--system-pink); --accent-contrast: var(--on-system, #fff); }
+:root[data-accent='red'] { --accent: var(--system-red); --accent-contrast: var(--on-system, #fff); }
+:root[data-accent='orange'] { --accent: var(--system-orange); --accent-contrast: var(--on-system, #fff); }
 :root[data-accent='yellow'] { --accent: var(--system-yellow); --accent-contrast: rgba(0, 0, 0, 0.85); }
-:root[data-accent='green'] { --accent: var(--system-green); --accent-contrast: #fff; }
-:root[data-accent='graphite'] { --accent: var(--system-gray); --accent-contrast: #fff; }
+:root[data-accent='green'] { --accent: var(--system-green); --accent-contrast: var(--on-system, #fff); }
+:root[data-accent='graphite'] { --accent: var(--system-gray); --accent-contrast: var(--on-system, #fff); }
+/* "Theme default": each family defines --theme-accent (Apple falls back to blue). */
+:root[data-accent='theme'] {
+  --accent: var(--theme-accent, var(--system-blue));
+  --accent-contrast: var(--theme-accent-contrast, #fff);
+}
 
 :root {
   --accent-hover: color-mix(in srgb, var(--accent) 88%, var(--label));

@@ -1,0 +1,115 @@
+/* Everforest — dark and light (medium contrast)
+ * Only semantic tokens are overridden — see tokens.css for the full list.
+ * --theme-accent is the "Theme default" accent; --on-system is text drawn on system colours. */
+
+:root[data-theme-family='everforest'][data-theme='light'] {
+  color-scheme: light;
+
+  --bg-window: #fdf6e3;
+  --bg-content: #fdf6e3;
+  --bg-secondary: #f4f0d9;
+  --bg-tertiary: #efebd4;
+  --bg-elevated: #fffbef;
+  --bg-sidebar: color-mix(in srgb, #f4f0d9 80%, transparent);
+  --bg-sidebar-solid: #f4f0d9;
+  --bg-notes-list: color-mix(in srgb, #fdf6e3 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #fdf6e3 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #fffbef 95%, transparent);
+  --bg-scrim: color-mix(in srgb, #5c6a72 28%, transparent);
+  --bg-workspace: #e6e2cc;
+  --bg-code: color-mix(in srgb, #5c6a72 7%, transparent);
+
+  --label: #5c6a72;
+  --label-secondary: color-mix(in srgb, #5c6a72 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #5c6a72 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #5c6a72 26%, transparent);
+
+  --separator: color-mix(in srgb, #5c6a72 16%, transparent);
+  --separator-opaque: #e0dcc7;
+
+  --fill: color-mix(in srgb, #5c6a72 20%, transparent);
+  --fill-secondary: color-mix(in srgb, #5c6a72 14%, transparent);
+  --fill-tertiary: color-mix(in srgb, #5c6a72 10%, transparent);
+  --fill-quaternary: color-mix(in srgb, #5c6a72 6%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 0 0.5px color-mix(in srgb, #5c6a72 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.1), 0 0 0 0.5px color-mix(in srgb, #5c6a72 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.2), 0 0 0 0.5px color-mix(in srgb, #5c6a72 16%, transparent);
+
+  --system-red: #e66868;
+  --system-orange: #e06a1a;
+  --system-yellow: #c48a00;
+  --system-green: #6f8a00;
+  --system-mint: #35a77c;
+  --system-teal: #35a77c;
+  --system-cyan: #3a94c5;
+  --system-blue: #3a94c5;
+  --system-indigo: #5a7fc0;
+  --system-purple: #d0559f;
+  --system-pink: #d0559f;
+  --system-gray: #829181;
+  --on-system: #fdf6e3;
+
+  --selection-alpha: 20%;
+  --selection-inactive: color-mix(in srgb, #5c6a72 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  --theme-accent: #6f8a00;
+  --theme-accent-contrast: #fdf6e3;
+}
+
+:root[data-theme-family='everforest'][data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-window: #2d353b;
+  --bg-content: #2d353b;
+  --bg-secondary: #343f44;
+  --bg-tertiary: #3d484d;
+  --bg-elevated: #3d484d;
+  --bg-sidebar: color-mix(in srgb, #232a2e 80%, transparent);
+  --bg-sidebar-solid: #232a2e;
+  --bg-notes-list: color-mix(in srgb, #2d353b 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #2d353b 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #3d484d 95%, transparent);
+  --bg-scrim: rgba(0, 0, 0, 0.5);
+  --bg-workspace: #232a2e;
+  --bg-code: color-mix(in srgb, #d3c6aa 8%, transparent);
+
+  --label: #d3c6aa;
+  --label-secondary: color-mix(in srgb, #d3c6aa 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #d3c6aa 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #d3c6aa 26%, transparent);
+
+  --separator: color-mix(in srgb, #d3c6aa 14%, transparent);
+  --separator-opaque: #475258;
+
+  --fill: color-mix(in srgb, #d3c6aa 24%, transparent);
+  --fill-secondary: color-mix(in srgb, #d3c6aa 18%, transparent);
+  --fill-tertiary: color-mix(in srgb, #d3c6aa 13%, transparent);
+  --fill-quaternary: color-mix(in srgb, #d3c6aa 9%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #d3c6aa 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #d3c6aa 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 0.5px color-mix(in srgb, #d3c6aa 16%, transparent);
+
+  --system-red: #e67e80;
+  --system-orange: #e69875;
+  --system-yellow: #dbbc7f;
+  --system-green: #a7c080;
+  --system-mint: #83c092;
+  --system-teal: #83c092;
+  --system-cyan: #7fbbb3;
+  --system-blue: #7fbbb3;
+  --system-indigo: #8aa6d0;
+  --system-purple: #d699b6;
+  --system-pink: #d699b6;
+  --system-gray: #859289;
+  --on-system: #2d353b;
+
+  --selection-alpha: 30%;
+  --selection-inactive: color-mix(in srgb, #d3c6aa 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --theme-accent: #a7c080;
+  --theme-accent-contrast: #2d353b;
+}

@@ -10,6 +10,7 @@ import { focusedNoteId, useLayoutStore, type SplitRequest } from '../store/layou
 import { useUiStore } from '../store/uiStore'
 import { focusEditor, getEditor } from './editorRegistry'
 import { displayTitle } from './noteMeta'
+import { getThemeFamily } from './themes'
 import { findLeaf, leaves, type Direction } from './tiling'
 
 const narrow = () => typeof window !== 'undefined' && window.innerWidth < 760
@@ -230,9 +231,20 @@ export function adjustTextSize(delta: number) {
 }
 
 export function cycleAppearance() {
-  const { prefs, resolvedTheme, setPref } = useUiStore.getState()
-  if (prefs.theme === 'system') setPref('theme', resolvedTheme === 'dark' ? 'light' : 'dark')
-  else setPref('theme', prefs.theme === 'dark' ? 'light' : 'dark')
+  const { prefs, resolvedTheme, setPref, showFlash } = useUiStore.getState()
+  const family = getThemeFamily(prefs.themeFamily)
+  const next = resolvedTheme === 'dark' ? 'light' : 'dark'
+  if (!family.appearances.includes(next)) {
+    showFlash(`${family.name} only has a ${resolvedTheme} appearance`)
+    return
+  }
+  setPref('theme', next)
+}
+
+export function setThemeFamily(id: string) {
+  const ui = useUiStore.getState()
+  ui.setThemeFamily(id)
+  ui.showFlash(`Theme: ${getThemeFamily(id).name}`)
 }
 
 export function focusNotesList() {

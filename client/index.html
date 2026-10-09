@@ -16,13 +16,22 @@
       href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <script>
-      // Resolve appearance before first paint to avoid a light/dark flash.
+      // Resolve theme family + appearance before first paint to avoid a flash.
+      // (Mirrors resolveAppearance() in src/lib/themes.ts; the family -> appearances
+      // index is written to localStorage by the app on every preference change.)
       try {
+        var d = document.documentElement
         var p = JSON.parse(localStorage.getItem('velocity.prefs.v1') || '{}')
+        var idx = JSON.parse(localStorage.getItem('velocity.themes.v1') || '{}')
+        var f = typeof p.themeFamily === 'string' && /^[a-z0-9-]+$/.test(p.themeFamily) ? p.themeFamily : 'apple'
+        if (Object.keys(idx).length && !idx[f]) f = 'apple'
         var t = p.theme === 'light' || p.theme === 'dark' ? p.theme
           : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-        document.documentElement.dataset.theme = t
-        document.documentElement.dataset.accent = p.accent || 'blue'
+        var av = idx[f]
+        if (av && av.length && av.indexOf(t) < 0) t = av[0]
+        d.dataset.themeFamily = f
+        d.dataset.theme = t
+        d.dataset.accent = p.accent || 'theme'
       } catch (e) {}
     </script>
   </head>

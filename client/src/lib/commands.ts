@@ -14,6 +14,7 @@ import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
 import { useUiStore } from '../store/uiStore'
 import { displayTitle } from './noteMeta'
+import { THEME_FAMILIES } from './themes'
 import { isMac } from './platform'
 import { findLeaf, leaves } from './tiling'
 import * as ws from './workspace'
@@ -48,6 +49,14 @@ const tabCommands: Command[] = Array.from({ length: 9 }, (_, i) => ({
   keys: [`Ctrl+Alt+Digit${i + 1}`],
   run: () => ws.goToTab(i + 1),
   paletteHidden: true,
+}))
+
+const themeCommands: Command[] = THEME_FAMILIES.map((f) => ({
+  id: `theme.${f.id}`,
+  title: `Theme: ${f.name}`,
+  section: 'View' as const,
+  keywords: 'colour color theme palette appearance dark light',
+  run: () => ws.setThemeFamily(f.id),
 }))
 
 export const COMMANDS: Command[] = [
@@ -339,6 +348,7 @@ export const COMMANDS: Command[] = [
     keywords: 'theme light appearance',
     run: () => ws.cycleAppearance(),
   },
+  ...themeCommands,
 
   // ---- App -----------------------------------------------------------------
   {
