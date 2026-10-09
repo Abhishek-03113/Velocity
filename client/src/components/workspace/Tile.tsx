@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense } from 'react'
+import { lazy, memo, Suspense, useCallback } from 'react'
 import { primaryKey } from '../../lib/commands'
 import { displayTitle } from '../../lib/noteMeta'
 import type { LeafNode } from '../../lib/tiling'
@@ -54,7 +54,11 @@ function NoteBody({ noteId, mode }: { noteId: number; mode: 'edit' | 'read' }) {
 
 function ReadBody({ noteId }: { noteId: number }) {
   const content = useEditorStore((s) => s.pastes.find((p) => p.id === noteId)?.content)
-  return <MarkdownPreview content={content} />
+  const onChange = useCallback(
+    (next: string) => useEditorStore.getState().setContent(next, noteId),
+    [noteId],
+  )
+  return <MarkdownPreview content={content} onChange={onChange} />
 }
 
 function NoteSkeleton() {

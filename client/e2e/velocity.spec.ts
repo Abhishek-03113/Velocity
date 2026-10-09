@@ -251,6 +251,11 @@ test('read mode renders Markdown with checklists', async ({ page }) => {
   const article = focusedTile(page).locator('article')
   await expect(article.getByRole('heading', { name: 'Q4 Product Roadmap' })).toBeVisible()
   await expect(article.locator('input[type=checkbox]')).toHaveCount(3)
+  // Checklists stay interactive in read mode.
+  await article.locator('input[type=checkbox]').nth(1).click()
+  await expect
+    .poll(() => noteContent(ids['Q4 Product Roadmap']!), { timeout: 5000 })
+    .toContain('- [x] Launch iOS companion')
   await shot(page, 'read-mode')
   // Clicking the already-selected segment must not flip the mode.
   await page.getByRole('radio', { name: 'Read' }).click()
