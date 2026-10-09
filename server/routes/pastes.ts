@@ -56,8 +56,12 @@ function groupExists(groupId: number | null | undefined): boolean {
 
 pastesRouter.get('/', (c) => {
   const rows = db
-    .prepare('SELECT id, title, group_id, updated_at FROM pastes ORDER BY updated_at DESC')
-    .all() as Pick<Paste, 'id' | 'title' | 'group_id' | 'updated_at'>[]
+    .prepare(
+      `SELECT id, title, group_id, updated_at,
+              EXISTS(SELECT 1 FROM whiteboards w WHERE w.paste_id = pastes.id) AS has_whiteboard
+       FROM pastes ORDER BY updated_at DESC`
+    )
+    .all() as (Pick<Paste, 'id' | 'title' | 'group_id' | 'updated_at'> & { has_whiteboard: 0 | 1 })[]
   return c.json<ApiResponse<typeof rows>>({ success: true, data: rows })
 })
 

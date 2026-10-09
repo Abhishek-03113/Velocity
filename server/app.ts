@@ -3,6 +3,7 @@ import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { compress } from 'hono/compress'
 import { pastesRouter } from './routes/pastes.ts'
+import { whiteboardRouter } from './routes/whiteboards.ts'
 import { groupsRouter } from './routes/groups.ts'
 import { assetsRouter } from './routes/assets.ts'
 import { errorHandler } from './middleware/error.ts'
@@ -18,6 +19,7 @@ export function createApp(opts: { log?: boolean } = {}) {
   app.use('*', errorHandler)
 
   app.get('/', (c) => c.json({ message: 'Velocity API' }))
+  app.route('/api/pastes', whiteboardRouter)
   app.route('/api/pastes', pastesRouter)
   app.route('/api/groups', groupsRouter)
   app.route('/api/assets', assetsRouter)

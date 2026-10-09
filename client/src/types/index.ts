@@ -6,6 +6,8 @@ export interface Paste {
   /** Stable client key that survives the temp-id → server-id swap (keeps editors mounted). */
   cid?: string
   group_id?: number | null
+  /** Whether a whiteboard is stored for this note (from the notes list). */
+  has_whiteboard?: boolean
   created_at?: string
   updated_at?: string
 }
