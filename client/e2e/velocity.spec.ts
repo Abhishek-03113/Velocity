@@ -397,6 +397,8 @@ test('typing stays fast in a large note', async ({ page }) => {
   const elapsed = Date.now() - t0
   // 18 keystrokes into a ~220 KB note; generous bound for CI noise.
   expect(elapsed).toBeLessThan(1500)
+  // Counters follow a large note that was just loaded (never stuck at 0 words).
+  await expect(page.locator('footer').getByText(/^[1-9][\d,]* words$/)).toBeVisible()
   test.info().annotations.push({ type: 'perf', description: `18 keystrokes in ${elapsed}ms` })
   await waitForSaved(page)
   expect(await noteContent(big.id)).toContain('fast typing check')
@@ -445,5 +447,12 @@ test('empty, unnamed, inactive notes are pruned (LRU, keep 5); named and non-emp
 
   // The sidebar mirrors the server.
   await expect(noteRows(page)).toHaveCount(after.length)
+
+  // An ordinary note opens with real content and a real word count (status bar regression check).
+  await page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /All Notes/ }).click()
+  await noteRows(page).filter({ hasText: 'Cleanup anchor' }).first().click()
+  await expect(focusedTile(page)).toContainText('Keep me.')
+  await expect(page.locator('footer').getByText(/^[1-9][\d,]* words?$/)).toBeVisible()
+  await noteRows(page).first().scrollIntoViewIfNeeded()
   await shot(page, 'empty-notes-pruned')
 })
