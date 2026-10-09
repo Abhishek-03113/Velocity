@@ -1,12 +1,9 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import StatusBar from './components/chrome/StatusBar'
 import TabBar from './components/chrome/TabBar'
 import Toolbar from './components/chrome/Toolbar'
 import Alert from './components/overlays/Alert'
-import CommandPalette from './components/overlays/CommandPalette'
-import SettingsSheet from './components/overlays/SettingsSheet'
-import ShortcutsSheet from './components/overlays/ShortcutsSheet'
 import Sidebar from './components/sidebar/Sidebar'
 import Workspace from './components/workspace/Workspace'
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts'
@@ -14,6 +11,26 @@ import { useEditorStore } from './store/editorStore'
 import { useGroupStore } from './store/groupStore'
 import { useUiStore } from './store/uiStore'
 import styles from './App.module.css'
+
+// Overlays and read mode are split out of the startup bundle and prefetched
+// once the app is idle, so they still open instantly.
+const loadPalette = () => import('./components/overlays/CommandPalette')
+const loadSettings = () => import('./components/overlays/SettingsSheet')
+const loadShortcuts = () => import('./components/overlays/ShortcutsSheet')
+const CommandPalette = lazy(loadPalette)
+const SettingsSheet = lazy(loadSettings)
+const ShortcutsSheet = lazy(loadShortcuts)
+
+function prefetchOnIdle() {
+  const run = () => {
+    void loadPalette()
+    void loadSettings()
+    void loadShortcuts()
+    void import('./components/MarkdownPreview')
+  }
+  if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 3000 })
+  else setTimeout(run, 1500)
+}
 
 function LaunchState() {
   return (
@@ -36,6 +53,7 @@ export default function App() {
   useEffect(() => {
     void useEditorStore.getState().initialize()
     void useGroupStore.getState().initialize()
+    prefetchOnIdle()
   }, [])
 
   useGlobalShortcuts()
@@ -49,9 +67,11 @@ export default function App() {
         {loaded ? <Workspace /> : <LaunchState />}
         <StatusBar />
       </main>
-      {paletteOpen && <CommandPalette />}
-      {settingsOpen && <SettingsSheet />}
-      {shortcutsOpen && <ShortcutsSheet />}
+      <Suspense fallback={null}>
+        {paletteOpen && <CommandPalette />}
+        {settingsOpen && <SettingsSheet />}
+        {shortcutsOpen && <ShortcutsSheet />}
+      </Suspense>
       <Alert />
     </div>
   )

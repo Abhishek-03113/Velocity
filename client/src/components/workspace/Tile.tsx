@@ -8,12 +8,13 @@ import { useLayoutStore } from '../../store/layoutStore'
 import { useUiStore } from '../../store/uiStore'
 import Editor from '../Editor'
 import { Icon } from '../Icon'
-import MarkdownPreview from '../MarkdownPreview'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import { EmptyTile } from './EmptyTile'
 import styles from './Workspace.module.css'
 
 const Whiteboard = lazy(() => import('../Whiteboard'))
+// Read mode pulls in marked + DOMPurify — only load them when someone reads.
+const MarkdownPreview = lazy(() => import('../MarkdownPreview'))
 
 export type DropZone = 'left' | 'right' | 'top' | 'bottom' | 'center'
 
@@ -58,7 +59,11 @@ function ReadBody({ noteId }: { noteId: number }) {
     (next: string) => useEditorStore.getState().setContent(next, noteId),
     [noteId],
   )
-  return <MarkdownPreview content={content} onChange={onChange} />
+  return (
+    <Suspense fallback={<NoteSkeleton />}>
+      <MarkdownPreview content={content} onChange={onChange} />
+    </Suspense>
+  )
 }
 
 function NoteSkeleton() {
