@@ -1,4 +1,5 @@
 import {
+  Fragment,
   memo,
   useCallback,
   useDeferredValue,
@@ -11,7 +12,7 @@ import {
 import { useShallow } from 'zustand/react/shallow'
 import { primaryKey } from '../../lib/commands'
 import { groupColorFor, NOTE_DRAG_TYPE } from '../../lib/groupColors'
-import { displayTitle, parseTimestamp, relativeTime, snippet } from '../../lib/noteMeta'
+import { dateSection, displayTitle, parseTimestamp, relativeTime, snippet } from '../../lib/noteMeta'
 import { isMac } from '../../lib/platform'
 import {
   exportMarkdown,
@@ -32,6 +33,7 @@ import styles from './Sidebar.module.css'
 
 interface RowModel {
   id: number
+  section: string
   title: string
   date: string
   preview: string
@@ -165,10 +167,12 @@ export function NotesColumn({
         activeGroupId === null && p.group_id != null
           ? groups.find((g) => g.id === p.group_id)?.name
           : undefined
+      const stamp = parseTimestamp(p.updated_at)
       return {
         id: p.id,
+        section: sort === 'updated' ? dateSection(stamp, now) : '',
         title,
-        date: relativeTime(parseTimestamp(p.updated_at), now),
+        date: relativeTime(stamp, now),
         preview: snippet(content, title),
         folder: groupName,
         folderColor: groupColorFor(groups, p.group_id),
@@ -364,8 +368,15 @@ export function NotesColumn({
           className={styles.noteList}
           onKeyDown={onListKeyDown}
         >
-          {rows.map((row) => (
-            <NoteRow key={row.id} row={row} selected={row.id === activeId} onOpen={openRow} onMenu={rowMenu} />
+          {rows.map((row, i) => (
+            <Fragment key={row.id}>
+              {row.section && row.section !== rows[i - 1]?.section && (
+                <li role="presentation" className={styles.dateSection}>
+                  {row.section}
+                </li>
+              )}
+              <NoteRow row={row} selected={row.id === activeId} onOpen={openRow} onMenu={rowMenu} />
+            </Fragment>
           ))}
         </ul>
       )}

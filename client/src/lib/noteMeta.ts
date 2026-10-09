@@ -124,3 +124,19 @@ export function countWords(text: string): number {
   }
   return count
 }
+
+const monthFormat = new Intl.DateTimeFormat(undefined, { month: 'long' })
+const monthYearFormat = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
+
+/** Apple Notes list sections: Today, Yesterday, Previous 7 Days, Previous 30 Days, then months. */
+export function dateSection(ms: number, now = Date.now()): string {
+  if (!ms) return 'Earlier'
+  const today = new Date(now)
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+  if (ms >= startOfToday) return 'Today'
+  if (ms >= startOfToday - 86_400_000) return 'Yesterday'
+  if (ms >= startOfToday - 7 * 86_400_000) return 'Previous 7 Days'
+  if (ms >= startOfToday - 30 * 86_400_000) return 'Previous 30 Days'
+  const date = new Date(ms)
+  return date.getFullYear() === today.getFullYear() ? monthFormat.format(date) : monthYearFormat.format(date)
+}

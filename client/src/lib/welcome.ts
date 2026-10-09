@@ -2,7 +2,8 @@ import { comboLabel } from './platform'
 
 /** First-run note — teaches the essentials by example. */
 export function welcomeNote(): string {
-  const k = comboLabel
+  // Escape Markdown-significant characters (e.g. the backslash in Ctrl+\\).
+  const k = (combo: string) => comboLabel(combo).replace(/([\\*_`])/g, '\\$1')
   return `# Welcome to Velocity
 
 Velocity is a fast, private place for your notes. Everything saves automatically as you type.

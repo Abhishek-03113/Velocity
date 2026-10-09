@@ -41,7 +41,7 @@ const highlight = HighlightStyle.define([
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, color: 'var(--label-tertiary)', textDecoration: 'line-through' },
   { tag: [t.link, t.url], color: 'var(--accent-text)', textDecoration: 'underline' },
-  { tag: [t.monospace, t.literal], fontFamily: 'var(--font-mono)', fontSize: '0.9em', color: 'var(--system-pink)' },
+  { tag: [t.monospace, t.literal], fontFamily: 'var(--font-mono)', fontSize: '0.88em', color: 'var(--label-secondary)' },
   { tag: t.quote, color: 'var(--label-secondary)' },
   { tag: [t.comment, t.meta, t.processingInstruction], color: 'var(--label-tertiary)' },
   { tag: [t.keyword, t.operator, t.modifier], color: 'var(--system-pink)' },

@@ -394,6 +394,12 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
           return false
         }
 
+        if (name === 'Escape') {
+          // Show "\*" as "*" off the cursor line, like other syntax markers.
+          if (!isActive(node.from, node.to)) widgets.push(hiddenMark.range(node.from, node.from + 1))
+          return
+        }
+
         if (name === 'ListMark') {
           if (isActive(node.from, node.to)) return
           const next = node.node.nextSibling
