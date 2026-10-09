@@ -3,6 +3,7 @@ import {
   EditorState,
   RangeSetBuilder,
   StateField,
+  type Transaction,
   type Extension,
   type Range,
 } from '@codemirror/state'
@@ -221,7 +222,9 @@ export type ImageRange = {
 
 /** Collect markdown image ranges from the syntax tree (with line-regex fallback). */
 export function collectImageRanges(state: EditorState): ImageRange[] {
-  ensureSyntaxTree(state, state.doc.length, 5000)
+  // Small parse budget: the line-regex pass below catches images in any
+  // not-yet-parsed tail, so a huge note never blocks the main thread here.
+  ensureSyntaxTree(state, state.doc.length, 50)
   const found: ImageRange[] = []
   const covered = new Set<string>()
 
@@ -320,10 +323,43 @@ export function buildImageDecorations(state: EditorState): DecorationSet {
 }
 
 /** Height-changing image widgets — must be a StateField (not a ViewPlugin). */
+const IMAGE_SYNTAX = '!['
+
+function linesText(state: EditorState, from: number, to: number): string {
+  return state.doc.sliceString(state.doc.lineAt(from).from, state.doc.lineAt(to).to)
+}
+
+/**
+ * Rebuilding image decorations scans the whole document, so only do it when
+ * an edit or a cursor move actually touches a line containing image syntax.
+ * Everything else (i.e. almost every keystroke) just maps positions.
+ */
+function touchesImages(tr: Transaction): boolean {
+  let hit = false
+  if (tr.docChanged) {
+    tr.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+      if (hit) return
+      hit =
+        linesText(tr.startState, fromA, toA).includes(IMAGE_SYNTAX) ||
+        linesText(tr.state, fromB, toB).includes(IMAGE_SYNTAX)
+    })
+    if (hit) return true
+  }
+  // Images switch between rendered / editable as the cursor enters or leaves their line.
+  for (const r of tr.startState.selection.ranges) {
+    if (linesText(tr.startState, r.from, r.to).includes(IMAGE_SYNTAX)) return true
+  }
+  for (const r of tr.state.selection.ranges) {
+    if (linesText(tr.state, r.from, r.to).includes(IMAGE_SYNTAX)) return true
+  }
+  return false
+}
+
 export const markdownImagePreview = StateField.define<DecorationSet>({
   create: buildImageDecorations,
   update(deco, tr) {
-    if (tr.docChanged || tr.selection) return buildImageDecorations(tr.state)
+    if (!tr.docChanged && !tr.selection) return deco
+    if (touchesImages(tr)) return buildImageDecorations(tr.state)
     return deco.map(tr.changes)
   },
   provide: (field) => [

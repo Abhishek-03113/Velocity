@@ -1,4 +1,5 @@
 import { useDeferredValue, useMemo } from 'react'
+import { useThrottledValue } from '../../hooks/useThrottledValue'
 import { countWords, formatBytes } from '../../lib/noteMeta'
 import { useEditorStore } from '../../store/editorStore'
 import { focusedNoteId, useLayoutStore } from '../../store/layoutStore'
@@ -15,7 +16,7 @@ export default function StatusBar() {
   const status = useEditorStore((s) => (noteId == null ? undefined : s.syncStatus[noteId]))
   const anyError = useEditorStore((s) => Object.values(s.syncStatus).includes('error'))
   const flash = useUiStore((s) => s.flash)
-  const deferred = useDeferredValue(content ?? '')
+  const deferred = useDeferredValue(useThrottledValue(content ?? '', 150))
 
   const stats = useMemo(() => {
     // Byte size via length is exact for ASCII and a close lower bound otherwise; cheap per keystroke.

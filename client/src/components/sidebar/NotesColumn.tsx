@@ -10,6 +10,7 @@ import {
   type MouseEvent,
 } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { useThrottledValue } from '../../hooks/useThrottledValue'
 import { primaryKey } from '../../lib/commands'
 import { groupColorFor, NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { dateSection, displayTitle, parseTimestamp, relativeTime, snippet } from '../../lib/noteMeta'
@@ -163,8 +164,9 @@ export function NotesColumn({
   )
   const listRef = useRef<HTMLUListElement>(null)
 
-  // Typing updates `pastes` on every keystroke; let the list lag a frame behind the editor.
-  const deferredPastes = useDeferredValue(pastes)
+  // Typing updates `pastes` on every keystroke; the list catches up a few times a
+  // second instead (and at low priority) so keystrokes never pay for it.
+  const deferredPastes = useDeferredValue(useThrottledValue(pastes, 300))
 
   const rows = useMemo<RowModel[]>(() => {
     const filtered = deferredPastes.filter((p) => {
