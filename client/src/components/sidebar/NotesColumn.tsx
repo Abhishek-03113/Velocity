@@ -12,6 +12,7 @@ import {
 import { useShallow } from 'zustand/react/shallow'
 import { useThrottledValue } from '../../hooks/useThrottledValue'
 import { primaryKey } from '../../lib/commands'
+import { moveMenuItems } from '../../lib/moveMenu'
 import { groupColorFor, NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { dateSection, displayTitle, parseTimestamp, relativeTime, snippet } from '../../lib/noteMeta'
 import { isMac } from '../../lib/platform'
@@ -28,7 +29,7 @@ import { cachedContent } from '../../store/searchStore'
 import { useUiStore } from '../../store/uiStore'
 import type { Group, Paste } from '../../types'
 import { Icon } from '../Icon'
-import type { MenuItem, MenuState } from '../ui/ContextMenu'
+import type { MenuState } from '../ui/ContextMenu'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import styles from './Sidebar.module.css'
 
@@ -48,9 +49,10 @@ interface NoteRowProps {
   selected: boolean
   onOpen: (id: number, e: MouseEvent | KeyboardEvent) => void
   onMenu: (id: number, e: MouseEvent) => void
+  onMove: (id: number, e: MouseEvent<HTMLButtonElement>) => void
 }
 
-const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu }: NoteRowProps) {
+const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }: NoteRowProps) {
   const onDragStart = (e: DragEvent) => {
     e.dataTransfer.effectAllowed = 'copyMove'
     e.dataTransfer.setData(NOTE_DRAG_TYPE, String(row.id))
@@ -73,6 +75,22 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu }: NoteRow
           <span className={styles.noteTitle}>{row.title}</span>
           {row.dirty && <span className={styles.unsavedDot} title="Unsaved changes" />}
         </div>
+        <button
+          type="button"
+          tabIndex={-1}
+          draggable={false}
+          className={styles.moveChip}
+          aria-label="Move to Folder"
+          aria-haspopup="menu"
+          title="Move to Folder"
+          onClick={(e) => {
+            e.stopPropagation()
+            onMove(row.id, e)
+          }}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <Icon name="folder" size={13} />
+        </button>
         <div className={styles.noteMetaLine}>
           <span className={styles.noteDate}>{row.date}</span>
           <span className={styles.notePreview}>{row.preview || 'No additional text'}</span>
@@ -92,6 +110,7 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu }: NoteRow
   prev.selected === next.selected &&
   prev.onOpen === next.onOpen &&
   prev.onMenu === next.onMenu &&
+  prev.onMove === next.onMove &&
   prev.row.id === next.row.id &&
   prev.row.title === next.row.title &&
   prev.row.date === next.row.date &&
@@ -146,7 +165,6 @@ export function NotesColumn({
 }) {
   const pastes = useEditorStore((s) => s.pastes)
   const activeId = useEditorStore((s) => s.activeId)
-  const assignGroup = useEditorStore((s) => s.assignGroup)
   const { groups, activeGroupId, setActiveGroupId } = useGroupStore(
     useShallow((s) => ({
       groups: s.groups,
@@ -203,21 +221,6 @@ export function NotesColumn({
   const rowMenu = useCallback(
     (id: number, e: MouseEvent) => {
       e.preventDefault()
-      const paste = useEditorStore.getState().pastes.find((p) => p.id === id)
-      const moveItems: MenuItem[] = [
-        ...groups.map((g) => ({
-          label: g.name,
-          icon: 'folder' as const,
-          checked: paste?.group_id === g.id,
-          onSelect: () => assignGroup(id, g.id),
-        })),
-        {
-          label: 'Unfiled',
-          icon: 'doc.plaintext' as const,
-          checked: paste?.group_id == null,
-          onSelect: () => assignGroup(id, null),
-        },
-      ]
       onMenu({
         x: e.clientX,
         y: e.clientY,
@@ -235,13 +238,21 @@ export function NotesColumn({
           },
           { label: 'Export as Markdown', icon: 'square.and.arrow.down', onSelect: () => exportMarkdown(id) },
           { heading: 'Move to' },
-          ...moveItems,
+          ...moveMenuItems(id),
           { separator: true },
           { label: 'Delete Note…', icon: 'trash', destructive: true, onSelect: () => requestDelete(id) },
         ],
       })
     },
-    [groups, assignGroup, onMenu],
+    [onMenu],
+  )
+
+  const moveMenu = useCallback(
+    (id: number, e: MouseEvent<HTMLButtonElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect()
+      onMenu({ x: rect.left, y: rect.bottom + 4, items: [{ heading: 'Move to' }, ...moveMenuItems(id)] })
+    },
+    [onMenu],
   )
 
   const onListKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
@@ -274,12 +285,6 @@ export function NotesColumn({
       y: rect.bottom + 4,
       items: [
         { label: 'All Notes', icon: 'tray', checked: activeGroupId === null, onSelect: () => setActiveGroupId(null) },
-        {
-          label: 'Unfiled',
-          icon: 'doc.plaintext',
-          checked: activeGroupId === 'ungrouped',
-          onSelect: () => setActiveGroupId('ungrouped'),
-        },
         ...(groups.length ? [{ separator: true } as const] : []),
         ...groups.map((g) => ({
           label: g.name,
@@ -287,6 +292,13 @@ export function NotesColumn({
           checked: activeGroupId === g.id,
           onSelect: () => setActiveGroupId(g.id),
         })),
+        ...(groups.length ? [{ separator: true } as const] : []),
+        {
+          label: 'Unfiled',
+          icon: 'doc.plaintext',
+          checked: activeGroupId === 'ungrouped',
+          onSelect: () => setActiveGroupId('ungrouped'),
+        },
         { separator: true },
         { label: 'New Folder', icon: 'folder.badge.plus', onSelect: () => useGroupStore.getState().addGroup() },
         { label: 'Settings…', icon: 'gearshape', onSelect: () => useUiStore.getState().setSettingsOpen(true) },
@@ -389,7 +401,7 @@ export function NotesColumn({
                   {row.section}
                 </li>
               )}
-              <NoteRow row={row} selected={row.id === activeId} onOpen={openRow} onMenu={rowMenu} />
+              <NoteRow row={row} selected={row.id === activeId} onOpen={openRow} onMenu={rowMenu} onMove={moveMenu} />
             </Fragment>
           ))}
         </ul>

@@ -126,6 +126,63 @@ test('drag a note onto a folder files it', async ({ page }) => {
   await expect(noteRows(page).first()).toContainText('Launch plan')
 })
 
+test('folders: Unfiled sits last, and notes can be filed without dragging', async ({ page }) => {
+  await open(page)
+  const nav = page.getByRole('navigation', { name: 'Folders' })
+  // Ordering: All Notes, user folders, then Unfiled at the bottom.
+  const labels = await nav.locator('li button').allInnerTexts()
+  const names = labels.map((l) => l.split('\n')[0]!.trim())
+  expect(names[0]).toBe('All Notes')
+  expect(names[names.length - 1]).toBe('Unfiled')
+  await shot(page, 'folders-unfiled-last')
+
+  const groups = await api<Array<{ id: number; name: string }>>('GET', '/api/groups')
+  const gid = (name: string) => groups.find((g) => g.name === name)!.id
+  const groupOf = async (id: number) => (await allNotes()).find((n) => n.id === id)?.group_id
+
+  // 1. Row chip -> Move menu -> folder.
+  const row = noteRows(page).filter({ hasText: 'Reading list' })
+  await row.hover()
+  await row.getByRole('button', { name: 'Move to Folder' }).click()
+  const menu = page.getByRole('menu')
+  const items = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.trim())
+  expect(items[items.length - 1]).toBe('Unfiled')
+  await shot(page, 'move-menu-row')
+  await menu.getByRole('menuitem', { name: 'Personal' }).click()
+  await expect.poll(() => groupOf(ids['Untitled']!)).toBe(gid('Personal'))
+
+  // 2. Toolbar folder button -> Move menu -> another folder.
+  await openNoteByTitle(page, 'Reading list')
+  await page.locator('header').getByRole('button', { name: /Personal/ }).click()
+  await shot(page, 'move-menu-toolbar')
+  await page.getByRole('menuitem', { name: 'Work', exact: true }).click()
+  await expect.poll(() => groupOf(ids['Untitled']!)).toBe(gid('Work'))
+
+  // 3. "New Folder…" creates the folder and files the note in one step.
+  await row.hover()
+  await row.getByRole('button', { name: 'Move to Folder' }).click()
+  await page.getByRole('menuitem', { name: 'New Folder…' }).click()
+  await expect
+    .poll(async () => {
+      const gs = await api<Array<{ id: number; name: string }>>('GET', '/api/groups')
+      const g = gs.find((x) => x.name === 'New Folder')
+      return g != null && (await groupOf(ids['Untitled']!)) === g.id
+    })
+    .toBe(true)
+  await shot(page, 'move-new-folder')
+  // Inline rename is open on the new folder; accept the name.
+  await page.keyboard.press('Enter')
+
+  // 4. Keyboard: Move Note to Folder… opens the palette with only move targets.
+  await openNoteByTitle(page, 'Reading list')
+  await page.keyboard.press('Control+Alt+KeyM')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await expect(palette).toBeVisible()
+  await shot(page, 'move-palette')
+  await palette.getByRole('option', { name: /to Unfiled/ }).click()
+  await expect.poll(() => groupOf(ids['Untitled']!)).toBeNull()
+})
+
 test('command palette: full-text search, highlighting, commands', async ({ page }) => {
   await open(page)
   await page.keyboard.press('Control+KeyP')

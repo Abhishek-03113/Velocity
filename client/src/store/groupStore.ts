@@ -10,11 +10,11 @@ function localGroupId(): number {
 
 function nextGroupName(groups: Group[]): string {
   const names = new Set(groups.map((g) => g.name))
-  if (!names.has('New Group')) return 'New Group'
+  if (!names.has('New Folder')) return 'New Folder'
 
   let idx = 2
-  while (names.has(`New Group ${idx}`)) idx += 1
-  return `New Group ${idx}`
+  while (names.has(`New Folder ${idx}`)) idx += 1
+  return `New Folder ${idx}`
 }
 
 interface GroupState {
@@ -26,7 +26,8 @@ interface GroupState {
   initialize: () => Promise<void>
   setActiveGroupId: (id: GroupFilter) => void
   setEditingGroupId: (id: number | null) => void
-  addGroup: () => void
+  /** Creates a folder optimistically and returns its temporary id. */
+  addGroup: (opts?: { edit?: boolean }) => number
   setGroupName: (id: number, name: string) => void
   deleteGroup: (id: number) => void
 }
@@ -53,14 +54,14 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   setActiveGroupId: (id) => set({ activeGroupId: id }),
   setEditingGroupId: (id) => set({ editingGroupId: id }),
 
-  addGroup: () => {
+  addGroup: (opts) => {
     const tempId = localGroupId()
     const name = nextGroupName(get().groups)
     const group: Group = { id: tempId, name }
 
     set((state) => ({
       groups: [...state.groups, group],
-      editingGroupId: tempId,
+      editingGroupId: opts?.edit === false ? state.editingGroupId : tempId,
     }))
 
     api
@@ -103,6 +104,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         const message = err instanceof Error ? err.message : 'unknown error'
         console.error('[groups:add] server sync failed:', message)
       })
+    return tempId
   },
 
   setGroupName: (id, name) => {
