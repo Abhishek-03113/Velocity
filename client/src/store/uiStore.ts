@@ -1,14 +1,25 @@
 import { create } from 'zustand'
+import {
+  DEFAULT_THEME_FAMILY,
+  getThemeFamily,
+  resolveAppearance,
+  sanitizeAppearancePref,
+  sanitizeThemeFamily,
+  swatchFor,
+  type Appearance,
+} from '../lib/themes'
 
 export type ThemePref = 'system' | 'light' | 'dark'
-export type Accent = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite'
+/** 'theme' follows the active theme family's natural accent. */
+export type Accent = 'theme' | 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'yellow' | 'green' | 'graphite'
 export type EditorFont = 'system' | 'serif' | 'mono'
 export type Measure = 'narrow' | 'medium' | 'wide' | 'full'
 export type SortOrder = 'updated' | 'title'
 
-export const ACCENTS: Accent[] = ['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'graphite']
+export const ACCENTS: Accent[] = ['theme', 'blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'graphite']
 
 export interface Preferences {
+  themeFamily: string
   theme: ThemePref
   accent: Accent
   editorFont: EditorFont
@@ -20,8 +31,9 @@ export interface Preferences {
 }
 
 export const DEFAULT_PREFS: Preferences = {
+  themeFamily: DEFAULT_THEME_FAMILY,
   theme: 'system',
-  accent: 'blue',
+  accent: 'theme',
   editorFont: 'system',
   editorSize: 16,
   measure: 'medium',
@@ -45,7 +57,7 @@ export interface AlertSpec {
 
 interface UiState {
   prefs: Preferences
-  resolvedTheme: 'light' | 'dark'
+  resolvedTheme: Appearance
   sidebarOpen: boolean
   foldersOpen: boolean
   paletteOpen: boolean
@@ -57,6 +69,8 @@ interface UiState {
   flash: string | null
 
   setPref: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void
+  /** Switch colour theme family; the accent resets to the theme's own. */
+  setThemeFamily: (id: string) => void
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   toggleFolders: () => void
@@ -86,9 +100,10 @@ function writeJson(key: string, value: unknown): void {
   }
 }
 
-function sanitizePrefs(raw: Partial<Preferences>): Preferences {
+export function sanitizePrefs(raw: Partial<Preferences>): Preferences {
   const p = { ...DEFAULT_PREFS }
-  if (raw.theme === 'light' || raw.theme === 'dark' || raw.theme === 'system') p.theme = raw.theme
+  p.themeFamily = sanitizeThemeFamily(raw.themeFamily)
+  p.theme = sanitizeAppearancePref(raw.theme, DEFAULT_PREFS.theme)
   if (raw.accent && ACCENTS.includes(raw.accent)) p.accent = raw.accent
   if (raw.editorFont === 'system' || raw.editorFont === 'serif' || raw.editorFont === 'mono') {
     p.editorFont = raw.editorFont
@@ -108,9 +123,8 @@ const darkQuery =
     ? window.matchMedia('(prefers-color-scheme: dark)')
     : null
 
-function resolveTheme(pref: ThemePref): 'light' | 'dark' {
-  if (pref === 'system') return darkQuery?.matches ? 'dark' : 'light'
-  return pref
+function resolveTheme(prefs: Pick<Preferences, 'themeFamily' | 'theme'>): Appearance {
+  return resolveAppearance(prefs.themeFamily, prefs.theme, !!darkQuery?.matches)
 }
 
 const MEASURES: Record<Measure, string> = {
@@ -127,9 +141,10 @@ const FONTS: Record<EditorFont, string> = {
 }
 
 /** Push preferences onto <html> so CSS tokens (and CodeMirror) pick them up. */
-export function applyPreferences(prefs: Preferences, theme: 'light' | 'dark'): void {
+export function applyPreferences(prefs: Preferences, theme: Appearance): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
+  root.dataset.themeFamily = prefs.themeFamily
   root.dataset.theme = theme
   root.dataset.accent = prefs.accent
   root.style.setProperty('--editor-font', FONTS[prefs.editorFont])
@@ -137,7 +152,7 @@ export function applyPreferences(prefs: Preferences, theme: 'light' | 'dark'): v
   root.style.setProperty('--editor-measure', MEASURES[prefs.measure])
   root.style.setProperty('--tile-gap', prefs.tileGaps ? '8px' : '0px')
   const meta = document.querySelector('meta[name="theme-color"]')
-  meta?.setAttribute('content', theme === 'dark' ? '#1e1e1e' : '#ffffff')
+  meta?.setAttribute('content', swatchFor(getThemeFamily(prefs.themeFamily), theme).bg)
 }
 
 const initialPrefs = sanitizePrefs(readJson<Preferences>(PREFS_KEY))
@@ -146,7 +161,7 @@ const narrowViewport = typeof window !== 'undefined' && window.innerWidth < 760
 
 export const useUiStore = create<UiState>((set, get) => ({
   prefs: initialPrefs,
-  resolvedTheme: resolveTheme(initialPrefs.theme),
+  resolvedTheme: resolveTheme(initialPrefs),
   sidebarOpen: narrowViewport ? false : initialChrome.sidebarOpen ?? true,
   foldersOpen: initialChrome.foldersOpen ?? true,
   paletteOpen: false,
@@ -159,7 +174,12 @@ export const useUiStore = create<UiState>((set, get) => ({
   setPref: (key, value) => {
     const prefs = { ...get().prefs, [key]: value }
     writeJson(PREFS_KEY, prefs)
-    set({ prefs, resolvedTheme: resolveTheme(prefs.theme) })
+    set({ prefs, resolvedTheme: resolveTheme(prefs) })
+  },
+  setThemeFamily: (id) => {
+    const prefs = { ...get().prefs, themeFamily: sanitizeThemeFamily(id), accent: 'theme' as Accent }
+    writeJson(PREFS_KEY, prefs)
+    set({ prefs, resolvedTheme: resolveTheme(prefs) })
   },
 
   toggleSidebar: () => get().setSidebarOpen(!get().sidebarOpen),
@@ -191,7 +211,7 @@ export const useUiStore = create<UiState>((set, get) => ({
 
 let flashTimer: ReturnType<typeof setTimeout> | null = null
 
-applyPreferences(initialPrefs, resolveTheme(initialPrefs.theme))
+applyPreferences(initialPrefs, resolveTheme(initialPrefs))
 
 useUiStore.subscribe((state, prev) => {
   if (state.prefs !== prev.prefs || state.resolvedTheme !== prev.resolvedTheme) {
@@ -201,5 +221,5 @@ useUiStore.subscribe((state, prev) => {
 
 darkQuery?.addEventListener('change', () => {
   const { prefs } = useUiStore.getState()
-  useUiStore.setState({ resolvedTheme: resolveTheme(prefs.theme) })
+  useUiStore.setState({ resolvedTheme: resolveTheme(prefs) })
 })

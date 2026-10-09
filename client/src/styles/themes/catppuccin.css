@@ -1,0 +1,259 @@
+/* Catppuccin — Latte (light) + Mocha (dark); "Macchiato" family pairs Latte with Macchiato
+ * Only semantic tokens are overridden — see tokens.css for the full list.
+ * --theme-accent is the "Theme default" accent; --on-system is text drawn on system colours. */
+
+:root[data-theme-family='catppuccin'][data-theme='light'] {
+  color-scheme: light;
+
+  --bg-window: #eff1f5;
+  --bg-content: #eff1f5;
+  --bg-secondary: #e6e9ef;
+  --bg-tertiary: #ccd0da;
+  --bg-elevated: #ffffff;
+  --bg-sidebar: color-mix(in srgb, #e6e9ef 80%, transparent);
+  --bg-sidebar-solid: #e6e9ef;
+  --bg-notes-list: color-mix(in srgb, #eff1f5 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #eff1f5 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #ffffff 95%, transparent);
+  --bg-scrim: color-mix(in srgb, #4c4f69 28%, transparent);
+  --bg-workspace: #dce0e8;
+  --bg-code: color-mix(in srgb, #4c4f69 7%, transparent);
+
+  --label: #4c4f69;
+  --label-secondary: color-mix(in srgb, #4c4f69 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #4c4f69 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #4c4f69 26%, transparent);
+
+  --separator: color-mix(in srgb, #4c4f69 16%, transparent);
+  --separator-opaque: #ccd0da;
+
+  --fill: color-mix(in srgb, #4c4f69 20%, transparent);
+  --fill-secondary: color-mix(in srgb, #4c4f69 14%, transparent);
+  --fill-tertiary: color-mix(in srgb, #4c4f69 10%, transparent);
+  --fill-quaternary: color-mix(in srgb, #4c4f69 6%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 0 0.5px color-mix(in srgb, #4c4f69 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.1), 0 0 0 0.5px color-mix(in srgb, #4c4f69 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.2), 0 0 0 0.5px color-mix(in srgb, #4c4f69 16%, transparent);
+
+  --system-red: #d20f39;
+  --system-orange: #fe640b;
+  --system-yellow: #df8e1d;
+  --system-green: #40a02b;
+  --system-mint: #179299;
+  --system-teal: #209fb5;
+  --system-cyan: #04a5e5;
+  --system-blue: #1e66f5;
+  --system-indigo: #7287fd;
+  --system-purple: #8839ef;
+  --system-pink: #ea76cb;
+  --system-gray: #8c8fa1;
+  --on-system: #eff1f5;
+
+  --selection-alpha: 20%;
+  --selection-inactive: color-mix(in srgb, #4c4f69 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  --syntax-keyword: #8839ef;
+  --syntax-string: #40a02b;
+  --syntax-number: #fe640b;
+  --syntax-function: #1e66f5;
+  --syntax-type: #df8e1d;
+  --syntax-property: #179299;
+  --syntax-comment: #8c8fa1;
+
+  --theme-accent: #8839ef;
+  --theme-accent-contrast: #eff1f5;
+}
+
+:root[data-theme-family='catppuccin-macchiato'][data-theme='light'] {
+  color-scheme: light;
+
+  --bg-window: #eff1f5;
+  --bg-content: #eff1f5;
+  --bg-secondary: #e6e9ef;
+  --bg-tertiary: #ccd0da;
+  --bg-elevated: #ffffff;
+  --bg-sidebar: color-mix(in srgb, #e6e9ef 80%, transparent);
+  --bg-sidebar-solid: #e6e9ef;
+  --bg-notes-list: color-mix(in srgb, #eff1f5 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #eff1f5 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #ffffff 95%, transparent);
+  --bg-scrim: color-mix(in srgb, #4c4f69 28%, transparent);
+  --bg-workspace: #dce0e8;
+  --bg-code: color-mix(in srgb, #4c4f69 7%, transparent);
+
+  --label: #4c4f69;
+  --label-secondary: color-mix(in srgb, #4c4f69 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #4c4f69 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #4c4f69 26%, transparent);
+
+  --separator: color-mix(in srgb, #4c4f69 16%, transparent);
+  --separator-opaque: #ccd0da;
+
+  --fill: color-mix(in srgb, #4c4f69 20%, transparent);
+  --fill-secondary: color-mix(in srgb, #4c4f69 14%, transparent);
+  --fill-tertiary: color-mix(in srgb, #4c4f69 10%, transparent);
+  --fill-quaternary: color-mix(in srgb, #4c4f69 6%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 0 0.5px color-mix(in srgb, #4c4f69 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.1), 0 0 0 0.5px color-mix(in srgb, #4c4f69 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.2), 0 0 0 0.5px color-mix(in srgb, #4c4f69 16%, transparent);
+
+  --system-red: #d20f39;
+  --system-orange: #fe640b;
+  --system-yellow: #df8e1d;
+  --system-green: #40a02b;
+  --system-mint: #179299;
+  --system-teal: #209fb5;
+  --system-cyan: #04a5e5;
+  --system-blue: #1e66f5;
+  --system-indigo: #7287fd;
+  --system-purple: #8839ef;
+  --system-pink: #ea76cb;
+  --system-gray: #8c8fa1;
+  --on-system: #eff1f5;
+
+  --selection-alpha: 20%;
+  --selection-inactive: color-mix(in srgb, #4c4f69 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  --syntax-keyword: #8839ef;
+  --syntax-string: #40a02b;
+  --syntax-number: #fe640b;
+  --syntax-function: #1e66f5;
+  --syntax-type: #df8e1d;
+  --syntax-property: #179299;
+  --syntax-comment: #8c8fa1;
+
+  --theme-accent: #7287fd;
+  --theme-accent-contrast: #eff1f5;
+}
+
+:root[data-theme-family='catppuccin'][data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-window: #1e1e2e;
+  --bg-content: #1e1e2e;
+  --bg-secondary: #232334;
+  --bg-tertiary: #313244;
+  --bg-elevated: #313244;
+  --bg-sidebar: color-mix(in srgb, #181825 80%, transparent);
+  --bg-sidebar-solid: #181825;
+  --bg-notes-list: color-mix(in srgb, #1e1e2e 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #1e1e2e 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #313244 95%, transparent);
+  --bg-scrim: rgba(0, 0, 0, 0.5);
+  --bg-workspace: #11111b;
+  --bg-code: color-mix(in srgb, #cdd6f4 8%, transparent);
+
+  --label: #cdd6f4;
+  --label-secondary: color-mix(in srgb, #cdd6f4 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #cdd6f4 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #cdd6f4 26%, transparent);
+
+  --separator: color-mix(in srgb, #cdd6f4 14%, transparent);
+  --separator-opaque: #45475a;
+
+  --fill: color-mix(in srgb, #cdd6f4 24%, transparent);
+  --fill-secondary: color-mix(in srgb, #cdd6f4 18%, transparent);
+  --fill-tertiary: color-mix(in srgb, #cdd6f4 13%, transparent);
+  --fill-quaternary: color-mix(in srgb, #cdd6f4 9%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #cdd6f4 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #cdd6f4 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 0.5px color-mix(in srgb, #cdd6f4 16%, transparent);
+
+  --system-red: #f38ba8;
+  --system-orange: #fab387;
+  --system-yellow: #f9e2af;
+  --system-green: #a6e3a1;
+  --system-mint: #94e2d5;
+  --system-teal: #74c7ec;
+  --system-cyan: #89dceb;
+  --system-blue: #89b4fa;
+  --system-indigo: #b4befe;
+  --system-purple: #cba6f7;
+  --system-pink: #f5c2e7;
+  --system-gray: #7f849c;
+  --on-system: #1e1e2e;
+
+  --selection-alpha: 30%;
+  --selection-inactive: color-mix(in srgb, #cdd6f4 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --syntax-keyword: #cba6f7;
+  --syntax-string: #a6e3a1;
+  --syntax-number: #fab387;
+  --syntax-function: #89b4fa;
+  --syntax-type: #f9e2af;
+  --syntax-property: #94e2d5;
+  --syntax-comment: #7f849c;
+
+  --theme-accent: #cba6f7;
+  --theme-accent-contrast: #1e1e2e;
+}
+
+:root[data-theme-family='catppuccin-macchiato'][data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-window: #24273a;
+  --bg-content: #24273a;
+  --bg-secondary: #2a2e44;
+  --bg-tertiary: #363a4f;
+  --bg-elevated: #363a4f;
+  --bg-sidebar: color-mix(in srgb, #1e2030 80%, transparent);
+  --bg-sidebar-solid: #1e2030;
+  --bg-notes-list: color-mix(in srgb, #24273a 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, #24273a 84%, transparent);
+  --bg-sheet: color-mix(in srgb, #363a4f 95%, transparent);
+  --bg-scrim: rgba(0, 0, 0, 0.5);
+  --bg-workspace: #181926;
+  --bg-code: color-mix(in srgb, #cad3f5 8%, transparent);
+
+  --label: #cad3f5;
+  --label-secondary: color-mix(in srgb, #cad3f5 74%, transparent);
+  --label-tertiary: color-mix(in srgb, #cad3f5 50%, transparent);
+  --label-quaternary: color-mix(in srgb, #cad3f5 26%, transparent);
+
+  --separator: color-mix(in srgb, #cad3f5 14%, transparent);
+  --separator-opaque: #494d64;
+
+  --fill: color-mix(in srgb, #cad3f5 24%, transparent);
+  --fill-secondary: color-mix(in srgb, #cad3f5 18%, transparent);
+  --fill-tertiary: color-mix(in srgb, #cad3f5 13%, transparent);
+  --fill-quaternary: color-mix(in srgb, #cad3f5 9%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #cad3f5 10%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, #cad3f5 12%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 0.5px color-mix(in srgb, #cad3f5 16%, transparent);
+
+  --system-red: #ed8796;
+  --system-orange: #f5a97f;
+  --system-yellow: #eed49f;
+  --system-green: #a6da95;
+  --system-mint: #8bd5ca;
+  --system-teal: #7dc4e4;
+  --system-cyan: #91d7e3;
+  --system-blue: #8aadf4;
+  --system-indigo: #b7bdf8;
+  --system-purple: #c6a0f6;
+  --system-pink: #f5bde6;
+  --system-gray: #8087a2;
+  --on-system: #24273a;
+
+  --selection-alpha: 30%;
+  --selection-inactive: color-mix(in srgb, #cad3f5 9%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --syntax-keyword: #c6a0f6;
+  --syntax-string: #a6da95;
+  --syntax-number: #f5a97f;
+  --syntax-function: #8aadf4;
+  --syntax-type: #eed49f;
+  --syntax-property: #8bd5ca;
+  --syntax-comment: #8087a2;
+
+  --theme-accent: #b7bdf8;
+  --theme-accent-contrast: #24273a;
+}

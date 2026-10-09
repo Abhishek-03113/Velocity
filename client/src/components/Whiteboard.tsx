@@ -89,14 +89,14 @@ function Whiteboard({ noteId }: WhiteboardProps) {
                   elements: initial.elements as never,
                   appState: {
                     ...(initial.appState as object),
-                    // Old boards stored a fixed dark canvas — let the theme decide.
-                    viewBackgroundColor: undefined,
+                    // The canvas is transparent so the app theme's background shows through.
+                    viewBackgroundColor: 'transparent',
                     collaborators: new Map(),
                   } as never,
                   files: initial.files as never,
                   scrollToContent: true,
                 }
-              : undefined
+              : { appState: { viewBackgroundColor: 'transparent' } as never }
           }
           onChange={handleChange as never}
           UIOptions={{ canvasActions: { loadScene: false, toggleTheme: false } }}
