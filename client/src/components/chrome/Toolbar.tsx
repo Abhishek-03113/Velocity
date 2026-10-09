@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { primaryKey } from '../../lib/commands'
 import { moveMenuItems } from '../../lib/moveMenu'
 import { displayTitle } from '../../lib/noteMeta'
+import { comboLabel } from '../../lib/platform'
 import { findLeaf, leaves } from '../../lib/tiling'
 import {
   closeTile,
@@ -163,7 +164,7 @@ export default function Toolbar() {
             <button
               type="button"
               className={`${styles.subtitle} ${styles.subtitleButton}`}
-              title="Move to Folder"
+              title={`Move to Folder (${comboLabel(primaryKey('note.moveToFolder') ?? '')})`}
               aria-haspopup="menu"
               onClick={moveMenu}
             >

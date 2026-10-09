@@ -183,6 +183,37 @@ test('folders: Unfiled sits last, and notes can be filed without dragging', asyn
   await expect.poll(() => groupOf(ids['Untitled']!)).toBeNull()
 })
 
+test('drag onto the Folders header: springs open when collapsed, drop offers a folder menu', async ({ page }) => {
+  await open(page)
+  const nav = page.getByRole('navigation', { name: 'Folders' })
+  const disclosure = nav.getByRole('button', { name: 'Folders', exact: true })
+  const workFolder = nav.getByRole('button', { name: /^Work/ })
+  await disclosure.click() // collapse
+  await expect(workFolder).toHaveCount(0)
+
+  const row = noteRows(page).filter({ hasText: 'Reading list' })
+  const rowBox = (await row.boundingBox())!
+  const headBox = (await disclosure.boundingBox())!
+  await page.mouse.move(rowBox.x + 40, rowBox.y + 20)
+  await page.mouse.down()
+  await page.mouse.move(rowBox.x + 20, rowBox.y + 30, { steps: 4 })
+  await page.mouse.move(headBox.x + 20, headBox.y + headBox.height / 2, { steps: 12 })
+  // Hovering the collapsed header springs the section open.
+  await expect(workFolder).toBeVisible({ timeout: 3000 })
+  await page.mouse.move(headBox.x + 24, headBox.y + headBox.height / 2 + 1, { steps: 2 })
+  await shot(page, 'drag-header-spring-open')
+  await page.mouse.up()
+  // Dropping on the header opens a "Move to" menu.
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
+  await menu.getByRole('menuitem', { name: 'Work', exact: true }).click()
+  const groups = await api<Array<{ id: number; name: string }>>('GET', '/api/groups')
+  const work = groups.find((g) => g.name === 'Work')!
+  await expect
+    .poll(async () => (await allNotes()).find((n) => n.id === ids['Untitled'])?.group_id)
+    .toBe(work.id)
+})
+
 test('command palette: full-text search, highlighting, commands', async ({ page }) => {
   await open(page)
   await page.keyboard.press('Control+KeyP')

@@ -217,7 +217,7 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
     <div className={styles.folders}>
       <div className={styles.foldersHeader}>
         <div className={styles.brand}>
-          <img className={styles.brandLogo} src="/brand/logo-64.png" alt="" width={24} height={24} />
+          <img className={styles.brandLogo} src="/brand/logo-24.png" srcSet="/brand/logo-48.png 2x, /brand/logo-72.png 3x" alt="" width={24} height={24} />
           <span className={styles.brandName}>Velocity</span>
         </div>
         <ToolbarButton icon="sidebar.left" label="Hide Sidebar" shortcut={primaryKey('view.sidebar')} onClick={toggleSidebar} />

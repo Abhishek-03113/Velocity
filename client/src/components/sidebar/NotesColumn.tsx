@@ -15,7 +15,7 @@ import { primaryKey } from '../../lib/commands'
 import { moveMenuItems } from '../../lib/moveMenu'
 import { groupColorFor, NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { dateSection, displayTitle, parseTimestamp, relativeTime, snippet } from '../../lib/noteMeta'
-import { isMac } from '../../lib/platform'
+import { comboLabel, isMac } from '../../lib/platform'
 import {
   exportMarkdown,
   newNote,
@@ -82,7 +82,7 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }:
           className={styles.moveChip}
           aria-label="Move to Folder"
           aria-haspopup="menu"
-          title="Move to Folder"
+          title={`Move to Folder (${comboLabel(primaryKey('note.moveToFolder') ?? '')})`}
           onClick={(e) => {
             e.stopPropagation()
             onMove(row.id, e)

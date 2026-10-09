@@ -1,4 +1,5 @@
 import type { MenuItem } from '../components/ui/ContextMenu'
+import { groupColorFor } from './groupColors'
 import { useEditorStore } from '../store/editorStore'
 import { useGroupStore } from '../store/groupStore'
 import { moveNoteToNewFolder } from './workspace'
@@ -15,6 +16,7 @@ export function moveMenuItems(noteId: number): MenuItem[] {
     ...groups.map((g) => ({
       label: g.name,
       icon: 'folder' as const,
+      iconColor: groupColorFor(groups, g.id),
       checked: paste?.group_id === g.id,
       onSelect: () => assignGroup(noteId, g.id),
     })),
