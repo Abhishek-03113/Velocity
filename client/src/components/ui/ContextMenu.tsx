@@ -8,6 +8,8 @@ export type MenuItem =
   | {
       label: string
       icon?: IconName
+      /** Tint for the icon (e.g. a folder colour). */
+      iconColor?: string
       shortcut?: string
       destructive?: boolean
       disabled?: boolean
@@ -118,7 +120,11 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
             onClick={() => select(i)}
           >
             <span className={styles.check}>{item.checked && <Icon name="checkmark" size={13} />}</span>
-            {item.icon && <Icon name={item.icon} size={15} className={styles.icon} />}
+            {item.icon && (
+              <span className={styles.icon} style={item.iconColor ? { color: item.iconColor } : undefined}>
+                <Icon name={item.icon} size={15} />
+              </span>
+            )}
             <span className={styles.label}>{item.label}</span>
             {item.shortcut && <span className={styles.shortcut}>{comboLabel(item.shortcut)}</span>}
           </button>

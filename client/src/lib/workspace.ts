@@ -3,6 +3,7 @@
  * DOM focus. UI components and keyboard commands both call these so behaviour
  * is identical no matter how an action is triggered.
  */
+import { WIDE_QUERY } from '../hooks/useMediaQuery'
 import { openSearchPanel } from '@codemirror/search'
 import { useEditorStore } from '../store/editorStore'
 import { useGroupStore } from '../store/groupStore'
@@ -244,4 +245,18 @@ export function focusNotesList() {
       document.querySelector<HTMLElement>('[data-note-row]')
     el?.focus()
   })
+}
+
+/**
+ * Create a folder and file a note into it in one step. The folder starts with
+ * the temp id; `assignGroup` defers the server write and `replaceGroupId`
+ * reconciles it once the folder POST returns. When the folders column is on
+ * screen the new folder opens for inline naming.
+ */
+export function moveNoteToNewFolder(noteId: number) {
+  const ui = useUiStore.getState()
+  const foldersVisible =
+    ui.sidebarOpen && ui.foldersOpen && typeof window !== 'undefined' && window.matchMedia(WIDE_QUERY).matches
+  const groupId = useGroupStore.getState().addGroup({ edit: foldersVisible })
+  useEditorStore.getState().assignGroup(noteId, groupId)
 }

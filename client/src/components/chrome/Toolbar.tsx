@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { primaryKey } from '../../lib/commands'
+import { moveMenuItems } from '../../lib/moveMenu'
 import { displayTitle } from '../../lib/noteMeta'
+import { comboLabel } from '../../lib/platform'
 import { findLeaf, leaves } from '../../lib/tiling'
 import {
   closeTile,
@@ -97,6 +99,12 @@ export default function Toolbar() {
   const setEditingTitleId = useEditorStore((s) => s.setEditingTitleId)
   const [menu, setMenu] = useState<MenuState | null>(null)
 
+  const moveMenu = (e: MouseEvent<HTMLButtonElement>) => {
+    if (noteId == null) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setMenu({ x: rect.left, y: rect.bottom + 6, items: [{ heading: 'Move to' }, ...moveMenuItems(noteId)] })
+  }
+
   const moreMenu = (e: MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const id = noteId
@@ -150,16 +158,21 @@ export default function Toolbar() {
               <span className={styles.titleText}>{noteId == null ? 'Velocity' : title}</span>
             </button>
           )}
-          <span className={styles.subtitle}>
-            {focusedKind === 'empty' ? (
-              'Empty tile'
-            ) : (
-              <>
-                <Icon name="folder" size={11} />
-                {groupName ?? 'Unfiled'}
-              </>
-            )}
-          </span>
+          {focusedKind === 'empty' || noteId == null ? (
+            <span className={styles.subtitle}>Empty tile</span>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.subtitle} ${styles.subtitleButton}`}
+              title={`Move to Folder (${comboLabel(primaryKey('note.moveToFolder') ?? '')})`}
+              aria-haspopup="menu"
+              onClick={moveMenu}
+            >
+              <Icon name="folder" size={11} />
+              <span>{groupName ?? 'Unfiled'}</span>
+              <Icon name="chevron.down" size={9} strokeWidth={2.4} />
+            </button>
+          )}
         </div>
       </div>
 

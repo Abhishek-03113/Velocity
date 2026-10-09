@@ -33,7 +33,7 @@ export const DEFAULT_PREFS: Preferences = {
 const PREFS_KEY = 'velocity.prefs.v1'
 const CHROME_KEY = 'velocity.chrome.v1'
 
-export type PaletteMode = 'notes' | 'commands'
+export type PaletteMode = 'notes' | 'commands' | 'move'
 
 export interface AlertSpec {
   title: string

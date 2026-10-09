@@ -126,6 +126,15 @@ export const COMMANDS: Command[] = [
     enabled: hasNote,
   },
   {
+    id: 'note.moveToFolder',
+    title: 'Move Note to Folder…',
+    section: 'Notes',
+    keys: ['Ctrl+Alt+KeyM'],
+    keywords: 'file folder group assign organise organize',
+    run: () => useUiStore.getState().openPalette('move'),
+    enabled: hasNote,
+  },
+  {
     id: 'folder.new',
     title: 'New Folder',
     section: 'Notes',
@@ -378,6 +387,14 @@ export function dynamicCommands(): Command[] {
       keywords: 'folder group assign',
       run: () => useEditorStore.getState().assignGroup(noteId, g.id),
     }))
+  move.push({
+    id: 'note.moveTo.new',
+    title: `Move “${name}” to New Folder…`,
+    section: 'Notes',
+    keywords: 'folder group create',
+    run: () => ws.moveNoteToNewFolder(noteId),
+  })
+  // Unfiled always comes last.
   if (paste.group_id != null) {
     move.push({
       id: 'note.moveTo.none',

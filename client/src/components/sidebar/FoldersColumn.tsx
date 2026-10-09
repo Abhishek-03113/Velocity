@@ -1,6 +1,7 @@
-import { memo, useEffect, useMemo, useState, type DragEvent, type MouseEvent } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { primaryKey } from '../../lib/commands'
+import { moveMenuItems } from '../../lib/moveMenu'
 import { groupColor, NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { comboLabel } from '../../lib/platform'
 import { newNote, requestDeleteGroup } from '../../lib/workspace'
@@ -136,7 +137,9 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
     })),
   )
   const [foldersExpanded, setFoldersExpanded] = useState(true)
-  const [dropTarget, setDropTarget] = useState<GroupFilter | 'none' | undefined>(undefined)
+  const [dropTarget, setDropTarget] = useState<GroupFilter | 'none' | 'header' | undefined>(undefined)
+  const springTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(springTimer.current), [])
 
   const colors = useMemo(() => new Map(groups.map((g, i) => [g.id, groupColor(i)])), [groups])
 
@@ -162,6 +165,38 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
     }
   }
 
+  // The "Folders" header is a forgiving target too: hovering a collapsed section
+  // springs it open; dropping there offers a menu of folders to file into.
+  const headerDragProps = {
+    onDragOver: (e: DragEvent) => {
+      if (!e.dataTransfer.types.includes(NOTE_DRAG_TYPE)) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      setDropTarget('header')
+      if (!foldersExpanded && springTimer.current === undefined) {
+        springTimer.current = setTimeout(() => {
+          springTimer.current = undefined
+          setFoldersExpanded(true)
+        }, 450)
+      }
+    },
+    onDragLeave: (e: DragEvent) => {
+      if (e.currentTarget.contains(e.relatedTarget as Node)) return
+      clearTimeout(springTimer.current)
+      springTimer.current = undefined
+      setDropTarget(undefined)
+    },
+    onDrop: (e: DragEvent) => {
+      e.preventDefault()
+      clearTimeout(springTimer.current)
+      springTimer.current = undefined
+      setDropTarget(undefined)
+      const id = Number(e.dataTransfer.getData(NOTE_DRAG_TYPE))
+      if (!Number.isFinite(id) || id === 0) return
+      onMenu({ x: e.clientX, y: e.clientY, items: [{ heading: 'Move to' }, ...moveMenuItems(id)] })
+    },
+  }
+
   const folderMenu = (e: MouseEvent, groupId: number) => {
     e.preventDefault()
     onMenu({
@@ -182,9 +217,7 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
     <div className={styles.folders}>
       <div className={styles.foldersHeader}>
         <div className={styles.brand}>
-          <span className={styles.brandMark} aria-hidden="true">
-            <Icon name="square.and.pencil" size={13} strokeWidth={2} />
-          </span>
+          <img className={styles.brandLogo} src="/brand/logo-24.png" srcSet="/brand/logo-48.png 2x, /brand/logo-72.png 3x" alt="" width={24} height={24} />
           <span className={styles.brandName}>Velocity</span>
         </div>
         <ToolbarButton icon="sidebar.left" label="Hide Sidebar" shortcut={primaryKey('view.sidebar')} onClick={toggleSidebar} />
@@ -209,18 +242,12 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
             dropTarget={false}
             onSelect={() => setActiveGroupId(null)}
           />
-          <SourceRow
-            icon="doc.plaintext"
-            label="Unfiled"
-            count={counts.none ?? 0}
-            selected={activeGroupId === 'ungrouped'}
-            dropTarget={dropTarget === 'none'}
-            onSelect={() => setActiveGroupId('ungrouped')}
-            {...dragProps(null)}
-          />
         </ul>
 
-        <div className={styles.sectionHeader}>
+        <div
+          className={`${styles.sectionHeader} ${dropTarget === 'header' ? styles.sectionHeaderDrop : ''}`}
+          {...headerDragProps}
+        >
           <button
             type="button"
             className={styles.disclosure}
@@ -230,7 +257,7 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
             <span>Folders</span>
             <Icon name="chevron.down" size={11} strokeWidth={2.2} className={styles.disclosureIcon} />
           </button>
-          <ToolbarButton icon="plus" label="New Folder" size="small" onClick={addGroup} />
+          <ToolbarButton icon="plus" label="New Folder" size="small" onClick={() => addGroup()} />
         </div>
         {foldersExpanded && (
           <ul>
@@ -256,14 +283,26 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
               />
             ))}
             {groups.length === 0 && (
-              <li className={styles.sourceEmpty}>Drag notes onto a folder to organise them.</li>
+              <li className={styles.sourceEmpty}>No folders yet. Create one with +.</li>
             )}
           </ul>
         )}
+
+        <ul className={styles.unfiledList}>
+          <SourceRow
+            icon="doc.plaintext"
+            label="Unfiled"
+            count={counts.none ?? 0}
+            selected={activeGroupId === 'ungrouped'}
+            dropTarget={dropTarget === 'none'}
+            onSelect={() => setActiveGroupId('ungrouped')}
+            {...dragProps(null)}
+          />
+        </ul>
       </nav>
 
       <div className={styles.foldersFooter}>
-        <button type="button" className={styles.footerButton} onClick={addGroup}>
+        <button type="button" className={styles.footerButton} onClick={() => addGroup()}>
           <Icon name="plus.circle" size={16} />
           <span>New Folder</span>
         </button>
