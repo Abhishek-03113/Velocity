@@ -6,10 +6,14 @@ export interface Paste {
   /** Stable client key that survives the temp-id → server-id swap (keeps editors mounted). */
   cid?: string
   group_id?: number | null
-  /** Whether a whiteboard is stored for this note (from the notes list). */
-  has_whiteboard?: boolean
   created_at?: string
   updated_at?: string
+  /** Server list rows: body is blank (empty / whitespace-only). Lets cleanup skip loading content. */
+  is_empty?: boolean
+  /** Server list rows: body size in bytes. */
+  content_length?: number
+  /** Server list rows: a whiteboard is stored for this note (SQLite 0/1). */
+  has_whiteboard?: boolean | number
 }
 
 export interface Group {

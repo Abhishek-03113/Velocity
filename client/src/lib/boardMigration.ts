@@ -9,7 +9,7 @@ export const LEGACY_INDEX_KEY = 'velocity.whiteboard.index.v1'
 
 export interface LegacyNote {
   id: number
-  has_whiteboard?: boolean
+  has_whiteboard?: boolean | number
 }
 
 export interface MigrationDeps {

@@ -111,7 +111,7 @@ export function hasBoard(noteId: number): boolean {
 }
 
 /** Seed `hasBoard` from the notes list (`has_whiteboard`). */
-export function seedBoardFlags(notes: Array<{ id: number; has_whiteboard?: boolean }>): void {
+export function seedBoardFlags(notes: Array<{ id: number; has_whiteboard?: boolean | number }>): void {
   for (const n of notes) if (n.has_whiteboard) known.add(n.id)
 }
 
