@@ -10,10 +10,8 @@
  *  - Candidates are ranked by `updated_at` (newest first). The newest `KEEP` are
  *    always kept; the rest are deleted, EXCEPT notes touched within the last
  *    `MIN_AGE_MS` (10 minutes) because a client may still hold them open.
- *  - Whiteboards: if the schema has a `pastes.has_whiteboard` column, or a
- *    `whiteboards` table keyed by note, those notes are protected. If a
- *    `whiteboards` table exists but its key column can't be identified, the sweep
- *    aborts rather than risk deleting a board.
+ *  - Whiteboards: notes with a row in `whiteboards(paste_id)` (or a truthy
+ *    `pastes.has_whiteboard`) are protected. Both are optional so older schemas work.
  *
  * Runs on startup and hourly. Disable with EMPTY_NOTE_CLEANUP=off.
  */
@@ -37,20 +35,15 @@ function columns(table: string): string[] {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((c) => c.name)
 }
 
-/** SQL predicate that is true for notes carrying a whiteboard, or 'unknown' if the schema is unrecognised. */
-function whiteboardGuard(): { sql: string } | 'unknown' {
+/** SQL predicate that is true for notes carrying a whiteboard. Tolerates the older schema without boards. */
+function whiteboardGuard(): string {
   const parts: string[] = []
   if (columns('pastes').includes('has_whiteboard')) parts.push('COALESCE(has_whiteboard, 0) <> 0')
   const table = db
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'whiteboards'")
     .get()
-  if (table) {
-    const cols = columns('whiteboards')
-    const key = ['paste_id', 'note_id'].find((c) => cols.includes(c))
-    if (!key) return 'unknown'
-    parts.push(`id IN (SELECT ${key} FROM whiteboards)`)
-  }
-  return { sql: parts.length ? `(${parts.join(' OR ')})` : '0' }
+  if (table) parts.push('id IN (SELECT paste_id FROM whiteboards)')
+  return parts.length ? `(${parts.join(' OR ')})` : '0'
 }
 
 function parseSqliteTimestamp(value: string | null): number {
@@ -67,15 +60,11 @@ export function sweepEmptyNotes(opts: SweepOptions = {}): number[] {
   const now = opts.now ?? Date.now()
 
   const guard = whiteboardGuard()
-  if (guard === 'unknown') {
-    console.error(`[${new Date().toISOString()}] empty-note sweep skipped: unrecognised whiteboards schema`)
-    return []
-  }
 
   const rows = db
     .prepare(
       `SELECT id, updated_at FROM pastes
-       WHERE ${BLANK_CONTENT_SQL} AND ${UNNAMED_SQL} AND NOT ${guard.sql}
+       WHERE ${BLANK_CONTENT_SQL} AND ${UNNAMED_SQL} AND NOT ${guard}
        ORDER BY updated_at DESC, id DESC`
     )
     .all() as Array<{ id: number; updated_at: string | null }>

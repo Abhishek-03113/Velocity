@@ -12,8 +12,8 @@ export interface Paste {
   is_empty?: boolean
   /** Server list rows: body size in bytes. */
   content_length?: number
-  /** Set by the server once whiteboards live in SQLite. */
-  has_whiteboard?: boolean
+  /** Server list rows once whiteboards live in SQLite (0/1 or boolean). */
+  has_whiteboard?: boolean | number
 }
 
 export interface Group {
