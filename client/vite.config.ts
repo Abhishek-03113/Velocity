@@ -2,7 +2,6 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -15,7 +14,25 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir: rootDir,
-    plugins: [react(), tailwindcss()],
+    plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          // Keep the editor and the (large, lazy) whiteboard in their own cacheable chunks.
+          manualChunks: {
+            codemirror: [
+              '@codemirror/state',
+              '@codemirror/view',
+              '@codemirror/commands',
+              '@codemirror/language',
+              '@codemirror/search',
+              '@codemirror/autocomplete',
+              '@codemirror/lang-markdown',
+            ],
+          },
+        },
+      },
+    },
     server: apiTarget
       ? {
           proxy: {

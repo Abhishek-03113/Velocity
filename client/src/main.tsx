@@ -1,13 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './styles/tokens.css'
+import './styles/global.css'
+// Applies theme/accent to <html> before first paint.
+import './store/uiStore'
 import App from './App'
-import './styles.css'
-import './velocity.css'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <div data-velocity-root style={{ height: '100%' }}>
-      <App />
-    </div>
+    <App />
   </React.StrictMode>,
 )

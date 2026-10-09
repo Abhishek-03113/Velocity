@@ -1,0 +1,227 @@
+/* App reset + base styles. Component styling lives in CSS Modules. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow: hidden;
+  background: var(--bg-window);
+  color: var(--label);
+  font-family: var(--font-system);
+  font-size: var(--text-body);
+  line-height: 1.45;
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv11', 'ss01';
+  overscroll-behavior: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  cursor: default;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  background: var(--editor-selection);
+}
+
+kbd {
+  font-family: var(--font-system);
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  color: var(--label-secondary);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Quiet macOS-style overlay scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--fill) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--fill);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--label-tertiary);
+  background-clip: content-box;
+}
+
+/* CodeMirror find panel — restyled as a native find bar */
+.cm-panels {
+  background: var(--bg-toolbar) !important;
+  color: var(--label) !important;
+  border-color: var(--separator) !important;
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.cm-panels-top {
+  border-bottom: 1px solid var(--separator) !important;
+}
+
+.cm-panel.cm-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 40px 8px 12px !important;
+  font-family: var(--font-system);
+  font-size: var(--text-callout);
+}
+
+.cm-panel.cm-search br {
+  display: none;
+}
+
+.cm-panel.cm-search input.cm-textfield {
+  height: 26px;
+  min-width: 180px;
+  margin: 0;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--separator);
+  background: var(--bg-content);
+  color: var(--label);
+  font-size: var(--text-callout);
+}
+
+.cm-panel.cm-search input.cm-textfield:focus {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.cm-panel.cm-search button.cm-button {
+  height: 26px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 0;
+  background: var(--fill-tertiary);
+  background-image: none;
+  color: var(--label);
+  font-size: var(--text-callout);
+  text-transform: capitalize;
+}
+
+.cm-panel.cm-search button.cm-button:hover {
+  background: var(--fill-secondary);
+}
+
+.cm-panel.cm-search label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--label-secondary);
+  font-size: var(--text-callout);
+}
+
+.cm-panel.cm-search input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
+.cm-panel.cm-search button[name='close'] {
+  top: 50% !important;
+  right: 12px !important;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: var(--label-secondary) !important;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.cm-panel.cm-search button[name='close']:hover {
+  background: var(--fill-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Inputs embedded in a styled field show the ring on the field, not the input. */
+input[data-bare]:focus-visible,
+.cm-content:focus-visible {
+  box-shadow: none;
+}

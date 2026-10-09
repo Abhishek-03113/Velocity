@@ -3,15 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Velocity — a self-hosted notes manager with Markdown, whiteboards, and instant search." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Velocity — a fast, private notes app with Markdown, tiling and whiteboards." />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
     <title>Velocity</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Inter is the cross-platform stand-in for SF Pro; Apple devices use the system font. -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=Figtree:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
+    <script>
+      // Resolve appearance before first paint to avoid a light/dark flash.
+      try {
+        var p = JSON.parse(localStorage.getItem('velocity.prefs.v1') || '{}')
+        var t = p.theme === 'light' || p.theme === 'dark' ? p.theme
+          : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        document.documentElement.dataset.theme = t
+        document.documentElement.dataset.accent = p.accent || 'blue'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

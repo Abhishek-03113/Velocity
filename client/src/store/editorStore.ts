@@ -1,22 +1,29 @@
 import { create } from 'zustand'
-import { api } from '../lib/api'
+import { api, apiBaseUrl } from '../lib/api'
+import { focusEditor, remapEditor } from '../lib/editorRegistry'
+import { createSyncEngine, type SyncField, type SyncStatus } from '../lib/syncEngine'
+import { UNTITLED } from '../lib/noteMeta'
+import { welcomeNote } from '../lib/welcome'
 import type { Paste, CreatePastePayload, UpdatePastePayload } from '../types'
-import { useSearchStore } from './searchStore'
+import { focusedNoteId, markLayoutRestored, useLayoutStore, visibleNoteIds } from './layoutStore'
+import type { SplitRequest } from './layoutStore'
+import { cachedContent, useSearchStore } from './searchStore'
+import { remapBoard, removeBoardScene } from './whiteboardStore'
 
-const DEBOUNCE_MS = 800
-const MAX_RETRIES = 3
 const MAX_LOCAL_MRU = 5
-
-const debounceTimers: Record<number, ReturnType<typeof setTimeout>> = {}
-type RetryTask = {
-  attempt: number
-  timer: ReturnType<typeof setTimeout>
-}
-const retryQueue = new Map<number, RetryTask>()
+const INDEX_DEBOUNCE_MS = 250
+const TABS_KEY = 'velocity.tabs.v1'
 
 let _localIdCounter = -1
 function localId(): number {
   return _localIdCounter--
+}
+
+export interface OpenOptions {
+  /** Open in a new tile instead of the focused one. */
+  split?: SplitRequest | false
+  /** Move keyboard focus into the editor (default true). */
+  focus?: boolean
 }
 
 interface EditorState {
@@ -25,13 +32,23 @@ interface EditorState {
   activeId: number | null
   editingTitleId: number | null
   initialized: boolean
+  /** First API load finished (or failed) — UI can render real content. */
+  loaded: boolean
+  /** Per-note save status; absent means fully saved. */
+  syncStatus: Record<number, SyncStatus>
 
   initialize: () => Promise<void>
   getActivePaste: () => Paste | null
   getOpenTabs: () => Paste[]
-  setActiveId: (id: number) => Promise<void>
-  addPaste: (groupId?: number | null) => void
+  /** Open a note in the workspace (reveals it in the focused tile). */
+  setActiveId: (id: number, opts?: OpenOptions) => Promise<void>
+  /** Mark a note active without moving it between tiles (tile focus changes). */
+  activateNote: (id: number) => void
+  ensureContent: (id: number) => Promise<void>
+  addPaste: (groupId?: number | null, opts?: OpenOptions) => number
   closeTab: (id: number) => void
+  closeOtherTabs: (id: number) => void
+  moveTab: (id: number, toIndex: number) => void
   deletePaste: (id: number) => void
   setContent: (content: string, id?: number) => void
   setTitle: (id: number, title: string) => void
@@ -40,51 +57,119 @@ interface EditorState {
   replaceGroupId: (oldId: number, newId: number) => void
   clearDirty: (id: number) => void
   setEditingTitleId: (id: number | null) => void
+  saveNow: () => Promise<void>
 }
 
-function clearRetry(id: number): void {
-  const task = retryQueue.get(id)
-  if (task) clearTimeout(task.timer)
-  retryQueue.delete(id)
+/** True when group_id is a client-only temp id that the API will reject. */
+function isTempGroupId(groupId: number | null | undefined): boolean {
+  return groupId != null && groupId < 0
 }
 
-function scheduleSync(id: number, get: () => EditorState): void {
-  clearTimeout(debounceTimers[id])
-  clearRetry(id)
-  debounceTimers[id] = setTimeout(() => syncPaste(id, get), DEBOUNCE_MS)
+const contentLoads = new Map<number, Promise<void>>()
+const indexTimers = new Map<number, ReturnType<typeof setTimeout>>()
+
+function scheduleIndex(id: number): void {
+  const existing = indexTimers.get(id)
+  if (existing) clearTimeout(existing)
+  indexTimers.set(
+    id,
+    setTimeout(() => {
+      indexTimers.delete(id)
+      const paste = useEditorStore.getState().pastes.find((p) => p.id === id)
+      if (paste) {
+        useSearchStore.getState().indexPaste({ id, title: paste.title, content: paste.content ?? '' })
+      }
+    }, INDEX_DEBOUNCE_MS),
+  )
 }
 
-function queueRetry(id: number, get: () => EditorState, attempt: number): void {
-  if (attempt >= MAX_RETRIES) return
-
-  const nextAttempt = attempt + 1
-  const timer = setTimeout(() => syncPaste(id, get, nextAttempt), 1000 * 2 ** attempt)
-  retryQueue.set(id, { attempt: nextAttempt, timer })
-}
-
-async function syncPaste(id: number, get: () => EditorState, attempt = 1): Promise<void> {
-  if (id < 0) return
-
-  const { pastes, clearDirty } = get()
-  const paste = pastes.find((p) => p.id === id)
-  if (!paste) return
-  // Never PUT a temp client group id — backend Zod rejects non-positive ids.
-  if (isTempGroupId(paste.group_id)) return
-
+function persistTabs(): void {
+  const { openTabIds, activeId } = useEditorStore.getState()
   try {
-    await api.put<Paste>(`/api/pastes/${id}`, {
-      title: paste.title,
-      content: paste.content,
-      group_id: paste.group_id ?? null,
-    } satisfies UpdatePastePayload)
-    clearRetry(id)
-    clearDirty(id)
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'unknown error'
-    console.error(`[sync] paste ${id} failed (attempt ${attempt}):`, message)
-    queueRetry(id, get, attempt)
+    localStorage.setItem(
+      TABS_KEY,
+      JSON.stringify({ openTabIds: openTabIds.filter((id) => id > 0), activeId }),
+    )
+  } catch {
+    // Storage unavailable — tabs just won't be restored.
   }
 }
+
+function readPersistedTabs(): { openTabIds: number[]; activeId: number | null } {
+  try {
+    const raw = localStorage.getItem(TABS_KEY)
+    if (!raw) return { openTabIds: [], activeId: null }
+    const parsed = JSON.parse(raw) as { openTabIds?: unknown; activeId?: unknown }
+    return {
+      openTabIds: Array.isArray(parsed.openTabIds)
+        ? parsed.openTabIds.filter((id): id is number => Number.isInteger(id))
+        : [],
+      activeId: typeof parsed.activeId === 'number' ? parsed.activeId : null,
+    }
+  } catch {
+    return { openTabIds: [], activeId: null }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Auto-save worker wiring
+// ---------------------------------------------------------------------------
+
+async function sendUpdate(
+  id: number,
+  payload: UpdatePastePayload,
+  { keepalive }: { keepalive: boolean },
+): Promise<void> {
+  if (keepalive) {
+    const body = JSON.stringify(payload)
+    // keepalive requests are capped (~64 KB) by browsers; larger bodies use a normal fetch.
+    await fetch(`${apiBaseUrl()}/api/pastes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: body.length < 60_000,
+    })
+    return
+  }
+  await api.put<Paste>(`/api/pastes/${id}`, payload)
+}
+
+export const syncEngine = createSyncEngine({
+  snapshot: (id) => {
+    const paste = useEditorStore.getState().pastes.find((p) => p.id === id)
+    if (!paste) return null
+    return { title: paste.title, content: paste.content, group_id: paste.group_id ?? null }
+  },
+  send: (id, payload, opts) => sendUpdate(id, payload, opts),
+  onSaved: (id) => useEditorStore.getState().clearDirty(id),
+  onStatus: (id, status) => {
+    useEditorStore.setState((state) => {
+      const current = state.syncStatus[id]
+      if (current === status || (status == null && current === undefined)) return state
+      const next = { ...state.syncStatus }
+      if (status == null) delete next[id]
+      else next[id] = status
+      return { syncStatus: next }
+    })
+  },
+})
+
+function markDirty(id: number, fields: SyncField[]): void {
+  syncEngine.markDirty(id, fields)
+}
+
+if (typeof window !== 'undefined') {
+  const flushOnExit = () => syncEngine.flushOnExit()
+  window.addEventListener('pagehide', flushOnExit)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') void syncEngine.flushAll()
+    else syncEngine.retryFailed()
+  })
+  window.addEventListener('online', () => syncEngine.retryFailed())
+  window.addEventListener('focus', () => syncEngine.retryFailed())
+}
+
+// ---------------------------------------------------------------------------
 
 async function deleteFromServer(id: number, attempt = 1): Promise<void> {
   if (id < 0) return
@@ -93,57 +178,66 @@ async function deleteFromServer(id: number, attempt = 1): Promise<void> {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'unknown error'
     console.error(`[deletePaste] delete ${id} failed (attempt ${attempt}):`, message)
-    if (attempt < MAX_RETRIES) {
-      setTimeout(() => deleteFromServer(id, attempt + 1), 1000 * 2 ** attempt)
+    if (attempt < 3) {
+      setTimeout(() => void deleteFromServer(id, attempt + 1), 1000 * 2 ** attempt)
     }
   }
-}
-
-/** True when group_id is a client-only temp id that the API will reject. */
-function isTempGroupId(groupId: number | null | undefined): boolean {
-  return groupId != null && groupId < 0
 }
 
 type EditorSet = (
   partial: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>),
 ) => void
 
+const creating = new Set<number>()
+
 /**
  * Persist a local-only paste (id < 0) via POST. Skips if the paste still points
  * at a temp group — wait for replaceGroupId / clearGroupFromPastes to resolve it.
  */
 function createPasteOnServer(tempId: number, get: () => EditorState, set: EditorSet): void {
-  if (tempId >= 0) return
+  if (tempId >= 0 || creating.has(tempId)) return
 
   const paste = get().pastes.find((p) => p.id === tempId)
   if (!paste) return
   if (isTempGroupId(paste.group_id)) return
+  creating.add(tempId)
 
   api
     .post<Paste>('/api/pastes', {
-      title: paste.title || 'Untitled',
+      title: paste.title || UNTITLED,
       content: paste.content ?? '',
       group_id: paste.group_id ?? null,
     } satisfies CreatePastePayload)
     .then((res) => {
       if (!res.data) return
       const serverPaste = res.data
+      if (!get().pastes.some((p) => p.id === tempId)) {
+        // Deleted while the POST was in flight.
+        void deleteFromServer(serverPaste.id)
+        return
+      }
       set((state) => ({
         pastes: state.pastes.map((p) => {
           if (p.id !== tempId) return p
-          const merged = {
+          return {
             ...serverPaste,
+            cid: p.cid,
             title: p.title,
             content: p.content,
             group_id: p.group_id ?? serverPaste.group_id,
+            updated_at: p.updated_at ?? serverPaste.updated_at,
             dirty: p.dirty,
           }
-          if (p.dirty) setTimeout(() => syncPaste(serverPaste.id, get), 0)
-          return merged
         }),
         openTabIds: state.openTabIds.map((id) => (id === tempId ? serverPaste.id : id)),
         activeId: state.activeId === tempId ? serverPaste.id : state.activeId,
+        editingTitleId: state.editingTitleId === tempId ? serverPaste.id : state.editingTitleId,
       }))
+      useLayoutStore.getState().remapNote(tempId, serverPaste.id)
+      remapEditor(tempId, serverPaste.id)
+      remapBoard(tempId, serverPaste.id)
+      syncEngine.remap(tempId, serverPaste.id)
+      persistTabs()
       const current = get().pastes.find((p) => p.id === serverPaste.id)
       useSearchStore.getState().indexPaste({
         id: serverPaste.id,
@@ -154,134 +248,132 @@ function createPasteOnServer(tempId: number, get: () => EditorState, set: Editor
     .catch((err: unknown) => {
       const message = err instanceof Error ? err.message : 'unknown error'
       console.error('[addPaste] server sync failed:', message)
+      // Retry creation when the network comes back.
+      setTimeout(() => createPasteOnServer(tempId, get, set), 4000)
     })
+    .finally(() => creating.delete(tempId))
 }
 
 async function warmSearchIndex(ids: number[]): Promise<void> {
   const searchStore = useSearchStore.getState()
-  if (searchStore.hasCachedDocuments()) return
+  // Only fetch notes whose text isn't cached yet (first run, or created on another device).
+  const queue = ids.filter((id) => !cachedContent(id))
+  if (queue.length === 0) return
 
-  for (const id of ids) {
-    try {
-      const detail = await api.get<Paste>(`/api/pastes/${id}`)
-      if (detail.data) {
-        searchStore.indexPaste({
-          id,
-          title: detail.data.title,
-          content: detail.data.content ?? '',
-        })
+  // Small concurrency pool — fast warmup without flooding the server.
+  const worker = async () => {
+    while (queue.length) {
+      const id = queue.shift()!
+      try {
+        const detail = await api.get<Paste>(`/api/pastes/${id}`)
+        if (detail.data) {
+          searchStore.indexPaste({ id, title: detail.data.title, content: detail.data.content ?? '' })
+        }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'unknown error'
+        console.error(`[search:warm] paste ${id}:`, message)
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'unknown error'
-      console.error(`[search:warm] paste ${id}:`, message)
     }
   }
-
+  await Promise.all([worker(), worker(), worker(), worker()])
   searchStore.flushIndex()
+  // Snippets in the notes list read from the search cache — refresh once warm.
+  useEditorStore.setState((s) => ({ pastes: [...s.pastes] }))
 }
 
 // Trim local-only (id < 0) pastes in the sidebar to the MRU cap.
 // Named pastes (title !== 'Untitled') are always kept regardless of server ID.
 function trimLocalMru(pastes: Paste[], openTabIds: number[]): Paste[] {
-  const serverPastes = pastes.filter((p) => p.id > 0)
-  const localNamed = pastes.filter((p) => p.id < 0 && p.title !== 'Untitled')
-  const localUntitled = pastes.filter((p) => p.id < 0 && p.title === 'Untitled')
-
-  // Keep open tabs always; among closed untitled locals keep most recent (highest array index = most recent)
   const openSet = new Set(openTabIds)
-  const openUntitled = localUntitled.filter((p) => openSet.has(p.id))
-  const closedUntitled = localUntitled.filter((p) => !openSet.has(p.id))
-
-  const keepClosed = closedUntitled.slice(-Math.max(0, MAX_LOCAL_MRU - openUntitled.length))
-
-  return [...serverPastes, ...localNamed, ...openUntitled, ...keepClosed]
+  const closedUntitled = pastes.filter(
+    (p) => p.id < 0 && p.title === UNTITLED && !p.content && !openSet.has(p.id),
+  )
+  const overflow = closedUntitled.length - MAX_LOCAL_MRU
+  if (overflow <= 0) return pastes
+  const drop = new Set(closedUntitled.slice(0, overflow).map((p) => p.id))
+  return pastes.filter((p) => !drop.has(p.id))
 }
 
-const _initialPaste: Paste = { id: localId(), title: 'Untitled', content: '', dirty: false }
+function nowStamp(): string {
+  return new Date().toISOString()
+}
+
+/** After a tile change, make the focused tile's note the active one (or pick a tab). */
+function syncActiveFromLayout(get: () => EditorState, set: EditorSet, preferredFallback: number | null) {
+  const focused = focusedNoteId(useLayoutStore.getState())
+  if (focused != null) {
+    set({ activeId: focused })
+    return
+  }
+  const { openTabIds } = get()
+  const fallback =
+    preferredFallback != null && openTabIds.includes(preferredFallback)
+      ? preferredFallback
+      : (openTabIds[openTabIds.length - 1] ?? null)
+  if (fallback != null) void get().setActiveId(fallback, { focus: false })
+  else set({ activeId: null })
+}
 
 export const useEditorStore = create<EditorState>((set, get) => ({
-  pastes: [_initialPaste],
-  openTabIds: [_initialPaste.id],
-  activeId: _initialPaste.id,
+  pastes: [],
+  openTabIds: [],
+  activeId: null,
   editingTitleId: null,
   initialized: false,
+  loaded: false,
+  syncStatus: {},
 
   initialize: async () => {
     if (get().initialized) return
     set({ initialized: true })
 
+    let list: Paste[]
     try {
       const res = await api.get<Paste[]>('/api/pastes')
-      const list = res.data ?? []
-
-      if (list.length === 0) {
-        const { pastes } = get()
-        const local = pastes[0]
-        if (local) {
-          try {
-            const created = await api.post<Paste>('/api/pastes', {
-              title: local.title,
-              content: local.content ?? '',
-              group_id: local.group_id ?? null,
-            } satisfies CreatePastePayload)
-            if (created.data) {
-              const serverPaste = created.data
-              set((state) => ({
-                pastes: state.pastes.map((p) =>
-                  p.id === local.id ? { ...serverPaste, dirty: false } : p
-                ),
-                openTabIds: state.openTabIds.map((id) =>
-                  id === local.id ? serverPaste.id : id
-                ),
-                activeId: state.activeId === local.id ? serverPaste.id : state.activeId,
-              }))
-            }
-          } catch {
-            // keep local paste
-          }
-          return
-        }
-
-        const created = await api.post<Paste>('/api/pastes', {
-          title: 'Untitled',
-          content: '',
-        } satisfies CreatePastePayload)
-        if (created.data) {
-          const paste: Paste = { ...created.data, dirty: false }
-          set({ pastes: [paste], openTabIds: [paste.id], activeId: paste.id })
-        }
-        return
-      }
-
-      const incoming: Paste[] = list.map((p) => ({ ...p, content: undefined, dirty: false }))
-      set({ pastes: incoming, openTabIds: [incoming[0].id], activeId: incoming[0].id })
-      await useSearchStore.getState().ensureReady()
-      useSearchStore.getState().hydrateIndex(incoming)
-
-      const firstId = incoming[0].id
-      try {
-        const detail = await api.get<Paste>(`/api/pastes/${firstId}`)
-        if (detail.data) {
-          const content = detail.data.content ?? ''
-          set((state) => ({
-            pastes: state.pastes.map((p) => (p.id === firstId ? { ...p, content } : p)),
-          }))
-          useSearchStore.getState().indexPaste({
-            id: firstId,
-            title: detail.data.title,
-            content,
-          })
-        }
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'unknown error'
-        console.error(`[init] failed to load content for paste ${firstId}:`, message)
-      }
-
-      void warmSearchIndex(incoming.map((p) => p.id))
+      list = (res.data ?? []).map((p) => ({ ...p, content: undefined, dirty: false }))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'unknown error'
       console.error('[init] failed to load pastes:', message)
+      // Offline first run — still let the user write; it POSTs once the API is reachable.
+      set({ loaded: true })
+      get().addPaste(null, { focus: true })
+      return
     }
+
+    if (list.length === 0) {
+      set({ loaded: true })
+      const id = get().addPaste(null, { focus: false })
+      get().setContent(welcomeNote(), id)
+      return
+    }
+
+    set({ pastes: list })
+    await useSearchStore.getState().ensureReady()
+    useSearchStore.getState().hydrateIndex(list)
+
+    // Restore tabs + tiles from the last session; fall back to the most recent note.
+    const valid = new Set(list.map((p) => p.id))
+    const saved = readPersistedTabs()
+    let openTabIds = saved.openTabIds.filter((id) => valid.has(id))
+    const layout = useLayoutStore.getState()
+    layout.restore((id) => valid.has(id))
+    markLayoutRestored()
+    for (const id of visibleNoteIds(useLayoutStore.getState().root)) {
+      if (!openTabIds.includes(id)) openTabIds.push(id)
+    }
+    if (openTabIds.length === 0) openTabIds = [list[0]!.id]
+    const focused = focusedNoteId(useLayoutStore.getState())
+    const activeId =
+      focused ?? (saved.activeId != null && openTabIds.includes(saved.activeId) ? saved.activeId : openTabIds[0]!)
+
+    set({ openTabIds, activeId, loaded: true })
+    useLayoutStore.getState().revealNote(activeId)
+
+    await Promise.all(
+      [activeId, ...visibleNoteIds(useLayoutStore.getState().root)].map((id) => get().ensureContent(id)),
+    )
+    persistTabs()
+    void warmSearchIndex(list.map((p) => p.id))
   },
 
   getActivePaste: () => {
@@ -295,138 +387,198 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     return openTabIds.map((id) => map.get(id)).filter((p): p is Paste => p !== undefined)
   },
 
-  setActiveId: async (id: number) => {
-    // Opening a paste from sidebar adds it as a tab
+  ensureContent: (id) => {
+    const paste = get().pastes.find((p) => p.id === id)
+    if (!paste || paste.content !== undefined || id < 0) return Promise.resolve()
+    const inflight = contentLoads.get(id)
+    if (inflight) return inflight
+    const load = api
+      .get<Paste>(`/api/pastes/${id}`)
+      .then((res) => {
+        if (!res.data) return
+        const content = res.data.content ?? ''
+        set((state) => ({
+          pastes: state.pastes.map((p) =>
+            p.id === id && p.content === undefined ? { ...p, content } : p,
+          ),
+        }))
+        useSearchStore.getState().indexPaste({ id, title: res.data.title, content })
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'unknown error'
+        console.error(`[load] paste ${id}:`, message)
+      })
+      .finally(() => contentLoads.delete(id))
+    contentLoads.set(id, load)
+    return load
+  },
+
+  setActiveId: async (id: number, opts: OpenOptions = {}) => {
+    if (!get().pastes.some((p) => p.id === id)) return
     set((state) => ({
       activeId: id,
       openTabIds: state.openTabIds.includes(id) ? state.openTabIds : [...state.openTabIds, id],
     }))
-
-    const paste = get().pastes.find((p) => p.id === id)
-    if (paste && paste.content === undefined) {
-      try {
-        const res = await api.get<Paste>(`/api/pastes/${id}`)
-        if (res.data) {
-          const content = res.data.content ?? ''
-          set((state) => ({
-            pastes: state.pastes.map((p) => (p.id === id ? { ...p, content } : p)),
-          }))
-          useSearchStore.getState().indexPaste({
-            id,
-            title: res.data.title,
-            content,
-          })
-        }
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'unknown error'
-        console.error(`[load] paste ${id}:`, message)
-      }
+    const layout = useLayoutStore.getState()
+    if (opts.split) {
+      const existing = layout.root && visibleNoteIds(layout.root).includes(id)
+      if (existing) layout.revealNote(id)
+      else layout.split(opts.split, { kind: 'note', noteId: id, mode: 'edit' })
+    } else {
+      layout.revealNote(id)
     }
+    persistTabs()
+    if (opts.focus !== false) focusEditor(id)
+    await get().ensureContent(id)
   },
 
-  addPaste: (groupId?: number | null) => {
+  activateNote: (id) => {
+    if (get().activeId === id) return
+    set((state) => ({
+      activeId: id,
+      openTabIds: state.openTabIds.includes(id) ? state.openTabIds : [...state.openTabIds, id],
+    }))
+    persistTabs()
+    void get().ensureContent(id)
+  },
+
+  addPaste: (groupId?: number | null, opts: OpenOptions = {}) => {
     const tempId = localId()
     const paste: Paste = {
       id: tempId,
-      title: 'Untitled',
+      cid: `t${tempId}`,
+      title: UNTITLED,
       content: '',
       dirty: false,
       group_id: groupId ?? null,
+      updated_at: nowStamp(),
+      created_at: nowStamp(),
     }
-    set((state) => ({
-      pastes: trimLocalMru([...state.pastes, paste], [...state.openTabIds, tempId]),
-      openTabIds: [...state.openTabIds, tempId],
-      activeId: tempId,
-    }))
+    set((state) => {
+      const openTabIds = [...state.openTabIds, tempId]
+      return {
+        pastes: trimLocalMru([paste, ...state.pastes], openTabIds),
+        openTabIds,
+        activeId: tempId,
+      }
+    })
+    const layout = useLayoutStore.getState()
+    if (opts.split) layout.split(opts.split, { kind: 'note', noteId: tempId, mode: 'edit' })
+    else layout.revealNote(tempId)
+    // New notes always open in edit mode.
+    const leafId = useLayoutStore.getState().focusedId
+    layout.setMode(leafId, 'edit')
+    if (opts.focus !== false) focusEditor(tempId)
 
     // Defer POST until the group has a real server id (temp ids are rejected by Zod).
-    if (isTempGroupId(paste.group_id)) return
-    createPasteOnServer(tempId, get, set)
+    if (!isTempGroupId(paste.group_id)) createPasteOnServer(tempId, get, set)
+    return tempId
   },
 
-  // Close a tab without deleting the paste — it remains in the sidebar
+  // Close a tab without deleting the paste — it remains in the sidebar.
   closeTab: (id: number) => {
-    clearTimeout(debounceTimers[id])
-    delete debounceTimers[id]
-    clearRetry(id)
+    // Flush, never cancel: closing right after typing must not lose the edit.
+    void syncEngine.flush(id)
+    const { openTabIds } = get()
+    const idx = openTabIds.indexOf(id)
+    const neighbourTab = openTabIds[idx - 1] ?? openTabIds[idx + 1] ?? null
 
     set((state) => {
-      const openTabIds = state.openTabIds.filter((tid) => tid !== id)
-
-      let activeId = state.activeId
-      if (state.activeId === id) {
-        const idx = state.openTabIds.indexOf(id)
-        const next = state.openTabIds[idx - 1] ?? state.openTabIds[idx + 1] ?? null
-        activeId = next
+      const nextTabs = state.openTabIds.filter((tid) => tid !== id)
+      return {
+        openTabIds: nextTabs,
+        pastes: trimLocalMru(state.pastes, nextTabs),
+        editingTitleId: state.editingTitleId === id ? null : state.editingTitleId,
       }
-
-      // Apply MRU trim for local-only untitled pastes
-      const pastes = trimLocalMru(state.pastes, openTabIds)
-
-      return { openTabIds, activeId, pastes }
     })
+    useLayoutStore.getState().dropNote(id)
 
-    // If no tabs remain, open a new untitled paste
     if (get().openTabIds.length === 0) {
       get().addPaste()
+      return
     }
+    syncActiveFromLayout(get, set, neighbourTab)
+    persistTabs()
   },
 
-  // Explicit delete — removes paste from sidebar and server
-  deletePaste: (id: number) => {
-    clearTimeout(debounceTimers[id])
-    delete debounceTimers[id]
-    clearRetry(id)
+  closeOtherTabs: (id: number) => {
+    for (const other of get().openTabIds.filter((tid) => tid !== id)) get().closeTab(other)
+    void get().setActiveId(id)
+  },
 
+  moveTab: (id, toIndex) => {
     set((state) => {
-      const pastes = state.pastes.filter((p) => p.id !== id)
-      const openTabIds = state.openTabIds.filter((tid) => tid !== id)
-
-      let activeId = state.activeId
-      if (state.activeId === id) {
-        const idx = state.openTabIds.indexOf(id)
-        const next = state.openTabIds[idx - 1] ?? state.openTabIds[idx + 1] ?? null
-        activeId = next ?? (pastes[0]?.id ?? null)
-      }
-
-      return { pastes, openTabIds, activeId }
+      const tabs = state.openTabIds.filter((tid) => tid !== id)
+      const clamped = Math.max(0, Math.min(tabs.length, toIndex))
+      tabs.splice(clamped, 0, id)
+      return { openTabIds: tabs }
     })
+    persistTabs()
+  },
+
+  // Explicit delete — removes paste from sidebar and server.
+  deletePaste: (id: number) => {
+    syncEngine.forget(id)
+    const pending = indexTimers.get(id)
+    if (pending) clearTimeout(pending)
+    indexTimers.delete(id)
+
+    const { openTabIds } = get()
+    const idx = openTabIds.indexOf(id)
+    const neighbourTab = openTabIds[idx - 1] ?? openTabIds[idx + 1] ?? null
+
+    set((state) => ({
+      pastes: state.pastes.filter((p) => p.id !== id),
+      openTabIds: state.openTabIds.filter((tid) => tid !== id),
+      editingTitleId: state.editingTitleId === id ? null : state.editingTitleId,
+    }))
+    useLayoutStore.getState().dropNote(id)
+    removeBoardScene(id)
 
     if (get().openTabIds.length === 0) {
-      get().addPaste()
+      const next = get().pastes[0]
+      if (next) void get().setActiveId(next.id, { focus: false })
+      else get().addPaste()
+    } else {
+      syncActiveFromLayout(get, set, neighbourTab)
     }
 
     useSearchStore.getState().removePaste(id)
-
-    deleteFromServer(id)
+    persistTabs()
+    void deleteFromServer(id)
   },
 
   setContent: (content: string, id) => {
     const targetId = id ?? get().activeId
     if (targetId === null) return
+    const stamp = nowStamp()
     set((state) => ({
       pastes: state.pastes.map((p) =>
-        p.id === targetId ? { ...p, content, dirty: true } : p
+        p.id === targetId ? { ...p, content, dirty: true, updated_at: stamp } : p,
       ),
     }))
-    scheduleSync(targetId, get)
-    const paste = get().pastes.find((p) => p.id === targetId)
-    if (paste) useSearchStore.getState().indexPaste({ id: targetId, title: paste.title, content })
+    markDirty(targetId, ['content'])
+    // Re-tokenising a whole note per keystroke is expensive — index on idle instead.
+    scheduleIndex(targetId)
   },
 
   setTitle: (id: number, title: string) => {
-    set((state) => ({
-      pastes: state.pastes.map((p) => (p.id === id ? { ...p, title, dirty: true } : p)),
-    }))
-    scheduleSync(id, get)
+    const next = title.trim() || UNTITLED
     const paste = get().pastes.find((p) => p.id === id)
-    if (paste) useSearchStore.getState().indexPaste({ id, title, content: paste.content ?? '' })
+    if (!paste || paste.title === next) return
+    set((state) => ({
+      pastes: state.pastes.map((p) =>
+        p.id === id ? { ...p, title: next, dirty: true, updated_at: nowStamp() } : p,
+      ),
+    }))
+    markDirty(id, ['title'])
+    useSearchStore.getState().indexPaste({ id, title: next, content: paste.content ?? '' })
   },
 
   assignGroup: (id: number, groupId: number | null) => {
     set((state) => ({
       pastes: state.pastes.map((p) =>
-        p.id === id ? { ...p, group_id: groupId, dirty: true } : p
+        p.id === id ? { ...p, group_id: groupId, dirty: true } : p,
       ),
     }))
     // Temp group ids are invalid for PUT — wait for replaceGroupId after group POST.
@@ -436,7 +588,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       createPasteOnServer(id, get, set)
       return
     }
-    scheduleSync(id, get)
+    markDirty(id, ['group_id'])
   },
 
   clearGroupFromPastes: (groupId: number) => {
@@ -466,15 +618,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         return { ...p, group_id: newId, dirty: true }
       }),
     }))
-    for (const id of affectedServer) scheduleSync(id, get)
+    for (const id of affectedServer) markDirty(id, ['group_id'])
     for (const tempId of pendingCreates) createPasteOnServer(tempId, get, set)
   },
 
   clearDirty: (id: number) => {
     set((state) => ({
-      pastes: state.pastes.map((p) => (p.id === id ? { ...p, dirty: false } : p)),
+      pastes: state.pastes.map((p) => (p.id === id && p.dirty ? { ...p, dirty: false } : p)),
     }))
   },
 
   setEditingTitleId: (id: number | null) => set({ editingTitleId: id }),
+
+  saveNow: async () => {
+    syncEngine.retryFailed()
+    await syncEngine.flushAll()
+  },
 }))

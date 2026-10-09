@@ -1,0 +1,48 @@
+.app {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-content);
+  color: var(--label);
+}
+
+.main {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  background: var(--bg-content);
+}
+
+.launch {
+  display: grid;
+  flex: 1;
+  place-items: center;
+}
+
+.launchMark {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid var(--fill-secondary);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  opacity: 0;
+  animation:
+    spin 0.8s linear infinite,
+    appear 0.2s 0.4s forwards;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes appear {
+  to {
+    opacity: 1;
+  }
+}

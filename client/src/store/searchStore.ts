@@ -11,7 +11,7 @@ type SearchDoc = {
   content: string
 }
 
-interface SearchResult {
+export interface SearchResult {
   id: number
   title: string
   excerpt: string
@@ -34,6 +34,7 @@ interface SearchState {
   flushIndex: () => void
 }
 
+
 // Document index: search on both title and content fields
 const index = new Document({
   document: {
@@ -45,6 +46,11 @@ const index = new Document({
 })
 
 const documents = new Map<number, SearchDoc>()
+
+/** Cached plain text for a note (from the persisted index) — used for list previews. */
+export function cachedContent(id: number): string | undefined {
+  return documents.get(id)?.content
+}
 
 const PERSIST_DEBOUNCE_MS = 2000
 let persistTimer: ReturnType<typeof setTimeout> | null = null
@@ -131,11 +137,37 @@ function makeExcerpt(content: string | undefined, query: string): string {
   const text = content ?? ''
   const lower = text.toLowerCase()
   const idx = lower.indexOf(query.toLowerCase())
-  if (idx === -1) return text.slice(0, 80)
+  if (idx === -1) return text.slice(0, 80).replace(/\s+/g, ' ')
   const start = Math.max(0, idx - 30)
   const end = Math.min(text.length, idx + query.length + 50)
-  const excerpt = text.slice(start, end)
+  const excerpt = text.slice(start, end).replace(/\s+/g, ' ')
   return (start > 0 ? '…' : '') + excerpt + (end < text.length ? '…' : '')
+}
+
+/** Full-text search across titles and content (pure — no store updates). */
+export function searchNotes(q: string, limit = 20): SearchResult[] {
+  if (!q.trim()) return []
+  const raw = index.search(q, { enrich: true, limit }) as Array<{
+    field: string
+    result: Array<{ id: number; doc: { title: string; content: string } }>
+  }>
+
+  // Merge results across fields (title hits first), deduplicate by id
+  raw.sort((a, b) => (a.field === 'title' ? -1 : b.field === 'title' ? 1 : 0))
+  const seen = new Set<number>()
+  const results: SearchResult[] = []
+  for (const field of raw) {
+    for (const item of field.result) {
+      if (seen.has(item.id)) continue
+      seen.add(item.id)
+      results.push({
+        id: item.id,
+        title: item.doc.title || 'Untitled',
+        excerpt: makeExcerpt(item.doc.content, q),
+      })
+    }
+  }
+  return results
 }
 
 // Load persisted index on module init
@@ -155,31 +187,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   search: (q: string) => {
-    if (!q.trim()) {
-      set({ results: [] })
-      return
-    }
-
-    const raw = index.search(q, { enrich: true, limit: 20 }) as Array<{
-      field: string
-      result: Array<{ id: number; doc: { title: string; content: string } }>
-    }>
-
-    // Merge results across fields, deduplicate by id
-    const seen = new Set<number>()
-    const results: SearchResult[] = []
-    for (const field of raw) {
-      for (const item of field.result) {
-        if (seen.has(item.id)) continue
-        seen.add(item.id)
-        results.push({
-          id: item.id,
-          title: item.doc.title || 'Untitled',
-          excerpt: makeExcerpt(item.doc.content, q),
-        })
-      }
-    }
-    set({ results })
+    set({ results: searchNotes(q) })
   },
 
   indexPaste: (paste) => {
@@ -205,8 +213,12 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   hydrateIndex: (pastes) => {
+    let changed = false
     for (const p of pastes) {
       const previous = documents.get(p.id)
+      // Unchanged cached docs are already in the imported index — don't re-tokenise on startup.
+      if (previous && p.content === undefined && previous.title === (p.title ?? '')) continue
+      changed = true
       const doc = {
         id: p.id,
         title: p.title ?? previous?.title ?? '',
@@ -215,7 +227,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       documents.set(p.id, doc)
       addOrReplace(doc)
     }
-    persistIndexNow()
+    if (changed) persistIndexNow()
   },
 
   ensureReady: () => indexReady,

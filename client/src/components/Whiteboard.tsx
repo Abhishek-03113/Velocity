@@ -1,6 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import '@excalidraw/excalidraw/index.css'
 import { loadScene, saveScene, type BoardScene } from '../store/whiteboardStore'
+import { useUiStore } from '../store/uiStore'
 import styles from './Whiteboard.module.css'
 
 const Excalidraw = lazy(() =>
@@ -11,22 +12,30 @@ interface WhiteboardProps {
   noteId: number
 }
 
-export default function Whiteboard({ noteId }: WhiteboardProps) {
+function Whiteboard({ noteId }: WhiteboardProps) {
+  const theme = useUiStore((s) => s.resolvedTheme)
   const [initial, setInitial] = useState<BoardScene | null | undefined>(undefined)
+  const pending = useRef<{ noteId: number; scene: BoardScene } | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const flush = useCallback(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = null
+    if (pending.current) saveScene(pending.current.noteId, pending.current.scene)
+    pending.current = null
+  }, [])
 
   useEffect(() => {
     setInitial(loadScene(noteId))
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-    }
-  }, [noteId])
+    // Flush (not drop) the last strokes when the board closes or switches note.
+    return flush
+  }, [noteId, flush])
 
   const handleChange = useCallback(
     (elements: readonly unknown[], appState: Record<string, unknown>, files: Record<string, unknown>) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      saveTimer.current = setTimeout(() => {
-        saveScene(noteId, {
+      pending.current = {
+        noteId,
+        scene: {
           elements: [...elements],
           appState: {
             viewBackgroundColor: appState['viewBackgroundColor'],
@@ -35,10 +44,12 @@ export default function Whiteboard({ noteId }: WhiteboardProps) {
             zoom: appState['zoom'],
           },
           files,
-        })
-      }, 500)
+        },
+      }
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      saveTimer.current = setTimeout(flush, 500)
     },
-    [noteId],
+    [noteId, flush],
   )
 
   if (initial === undefined) {
@@ -50,21 +61,28 @@ export default function Whiteboard({ noteId }: WhiteboardProps) {
       <Suspense fallback={<div className={styles.loading}>Loading board…</div>}>
         <Excalidraw
           key={String(noteId)}
-          theme="dark"
+          theme={theme}
           initialData={
             initial
               ? {
                   elements: initial.elements as never,
-                  appState: { ...(initial.appState as object), collaborators: new Map() } as never,
+                  appState: {
+                    ...(initial.appState as object),
+                    // Old boards stored a fixed dark canvas — let the theme decide.
+                    viewBackgroundColor: undefined,
+                    collaborators: new Map(),
+                  } as never,
                   files: initial.files as never,
                   scrollToContent: true,
                 }
-              : { appState: { viewBackgroundColor: '#1e1e1e' } as never }
+              : undefined
           }
           onChange={handleChange as never}
-          UIOptions={{ canvasActions: { loadScene: false } }}
+          UIOptions={{ canvasActions: { loadScene: false, toggleTheme: false } }}
         />
       </Suspense>
     </div>
   )
 }
+
+export default memo(Whiteboard)

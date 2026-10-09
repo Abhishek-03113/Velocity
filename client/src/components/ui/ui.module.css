@@ -1,0 +1,135 @@
+/* ---- Key caps ---------------------------------------------------------- */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-family: var(--font-system);
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  color: var(--label-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.kbdKey {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: var(--radius-xs);
+  background: var(--fill-tertiary);
+  box-shadow: inset 0 -0.5px 0 var(--separator);
+  line-height: 1;
+}
+
+.kbdSubtle .kbdKey {
+  background: transparent;
+  box-shadow: none;
+  min-width: 0;
+  padding: 0 1px;
+}
+
+/* ---- Toolbar buttons ---------------------------------------------------- */
+.toolbarButton {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--label-secondary);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.toolbarButton:hover {
+  background: var(--fill-tertiary);
+  color: var(--label);
+}
+
+.toolbarButton:active {
+  background: var(--fill-secondary);
+}
+
+.toolbarButton:disabled {
+  color: var(--label-quaternary);
+  background: none;
+}
+
+.toolbarButtonActive,
+.toolbarButtonActive:hover {
+  color: var(--accent);
+}
+
+.toolbarButtonSmall {
+  width: 24px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+}
+
+/* ---- Segmented control -------------------------------------------------- */
+.segmented {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(var(--segments), minmax(0, 1fr));
+  flex-shrink: 0;
+  height: 26px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--fill-tertiary);
+  isolation: isolate;
+}
+
+.segmentedSmall {
+  height: 22px;
+}
+
+.segmentThumb {
+  position: absolute;
+  z-index: -1;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / var(--segments));
+  transform: translateX(calc(100% * var(--index)));
+  border-radius: 5px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+
+:global([data-theme='dark']) .segmentThumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 30px;
+  padding: 0 10px;
+  border-radius: 5px;
+  color: var(--label-secondary);
+  font-size: var(--text-callout);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.segmentedSmall .segment {
+  padding: 0 7px;
+  font-size: var(--text-subheadline);
+}
+
+.segment:hover {
+  color: var(--label);
+}
+
+.segmentSelected {
+  color: var(--label);
+}

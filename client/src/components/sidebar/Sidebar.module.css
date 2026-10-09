@@ -1,0 +1,483 @@
+/* ====================================================================== */
+/* Shell                                                                   */
+/* ====================================================================== */
+.sidebar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  transition:
+    width var(--dur-slow) var(--ease-spring),
+    margin var(--dur-slow) var(--ease-spring),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+.open {
+  opacity: 1;
+}
+
+.closed:not(.overlay) {
+  width: 0 !important;
+  opacity: 0;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(360px, 88vw);
+  box-shadow: var(--shadow-lg);
+  transition: transform var(--dur-slow) var(--ease-spring);
+}
+
+.overlay.closed {
+  transform: translateX(-104%);
+  box-shadow: none;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: var(--bg-scrim);
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ====================================================================== */
+/* Folders column — vibrancy source list                                   */
+/* ====================================================================== */
+.folders {
+  display: flex;
+  width: var(--folders-width);
+  flex-shrink: 0;
+  flex-direction: column;
+  background: var(--bg-sidebar);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  border-right: 1px solid var(--separator);
+}
+
+.foldersHeader {
+  display: flex;
+  height: var(--toolbar-height);
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 14px;
+}
+
+.brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.brandMark {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 6px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent));
+  color: var(--accent-contrast);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.brandName {
+  font-size: var(--text-headline);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.searchField {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  margin: 0 10px 6px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  background: var(--fill-tertiary);
+  color: var(--label-tertiary);
+  font-size: var(--text-callout);
+  text-align: left;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.searchField:hover {
+  background: var(--fill-secondary);
+}
+
+.searchField span:first-of-type {
+  flex: 1;
+}
+
+.searchHint {
+  font-size: var(--text-footnote);
+  letter-spacing: 0.02em;
+}
+
+.sourceList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 10px 12px;
+}
+
+.sectionHeader {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 0 4px 0 8px;
+  color: var(--label-tertiary);
+  font-size: var(--text-footnote);
+  font-weight: 650;
+}
+
+.disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-xs);
+  font-weight: inherit;
+}
+
+.disclosure:hover {
+  color: var(--label-secondary);
+}
+
+.disclosureIcon {
+  opacity: 0;
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    opacity var(--dur-fast);
+}
+
+.sectionHeader:hover .disclosureIcon,
+.disclosure:focus-visible .disclosureIcon {
+  opacity: 1;
+}
+
+.disclosure[aria-expanded='false'] .disclosureIcon {
+  transform: rotate(-90deg);
+}
+
+.sourceRow {
+  border-radius: var(--radius-sm);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.sourceRow + .sourceRow {
+  margin-top: 1px;
+}
+
+.sourceButton {
+  display: flex;
+  width: 100%;
+  height: 30px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  color: var(--label);
+  font-size: var(--text-body);
+  text-align: left;
+}
+
+.sourceRow:hover:not(.sourceRowSelected) {
+  background: var(--fill-quaternary);
+}
+
+.sourceRowSelected {
+  background: var(--fill-secondary);
+}
+
+.sourceRowDrop {
+  background: var(--accent-soft) !important;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.sourceIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.sourceLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sourceCount {
+  color: var(--label-tertiary);
+  font-size: var(--text-subheadline);
+  font-variant-numeric: tabular-nums;
+}
+
+.sourceEmpty {
+  padding: 6px 8px;
+  color: var(--label-tertiary);
+  font-size: var(--text-subheadline);
+  line-height: 1.4;
+}
+
+.renameInput {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--bg-content);
+  box-shadow: var(--focus-ring);
+  color: var(--label);
+}
+
+.foldersFooter {
+  display: flex;
+  height: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 12px;
+}
+
+.footerButton {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  color: var(--label-secondary);
+  font-size: var(--text-callout);
+}
+
+.footerButton:hover {
+  background: var(--fill-tertiary);
+  color: var(--label);
+}
+
+/* ====================================================================== */
+/* Notes column                                                            */
+/* ====================================================================== */
+.notes {
+  display: flex;
+  width: var(--notes-width);
+  flex-shrink: 0;
+  flex-direction: column;
+  background: var(--bg-notes-list);
+  backdrop-filter: saturate(160%) blur(20px);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  border-right: 1px solid var(--separator);
+}
+
+.overlay .notes {
+  width: 100%;
+  background: var(--bg-content);
+}
+
+.notesHeader {
+  display: flex;
+  height: var(--toolbar-height);
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.folderPicker {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  margin-left: -6px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--label);
+}
+
+.folderPicker:hover {
+  background: var(--fill-tertiary);
+}
+
+.notesTitle {
+  overflow: hidden;
+  font-size: var(--text-title3);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notesCount {
+  color: var(--label-tertiary);
+  font-size: var(--text-callout);
+  font-variant-numeric: tabular-nums;
+}
+
+.notesActions {
+  display: flex;
+  margin-left: auto;
+  gap: 2px;
+}
+
+.noteList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px 16px;
+}
+
+.noteRow {
+  position: relative;
+  padding: 9px 12px 10px;
+  border-radius: var(--radius-md);
+  cursor: default;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 66px;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+/* Hairline between rows, hidden around the selection (Apple Notes) */
+.noteRow::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 1px;
+  background: var(--separator);
+}
+
+li:last-child > .noteRow::after,
+li:has(+ li > .noteRowSelected) > .noteRow::after,
+.noteRowSelected::after {
+  display: none;
+}
+
+.noteRow:hover:not(.noteRowSelected) {
+  background: var(--fill-quaternary);
+}
+
+.noteRowSelected {
+  background: var(--accent-soft);
+}
+
+.noteRow:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.noteTitleLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.noteTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-headline);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unsavedDot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--system-orange);
+}
+
+.noteMetaLine {
+  display: flex;
+  margin-top: 2px;
+  gap: 8px;
+  font-size: var(--text-callout);
+}
+
+.noteDate {
+  flex-shrink: 0;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+}
+
+.notePreview {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--label-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noteFolder {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  color: var(--label-tertiary);
+  font-size: var(--text-subheadline);
+}
+
+.noteFolder span {
+  display: inline-flex;
+}
+
+.emptyList {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: var(--label-tertiary);
+  text-align: center;
+}
+
+.emptyTitle {
+  margin-top: 6px;
+  color: var(--label-secondary);
+  font-size: var(--text-title3);
+  font-weight: 600;
+}
+
+.emptyBody {
+  font-size: var(--text-callout);
+}
+
+.emptyButton {
+  margin-top: 10px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: var(--text-callout);
+  font-weight: 600;
+}
+
+/* Touch: 44pt targets */
+@media (pointer: coarse) {
+  .sourceButton {
+    height: 44px;
+  }
+
+  .noteRow {
+    padding: 12px 14px;
+  }
+}
