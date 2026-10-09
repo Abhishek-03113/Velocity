@@ -79,7 +79,7 @@ describe('board save queue', () => {
     failing = false
     sync.queue(1, scene(2))
     await vi.advanceTimersByTimeAsync(1500)
-    expect(sent.at(-1)?.n).toBe(2)
+    expect(sent[sent.length - 1]?.n).toBe(2)
     expect(sync.isPending(1)).toBe(false)
   })
 
