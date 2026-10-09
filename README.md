@@ -1,6 +1,6 @@
 # Velocity
 
-**v1.0** — A self-hosted notes manager built for speed.
+A fast, private, self-hosted notes app. It looks and feels like a native Mac app, and power users get a tiling workspace.
 
 Create, organize, and search notes with near-zero perceived latency. Every interaction resolves instantly in client state while the backend persists asynchronously in the background.
 
@@ -10,68 +10,88 @@ Create, organize, and search notes with near-zero perceived latency. Every inter
 
 ## Features
 
-### Notes & Tabs
+### Designed like a native Mac app
 
-- Browser-style tab bar — open multiple notes at once, close without deleting
-- Inline tab rename (double-click, Enter to confirm, Escape to cancel)
-- Sidebar note list with active-note highlighting
-- Groups (flat folders) — create, rename, delete, filter, and drag-and-drop assign
-- Up to 5 most-recent unnamed notes kept in the sidebar; named notes are always preserved
-- Unsynced indicator (dot on tab) and status-bar save state
+- Follows the **Apple Human Interface Guidelines**: a system font stack, semantic colours, vibrancy sidebar materials, a unified toolbar, segmented controls, alerts and sheets
+- **Light, Dark and Auto** appearance, plus the eight macOS **accent colours**
+- Apple Notes-style three-column layout: Folders, a notes list with date sections, previews and folder chips, and the editor
+- Untitled notes take their **title from the first line**
+- Responsive layout: the folders column collapses below 1180 px, and phones get an overlay sidebar with a single tile
+
+### Tiling workspace (Hyprland-style)
+
+- Split the editor into **tiles** and work on several notes side by side
+- **Dwindle auto-tiling**: each new tile splits the focused one along its longer side
+- Directional focus, swap, zoom (monocle), rotate split, equalise, and drag-to-resize dividers
+- Drag a note from the sidebar or the tab bar onto a tile edge to split there. Drop it in the centre to replace the note
+- Empty tiles act as a launcher: type to filter, then press ↩ to open
+- The whiteboard is just another tile (`⌘⇧D`)
+- Tabs and the tile layout are restored after a reload
 
 ### Editor
 
-- **CodeMirror 6** — multi-cursor (`Alt` + click), undo/redo, rectangular selection
-- **Markdown** with Catppuccin syntax highlighting and Obsidian-style live preview
-- **Read mode** — full rendered preview (`⌘/Ctrl + E`)
-- Rich formatting shortcuts — bold, italic, inline code, strikethrough, links
-- Image paste, drag-and-drop, and clipboard insert — stored as server-side assets (not embedded data URLs)
-- Clickable task-list checkboxes in live preview
-- Status bar — word count, line count, group, save state
+- **CodeMirror 6** with Obsidian-style live preview: headings, emphasis, bullets, round checklist toggles and images
+- Proportional reading type by default. Choose System, Serif or Mono, set the text size and line width
+- **Read mode** (`⌘E`) for typeset Markdown, sanitised with DOMPurify
+- Formatting shortcuts: bold, italic, strikethrough, inline code, link, cycle heading, checklist
+- Paste or drop images. They are stored as server-side assets
+- Status bar: words, characters, save state, and a warning when a note passes the 1 MB soft cap
 
-### Whiteboard
+### Find anything
 
-- Per-note **Excalidraw** drawing board (`⌘/Ctrl + Shift + D`)
-- Resizable split pane alongside the editor
-- Scenes persisted in `localStorage` per note
+- **Command palette** (`⌘P`): full-text note search with highlighted matches. Type `>` to run any command. `⌘↩` opens the result in a new tile
+- FlexSearch index cached in `localStorage`, so it is never rebuilt cold
+- Find in note (`⌘F`)
 
-### Search
+### Sync & durability
 
-- **FlexSearch** full-text index over titles and content — sub-10 ms, client-side
-- Index serialized to `localStorage` and hydrated on startup (no cold rebuild)
-- Inline search in the editor (`⌘/Ctrl + F`)
-- Global search across all notes (`⌘/Ctrl + Shift + F`)
-
-### Sync & Durability
-
-- **Local-first** — UI never waits on the network
-- Debounced writes (~800 ms idle) to a SQLite backend
-- Retry queue with exponential backoff (max 3 attempts)
-- Lazy content fetch — body loaded on first tab open, not at startup
-- Write failures logged server-side; dirty-state dot is the only user-facing signal
+- **Local-first**: the UI never waits on the network
+- An auto-save worker with per-note revisions and a single in-flight request. It sends partial payloads, debounces for 800 ms with a 5 s max-wait, and **flushes on tab close and page hide**
+- Back-off retries, then a visible "Offline" state. Saving resumes automatically on reconnect. `⌘S` forces a save
+- Destructive actions (delete note, delete folder) use HIG alerts, with Cancel as the default
+- **Markdown export worker** mirrors every note to `~/velocity_docs`. It is event-driven and incremental, follows renames and deletes, and copies images next to the Markdown files
 
 ---
 
 ## Keyboard Shortcuts
 
-| Action | macOS | Windows / Linux |
-|---|---|---|
-| New note | `⌘ N` | `Ctrl + N` |
-| Close tab | `⌘ W` | `Ctrl + W` |
-| Read mode | `⌘ E` | `Ctrl + E` |
-| Toggle whiteboard | `⌘ ⇧ D` | `Ctrl + Shift + D` |
-| Inline search | `⌘ F` | `Ctrl + F` |
-| Global search | `⌘ ⇧ F` | `Ctrl + Shift + F` |
-| Toggle sidebar | `⌘ 1` | `Ctrl + 1` |
-| Bold | `⌘ B` | `Ctrl + B` |
-| Italic | `⌘ I` | `Ctrl + I` |
-| Inline code | `⌘ ⇧ C` | `Ctrl + Shift + C` |
-| Strikethrough | `⌘ ⇧ X` | `Ctrl + Shift + X` |
-| Insert link | `⌘ K` | `Ctrl + K` |
-| Multi-cursor | `⌥ Click` | `Alt + Click` |
-| Undo / Redo | `⌘ Z` / `⌘ ⇧ Z` | `Ctrl + Z` / `Ctrl + Shift + Z` |
+Browsers reserve `⌘/Ctrl + N`, `W`, `T` and `1–9`, so they never reach a web page. Every such action also lives on the **`⌃⌥` (Ctrl + Alt) layer**, which works the way Hyprland's Super key does for window management. Shortcuts match physical keys, so they work on any keyboard layout. `AltGr` is ignored, so typing `@ { [ €` never triggers a shortcut.
 
-Press the `?` button in the top bar for the in-app shortcuts reference.
+`Mod` is `⌘` on macOS and `Ctrl` on Windows and Linux. Press `Mod + /` in the app for the full sheet.
+
+| Action | Shortcut |
+|---|---|
+| New note | `Ctrl+Alt+N` (`Mod+N` where the browser allows it) |
+| New note in a new tile | `Ctrl+Alt+Shift+N` |
+| Close note tab | `Ctrl+Alt+W` |
+| Rename note | `F2` |
+| Save now | `Mod+S` |
+| Delete note | `Mod+Shift+Backspace` |
+| Export as Markdown | `Mod+Shift+E` |
+| Search notes / quick open | `Mod+P` or `Mod+Shift+F` |
+| Command palette | `Mod+Shift+P` or `F1` |
+| Find in note | `Mod+F` |
+| Next / previous tab | `Ctrl+Alt+]` / `Ctrl+Alt+[` |
+| Go to tab 1–9 | `Ctrl+Alt+1…9` |
+| Focus notes list | `Ctrl+Alt+0` |
+| Split tile (auto) | `Mod+\` |
+| Split right / down | `Ctrl+Alt+\` / `Ctrl+Alt+-` |
+| Focus tile | `Ctrl+Alt+Arrows` or `Ctrl+Alt+H/J/K/L` |
+| Move note to neighbouring tile | `Ctrl+Alt+Shift+Arrows` |
+| Zoom tile | `Ctrl+Alt+Enter` |
+| Close tile | `Ctrl+Alt+Q` |
+| Equalise / rotate split | `Ctrl+Alt+=` / `Ctrl+Alt+R` |
+| Toggle sidebar / folders | `Ctrl+Alt+S` / `Ctrl+Alt+Shift+S` |
+| Read mode | `Mod+E` |
+| Whiteboard tile | `Mod+Shift+D` |
+| Text size | `Mod+=` / `Mod+-` / `Mod+0` |
+| Settings | `Mod+,` |
+| Bold / italic / link | `Mod+B` / `Mod+I` / `Mod+K` |
+| Strikethrough / inline code | `Mod+Shift+X` / `Mod+Shift+M` |
+| Cycle heading / checklist | `Mod+Shift+H` / `Mod+Shift+L` |
+| Multi-cursor | `Alt + Click` |
+
+In the notes list, `↑`/`↓` browse, `↩` opens, `⌘↩` or `Alt+↩` opens in a new tile, and `⌫` deletes after confirmation.
 
 ---
 
@@ -81,14 +101,14 @@ Press the `?` button in the top bar for the in-app shortcuts reference.
 |---|---|---|
 | Frontend | React 18 + Vite | Fast builds, small bundles |
 | Editor | CodeMirror 6 | Multi-cursor, Markdown, keymaps |
-| Whiteboard | Excalidraw | Per-note drawing canvas |
+| Whiteboard | Excalidraw | Per-note drawing canvas (lazy-loaded) |
 | State | Zustand | Client-side source of truth |
 | Search | FlexSearch | Sub-10 ms full-text search |
-| Styling | Tailwind CSS 4 + CSS Modules | Scoped, zero-runtime-cost styles |
-| Backend | Hono on Node.js | Thin REST API |
+| Styling | CSS Modules + HIG design tokens | Scoped, zero-runtime styles; light/dark/accent theming |
+| Backend | Hono on Node.js | Thin REST API (gzip for note bodies) |
 | Database | SQLite (better-sqlite3) | Embedded persistence |
-| Proxy | nginx | Reverse proxy + static serving |
-| Deploy | Docker Compose | Self-contained deployment |
+| Tests | Vitest, node:test, Playwright | Unit, API/worker, end-to-end |
+| Deploy | Docker Compose + nginx | Self-contained deployment |
 
 ---
 
@@ -140,25 +160,43 @@ npm run build        # production client build
 cd client && npm run lint
 ```
 
+### Tests
+
+```bash
+cd client && npm test            # Vitest: tiling engine, auto-save worker, shortcuts, note metadata
+cd server && npm test            # node:test: API routes + Markdown export worker
+cd client && npm run test:e2e    # Playwright (headless Chromium): full product walkthrough
+```
+
+The E2E suite starts its own API server on a throwaway database. It writes review screenshots to [`docs/screenshots/after/`](docs/screenshots/after). The original UI is preserved in [`docs/screenshots/before/`](docs/screenshots/before), and the redesign plan and UX audit are in [`docs/ux-revamp/PLAN.md`](docs/ux-revamp/PLAN.md).
+
 ---
 
 ## Project Structure
 
 ```
 Velocity/
-├── client/                  # Vite + React frontend
+├── client/                    # Vite + React frontend
+│   ├── e2e/                   # Playwright end-to-end suite
 │   └── src/
-│       ├── components/      # Editor, PasteList, Whiteboard, SearchModal, …
-│       ├── store/           # Zustand slices (editor, groups, search, whiteboard)
-│       └── lib/             # API client, image upload helpers
-├── server/                  # Hono + Node.js backend
-│   ├── routes/              # /api/pastes, /api/groups, /api/assets
-│   ├── db/                  # SQLite client + migrations
-│   └── workers/             # Background markdown sync
-├── data/                    # SQLite database (gitignored)
+│       ├── components/
+│       │   ├── chrome/        # Toolbar, tab bar, status bar
+│       │   ├── sidebar/       # Folders + notes list
+│       │   ├── workspace/     # Tiling workspace, tiles, empty-tile launcher
+│       │   ├── overlays/      # Command palette, alerts, settings, shortcuts sheet
+│       │   └── ui/            # HIG controls (segmented, toolbar button, menu, kbd)
+│       ├── lib/               # tiling engine, sync engine, command registry, workspace actions
+│       ├── store/             # Zustand: editor, layout, ui, groups, search
+│       └── styles/            # Design tokens + global base styles
+├── server/                    # Hono + Node.js backend
+│   ├── routes/                # /api/pastes, /api/groups, /api/assets
+│   ├── db/                    # SQLite client + migrations
+│   ├── workers/               # Markdown export worker
+│   └── tests/                 # API + worker tests
+├── docs/                      # Redesign plan, before/after screenshots
+├── data/                      # SQLite database (gitignored)
 ├── docker-compose.yml
-├── Makefile
-└── .env.example
+└── Makefile
 ```
 
 ---
@@ -172,6 +210,10 @@ Copy `.env.example` to `.env` before starting.
 | `PORT` | `3000` | Hono server listen port |
 | `CLIENT_URL` | `http://localhost:5173` | Allowed CORS origin |
 | `VITE_API_URL` | `http://localhost:3000` | API base URL (client build-time) |
+| `DB_PATH` | `data/velocity.db` | SQLite database file |
+| `ASSETS_DIR` | `data/assets` | Uploaded image storage |
+| `DOCS_DIR` | `~/velocity_docs` | Markdown export folder |
+| `DOCS_SYNC` | `on` | Set to `off` to disable the Markdown export worker |
 
 For Docker, set `CLIENT_URL=http://localhost:37801` and `VITE_API_URL=http://localhost:37800` in `.env`.
 
@@ -186,21 +228,19 @@ All routes return `{ success, data?, error? }`.
 | `GET` | `/api/pastes` | List notes (metadata only) |
 | `GET` | `/api/pastes/:id` | Fetch note with content |
 | `POST` | `/api/pastes` | Create note |
-| `PUT` | `/api/pastes/:id` | Update note |
+| `PUT` | `/api/pastes/:id` | Partial update (returns metadata, not the body) |
 | `DELETE` | `/api/pastes/:id` | Delete note |
 | `GET/POST/PUT/DELETE` | `/api/groups` | Group CRUD |
 | `POST` | `/api/assets` | Upload image asset |
 
 ---
 
-## Known Limitations (v1)
+## Known Limitations
 
-- No authentication — intended for trusted local / self-hosted use
+- No authentication. Velocity is intended for trusted local or self-hosted use
 - No collaboration or real-time sync
-- No export / import
-- Whiteboard data is browser-local (`localStorage`), not synced to SQLite
-- 1 MB per-note soft cap is planned but not yet surfaced in the UI
-- No automated test suite yet
+- Whiteboards, preferences and the tile layout are stored per browser (`localStorage`). Notes are stored in SQLite
+- Browser-reserved shortcuts (`⌘N`, `⌘W`, `⌘1`) only work where the browser passes them through. Use the `⌃⌥` equivalents
 
 ---
 
