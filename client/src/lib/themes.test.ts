@@ -80,6 +80,39 @@ describe('theme registry', () => {
     expect(COMMANDS.find((c) => c.id === 'theme.catppuccin.light.latte')?.title).toBe('Theme: Catppuccin Latte')
     expect(COMMANDS.find((c) => c.id === 'theme.nord.dark.nord')).toBeUndefined()
   })
+
+  it('has a Gruvbox family with Hard/Medium/Soft contrast in both appearances', () => {
+    const g = getThemeFamily('gruvbox')
+    expect(g.variantLabel).toBe('Contrast')
+    for (const a of ['light', 'dark'] as const) {
+      expect(variantsFor(g, a).map((v) => v.id)).toEqual(['hard', 'medium', 'soft'])
+      expect(variantsFor(g, a).map((v) => v.name)).toEqual(['Hard', 'Medium', 'Soft'])
+      expect(defaultVariantId(g, a)).toBe('medium')
+    }
+    expect(themeIndex()['gruvbox']?.variants).toEqual({
+      light: { default: 'medium', ids: ['hard', 'medium', 'soft'] },
+      dark: { default: 'medium', ids: ['hard', 'medium', 'soft'] },
+    })
+    // Swatch bg0 follows gruvbox.vim: dark0_hard/dark0/dark0_soft and light0_hard/light0/light0_soft.
+    expect(variantsFor(g, 'dark').map((v) => v.swatch.bg)).toEqual(['#1d2021', '#282828', '#32302f'])
+    expect(variantsFor(g, 'light').map((v) => v.swatch.bg)).toEqual(['#f9f5d7', '#fbf1c7', '#f2e5bc'])
+    expect(swatchFor(g, 'dark', 'soft').bg).toBe('#32302f')
+    expect(resolveVariant(g, 'light', { gruvbox: { light: 'soft' } })).toBe('soft')
+    expect(resolveVariant(g, 'dark', undefined)).toBe('medium')
+  })
+
+  it('qualifies Gruvbox variant commands with the appearance (Hard/Medium/Soft exist in both)', () => {
+    const titles = COMMANDS.filter((c) => c.id.startsWith('theme.gruvbox.')).map((c) => c.title)
+    expect(titles).toEqual([
+      'Theme: Gruvbox Light Hard',
+      'Theme: Gruvbox Light Medium',
+      'Theme: Gruvbox Light Soft',
+      'Theme: Gruvbox Dark Hard',
+      'Theme: Gruvbox Dark Medium',
+      'Theme: Gruvbox Dark Soft',
+    ])
+    expect(COMMANDS.find((c) => c.id === 'theme.gruvbox.dark.hard')).toBeTruthy()
+  })
 })
 
 describe('Everforest family', () => {

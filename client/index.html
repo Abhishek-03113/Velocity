@@ -23,7 +23,7 @@
       // appearances + variant ids/defaults) and LEGACY (old family ids) are kept in sync with
       // the registry by a unit test (themes.test.ts); regenerate them from themeIndex()/LEGACY_THEME_FAMILIES.
       try {
-        var THEMES = {"apple":{"appearances":["light","dark"]},"catppuccin":{"appearances":["light","dark"],"variants":{"light":{"default":"latte","ids":["latte"]},"dark":{"default":"mocha","ids":["frappe","macchiato","mocha"]}}},"gruvbox":{"appearances":["light","dark"]},"everforest":{"appearances":["light","dark"],"variants":{"light":{"default":"medium","ids":["hard","medium","soft"]},"dark":{"default":"medium","ids":["hard","medium","soft"]}}},"nord":{"appearances":["light","dark"]},"solarized":{"appearances":["light","dark"]}}
+        var THEMES = {"apple":{"appearances":["light","dark"]},"catppuccin":{"appearances":["light","dark"],"variants":{"light":{"default":"latte","ids":["latte"]},"dark":{"default":"mocha","ids":["frappe","macchiato","mocha"]}}},"gruvbox":{"appearances":["light","dark"],"variants":{"light":{"default":"medium","ids":["hard","medium","soft"]},"dark":{"default":"medium","ids":["hard","medium","soft"]}}},"everforest":{"appearances":["light","dark"],"variants":{"light":{"default":"medium","ids":["hard","medium","soft"]},"dark":{"default":"medium","ids":["hard","medium","soft"]}}},"nord":{"appearances":["light","dark"]},"solarized":{"appearances":["light","dark"]}}
         var LEGACY = {"catppuccin-macchiato":{"family":"catppuccin","variants":{"dark":"macchiato"}}}
         var d = document.documentElement
         var p = JSON.parse(localStorage.getItem('velocity.prefs.v1') || '{}')
