@@ -66,6 +66,7 @@ export default function Toolbar() {
   const { sidebarOpen, toggleSidebar } = useUiStore(
     useShallow((s) => ({ sidebarOpen: s.sidebarOpen, toggleSidebar: s.toggleSidebar })),
   )
+  const sliding = useLayoutStore((s) => s.mode === 'sliding')
   const { noteId, tileMode, tileCount, focusedKind, boardOpen } = useLayoutStore(
     useShallow((s) => {
       const leaf = findLeaf(s.root, s.focusedId)
@@ -116,8 +117,8 @@ export default function Toolbar() {
         { label: 'Duplicate', icon: 'doc.on.doc', disabled: id == null, onSelect: () => duplicateNote(id) },
         { label: 'Export as Markdown', icon: 'square.and.arrow.down', shortcut: primaryKey('note.export'), disabled: id == null, onSelect: () => exportMarkdown(id) },
         { separator: true },
-        { label: 'Split Right', icon: 'rectangle.split.2x1', shortcut: primaryKey('tile.splitRight'), onSelect: () => splitTile('row') },
-        { label: 'Split Down', icon: 'rectangle.split.1x2', shortcut: primaryKey('tile.splitDown'), onSelect: () => splitTile('column') },
+        { label: sliding ? 'New Column' : 'Split Right', icon: 'rectangle.split.2x1', shortcut: primaryKey('tile.splitRight'), onSelect: () => splitTile('row') },
+        { label: sliding ? 'Stack Below' : 'Split Down', icon: 'rectangle.split.1x2', shortcut: primaryKey('tile.splitDown'), onSelect: () => splitTile('column') },
         ...(tileCount > 1
           ? [
               { label: 'Zoom Tile', icon: 'arrow.up.left.and.arrow.down.right' as const, shortcut: primaryKey('tile.zoom'), onSelect: () => useLayoutStore.getState().toggleZoom() },
@@ -203,7 +204,7 @@ export default function Toolbar() {
         <ToolbarButton
           className={styles.hideCompact}
           icon="rectangle.split.2x1"
-          label="Split Tile"
+          label={sliding ? 'New Column' : 'Split Tile'}
           shortcut={primaryKey('tile.split')}
           onClick={() => splitTile('auto')}
         />

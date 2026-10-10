@@ -1,4 +1,5 @@
 import { useShallow } from 'zustand/react/shallow'
+import { useLayoutStore } from '../../store/layoutStore'
 import { ACCENTS, useUiStore, type Accent } from '../../store/uiStore'
 import { THEME_FAMILIES, getThemeFamily, swatchFor, type ThemeFamily, type Appearance } from '../../lib/themes'
 import { Icon } from '../Icon'
@@ -42,6 +43,26 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
     >
       <span className={styles.switchKnob} />
     </button>
+  )
+}
+
+function TilingModeRow() {
+  const mode = useLayoutStore((s) => s.mode)
+  return (
+    <Row
+      label="Tiling"
+      hint={mode === 'sliding' ? 'Columns on a scrolling strip' : 'Splits that halve the focused tile'}
+    >
+      <Segmented
+        label="Tiling mode"
+        value={mode}
+        onChange={(v) => useLayoutStore.getState().setTilingMode(v)}
+        options={[
+          { value: 'dwindle', label: 'Dwindle' },
+          { value: 'sliding', label: 'Sliding' },
+        ]}
+      />
+    </Row>
   )
 }
 
@@ -216,6 +237,11 @@ export default function SettingsSheet() {
         <Row label="Check spelling">
           <Toggle label="Check spelling" checked={prefs.spellcheck} onChange={(v) => setPref('spellcheck', v)} />
         </Row>
+      </div>
+
+      <h3 className={styles.groupHeading}>Tiling</h3>
+      <div className={styles.group}>
+        <TilingModeRow />
       </div>
 
       <h3 className={styles.groupHeading}>Notes list</h3>

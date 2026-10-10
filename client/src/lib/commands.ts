@@ -37,6 +37,7 @@ export interface Command {
 
 const hasNote = () => ws.currentNoteId() != null
 const multipleTiles = () => leaves(useLayoutStore.getState().root).length > 1
+const isSliding = () => useLayoutStore.getState().mode === 'sliding'
 const focusedIsNote = () => {
   const { root, focusedId } = useLayoutStore.getState()
   return findLeaf(root, focusedId)?.content.kind === 'note'
@@ -281,13 +282,47 @@ export const COMMANDS: Command[] = [
     enabled: multipleTiles,
   },
   {
+    id: 'tile.mode',
+    title: 'Toggle Tiling Mode (Dwindle / Sliding)',
+    section: 'Tiles',
+    keys: ['Ctrl+Alt+KeyT'],
+    keywords: 'layout columns scrolling niri paperwm hyprland switch',
+    run: () => ws.toggleTilingMode(),
+  },
+  {
+    id: 'tile.cycleWidth',
+    title: 'Cycle Column Width',
+    section: 'Tiles',
+    keys: ['Ctrl+Alt+KeyC'],
+    keywords: 'sliding resize third half two thirds full',
+    run: () => useLayoutStore.getState().cycleColumnWidth(1),
+    enabled: isSliding,
+  },
+  ...(
+    [
+      ['One Third', 1 / 3],
+      ['One Half', 1 / 2],
+      ['Two Thirds', 2 / 3],
+      ['Full Width', 1],
+    ] as const
+  ).map(
+    ([name, width]): Command => ({
+      id: `tile.width.${name.toLowerCase().replace(/ /g, '-')}`,
+      title: `Column Width: ${name}`,
+      section: 'Tiles',
+      keywords: 'sliding resize column',
+      run: () => ws.setFocusedColumnWidth(width),
+      enabled: isSliding,
+    }),
+  ),
+  {
     id: 'tile.rotate',
     title: 'Rotate Split',
     section: 'Tiles',
     keys: ['Ctrl+Alt+KeyR'],
     keywords: 'toggle orientation togglesplit',
     run: () => useLayoutStore.getState().rotate(),
-    enabled: multipleTiles,
+    enabled: () => multipleTiles() && !isSliding(),
   },
 
   // ---- View ----------------------------------------------------------------
