@@ -6,9 +6,9 @@ Branch: `feature/apple-hig-ui-revamp`. The plan and the full UX audit are in [PL
 
 | | Before | After |
 |---|---|---|
-| Main window | ![](../screenshots/before/01-main.png) | ![](../screenshots/after/03-library-light.png) |
-| Search | ![](../screenshots/before/02-search.png) | ![](../screenshots/after/12-palette-search.png) |
-| Phone | ![](../screenshots/before/03-mobile.png) | ![](../screenshots/after/57-mobile-editor.png) |
+| Main window | ![](../screenshots/before/01-main.png) | ![](../screenshots/after/12-library-light.png) |
+| Search | ![](../screenshots/before/02-search.png) | ![](../screenshots/after/21-palette-search.png) |
+| Phone | ![](../screenshots/before/03-mobile.png) | ![](../screenshots/after/69-mobile-editor.png) |
 
 The screenshots from this round are in [Round 2](#round-2-themes-folders-synced-whiteboards-cleanup-sliding-tiling). Every screenshot in `docs/screenshots/after/` comes from the Playwright suite (`cd client && npm run test:e2e`) and is regenerated on each run:
 
@@ -50,20 +50,19 @@ Branch: `feature/themes-groups-whiteboard-sync-tiling-modes`. Screenshots are in
 
 ### Colour themes
 
-Seven families (Apple, Catppuccin, Catppuccin Macchiato, Gruvbox, Everforest, Nord, Solarized), each Light and Dark. Each family is one CSS file in `client/src/styles/themes/`, registered in `client/src/lib/themes.ts` and in the pre-paint map in `client/index.html`, so there is no flash on load. `--syntax-*` variables theme the editor, and "Theme default" follows the family's accent.
+Seven families at this point (Apple, Catppuccin, Catppuccin Macchiato, Gruvbox, Everforest, Nord, Solarized), each Light and Dark. Round 3 below replaces this set with six families that have variants. Each family is one CSS file in `client/src/styles/themes/`, registered in `client/src/lib/themes.ts` and in the pre-paint map in `client/index.html`, so there is no flash on load. `--syntax-*` variables theme the editor, and "Theme default" follows the family's accent.
 
 | Screen | Shot |
 |---|---|
-| Picker, Apple | ![](../screenshots/after/27-theme-picker-apple.png) |
-| Catppuccin light / dark | ![](../screenshots/after/29-app-catppuccin-light.png) ![](../screenshots/after/31-app-catppuccin-dark.png) |
-| Macchiato light / dark | ![](../screenshots/after/33-app-catppuccin-macchiato-light.png) ![](../screenshots/after/35-app-catppuccin-macchiato-dark.png) |
-| Gruvbox light / dark | ![](../screenshots/after/37-app-gruvbox-light.png) ![](../screenshots/after/39-app-gruvbox-dark.png) |
-| Everforest light / dark | ![](../screenshots/after/41-app-everforest-light.png) ![](../screenshots/after/43-app-everforest-dark.png) |
-| Solarized light / dark | ![](../screenshots/after/45-app-solarized-light.png) ![](../screenshots/after/47-app-solarized-dark.png) |
-| Nord light / dark | ![](../screenshots/after/49-app-nord-light.png) ![](../screenshots/after/51-app-nord-dark.png) |
-| Whiteboard and find panel in Gruvbox dark | ![](../screenshots/after/52-whiteboard-gruvbox-dark.png) ![](../screenshots/after/53-find-panel-gruvbox-dark.png) |
+| Picker, Apple | ![](../screenshots/after/36-theme-picker-apple.png) |
+| Catppuccin light / dark | ![](../screenshots/after/38-app-catppuccin-light.png) ![](../screenshots/after/40-app-catppuccin-dark.png) |
+| Gruvbox light / dark | ![](../screenshots/after/42-app-gruvbox-light.png) ![](../screenshots/after/44-app-gruvbox-dark.png) |
+| Everforest light / dark | ![](../screenshots/after/46-app-everforest-light.png) ![](../screenshots/after/48-app-everforest-dark.png) |
+| Solarized light / dark | ![](../screenshots/after/50-app-solarized-light.png) ![](../screenshots/after/52-app-solarized-dark.png) |
+| Nord light / dark | ![](../screenshots/after/54-app-nord-light.png) ![](../screenshots/after/56-app-nord-dark.png) |
+| Whiteboard and find panel in Gruvbox dark | ![](../screenshots/after/57-whiteboard-gruvbox-dark.png) ![](../screenshots/after/58-find-panel-gruvbox-dark.png) |
 
-The picker shots (28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50) show Settings for each family and appearance.
+The `*-theme-picker-*` shots in `after/` show Settings for each family and appearance.
 
 ### Folders
 
@@ -71,12 +70,12 @@ Unfiled is listed last. "Move to Folder" is on the note-row chip, the toolbar fo
 
 | Screen | Shot |
 |---|---|
-| Unfiled last | ![](../screenshots/after/06-folders-unfiled-last.png) |
-| Move menu from the row chip | ![](../screenshots/after/07-move-menu-row.png) |
-| Move menu from the toolbar | ![](../screenshots/after/08-move-menu-toolbar.png) |
-| New Folder… | ![](../screenshots/after/09-move-new-folder.png) |
-| Palette move mode | ![](../screenshots/after/10-move-palette.png) |
-| Header drop and spring-open | ![](../screenshots/after/11-drag-header-spring-open.png) |
+| Unfiled last | ![](../screenshots/after/15-folders-unfiled-last.png) |
+| Move menu from the row chip | ![](../screenshots/after/16-move-menu-row.png) |
+| Move menu from the toolbar | ![](../screenshots/after/17-move-menu-toolbar.png) |
+| New Folder… | ![](../screenshots/after/18-move-new-folder.png) |
+| Palette move mode | ![](../screenshots/after/19-move-palette.png) |
+| Header drop and spring-open | ![](../screenshots/after/20-drag-header-spring-open.png) |
 
 ### Whiteboards in SQLite
 
@@ -84,8 +83,8 @@ Scenes live in the `whiteboards` table (`ON DELETE CASCADE`), behind `GET/PUT/DE
 
 | Screen | Shot |
 |---|---|
-| Board drawn on device A | ![](../screenshots/after/60-board-drawn-device-a.png) |
-| Same board loaded on device B | ![](../screenshots/after/61-board-loaded-device-b.png) |
+| Board drawn on device A | ![](../screenshots/after/72-board-drawn-device-a.png) |
+| Same board loaded on device B | ![](../screenshots/after/73-board-loaded-device-b.png) |
 
 ### Empty-note cleanup
 
@@ -93,7 +92,7 @@ Untitled, blank, board-less notes are pruned. The client removes inactive ones (
 
 | Screen | Shot |
 |---|---|
-| Empty notes pruned | ![](../screenshots/after/59-empty-notes-pruned.png) |
+| Empty notes pruned | ![](../screenshots/after/71-empty-notes-pruned.png) |
 
 ### Sliding tiling
 
@@ -101,16 +100,62 @@ A scrolling mode beside dwindle, in `client/src/lib/sliding.ts`. The layout pers
 
 | Screen | Shot |
 |---|---|
-| Switch mode from the palette | ![](../screenshots/after/62-sliding-palette.png) |
-| Four columns | ![](../screenshots/after/63-sliding-four-columns.png) |
-| Scrolled to the start | ![](../screenshots/after/64-sliding-scrolled-start.png) |
-| Width ⅔ / full / ⅓ | ![](../screenshots/after/65-sliding-width-two-thirds.png) ![](../screenshots/after/66-sliding-width-full.png) ![](../screenshots/after/67-sliding-width-third.png) |
-| Stacked tiles | ![](../screenshots/after/68-sliding-stacked.png) |
-| Back to dwindle | ![](../screenshots/after/69-sliding-back-to-dwindle.png) |
-| Settings "Tiling" row | ![](../screenshots/after/70-sliding-settings.png) |
-| Dark | ![](../screenshots/after/71-sliding-dark.png) |
+| Switch mode from the palette | ![](../screenshots/after/74-sliding-palette.png) |
+| Four columns | ![](../screenshots/after/75-sliding-four-columns.png) |
+| Scrolled to the start | ![](../screenshots/after/76-sliding-scrolled-start.png) |
+| Width ⅔ / full / ⅓ | ![](../screenshots/after/77-sliding-width-two-thirds.png) ![](../screenshots/after/78-sliding-width-full.png) ![](../screenshots/after/79-sliding-width-third.png) |
+| Stacked tiles | ![](../screenshots/after/80-sliding-stacked.png) |
+| Back to dwindle | ![](../screenshots/after/81-sliding-back-to-dwindle.png) |
+| Settings "Tiling" row | ![](../screenshots/after/82-sliding-settings.png) |
+| Dark | ![](../screenshots/after/83-sliding-dark.png) |
 
 Excalidraw is also pre-bundled through `optimizeDeps.include` in `client/vite.config.ts`, so the first whiteboard open in dev no longer triggers a dependency re-optimise.
+
+## Round 3: built-in theme families
+
+Branch: `feature/themes-groups-whiteboard-sync-tiling-modes`. Round 2's seven families became six, with per-appearance **variants**. Variants are declared in `client/src/lib/themes.ts` (its header documents the API): a family lists variants per appearance, `<html data-theme-variant>` carries the choice (absent when the family has none), Settings shows a chip row labelled "Flavour" or "Contrast", the command palette gets a "Theme: <Family> <Variant>" command per variant, and preferences keep one variant per family and appearance. The old `catppuccin-macchiato` family migrates to `catppuccin` + `macchiato` through `LEGACY_THEME_FAMILIES`.
+
+### Families, sources and mapping
+
+| Family | Variants | Source |
+|---|---|---|
+| Catppuccin | Latte (light), Frappé / Macchiato / Mocha (dark, default Mocha). Row label "Flavour" | [catppuccin/palette](https://github.com/catppuccin/palette) `palette.json` v1.8.0 |
+| Gruvbox | Dark and Light, each Hard / Medium (default) / Soft. Row label "Contrast" | [morhetz/gruvbox](https://github.com/morhetz/gruvbox) `colors/gruvbox.vim` at `ef8864b` |
+| Everforest | Dark and Light, each Hard / Medium (default) / Soft. Row label "Contrast" | [sainnhe/everforest](https://github.com/sainnhe/everforest) `autoload/everforest.vim` at `85a86eb` (v0.3.0) |
+| Apple, Nord, Solarized | none | unchanged |
+
+All hex values are copied from those files; the CSS headers in `client/src/styles/themes/` name the source and the mapping.
+
+* **Catppuccin.** Follows the style guide: `base` is content, `mantle` / `crust` are the sidebar, toolbars and workspace, `surface0-2` are fills and separators. Syntax: keyword mauve, string green, number peach, function blue, type yellow, property teal, comment overlay2. Accent is mauve.
+* **Gruvbox.** Dark uses the bright accents on `dark0*`, light uses the faded accents on `light0*`, as `gruvbox.vim` does. Hard / medium / soft change only the base background. Accent is orange.
+* **Everforest.** Contrast changes the background ramp (`bg_dim`, `bg0-5` and the tinted backgrounds); the foreground palette is shared per appearance. The exact light green (`#8da101`) is about 2.7:1 on `bg0`, so the light "Theme default" accent is blended 65/35 toward the foreground; `--system-green` stays exact. Accent is green.
+* **Pre-paint.** The `var THEMES = ...` map in `client/index.html` is generated from `themeIndex()`; `themes.test.ts` fails until it matches, and it also covers variant parsing, the legacy migration and prefs sanitising.
+
+### Screenshots
+
+| Family | Folder | Contents |
+|---|---|---|
+| Catppuccin | [`theme-catppuccin/`](../screenshots/theme-catppuccin) | picker (Auto rows, Flavour row, phone), app in Frappé, Macchiato, Mocha and Latte |
+| Gruvbox | [`theme-gruvbox/`](../screenshots/theme-gruvbox) | picker (Auto rows, Contrast row, phone), app in dark and light × hard / medium / soft |
+| Everforest | [`theme-everforest/`](../screenshots/theme-everforest) | picker (Auto rows, Contrast row, phone), app in dark and light × hard / medium / soft |
+
+Previews: ![](../screenshots/theme-catppuccin/54-catppuccin-app-mocha.png) ![](../screenshots/theme-gruvbox/62-app-dark-hard.png) ![](../screenshots/theme-everforest/70-06-app-light-hard.png)
+
+The canonical `after/` set was regenerated from the full suite and also contains the Gruvbox and Everforest shots, so its numbering differs from Round 2's.
+
+### Tests
+
+| Suite | Count |
+|---|---|
+| Client unit (Vitest) | 106 |
+| Server (`node:test`) | 20 |
+| End-to-end (Playwright) | 39 |
+
+New E2E specs: `theme-gruvbox.spec.ts`, `theme-everforest.spec.ts` (Catppuccin variants are covered in `velocity.spec.ts`'s theme test) and `palette-warmup.spec.ts`.
+
+### Palette search flake
+
+On a cold start `velocity.spec.ts` › "command palette: full-text search" failed once on `toContainText('Kyoto')`. Cause: after load, `warmSearchIndex` fetches note bodies in the background, but the palette computed its results only when the query changed. A query typed before the Kyoto note was indexed showed only "Create note", and stayed stale after the index filled. The theme specs were not involved (they delete their notes and the palette test runs in a fresh browser context). `CommandPalette` now also depends on the `pastes` list, which `warmSearchIndex` refreshes when it finishes, and `palette-warmup.spec.ts` delays one note's fetch to cover the case deterministically.
 
 ## Performance
 
@@ -162,9 +207,9 @@ The API also stopped echoing the note body in `PUT` responses, and note routes a
 
 | Suite | Command | Count |
 |---|---|---|
-| Client unit (Vitest) | `cd client && npm test` | 94 |
+| Client unit (Vitest) | `cd client && npm test` | 106 |
 | Server API + worker (`node:test`) | `cd server && npm test` | 20 |
-| End-to-end (Playwright, headless Chromium) | `cd client && npm run test:e2e` | 35 |
+| End-to-end (Playwright, headless Chromium) | `cd client && npm run test:e2e` | 39 |
 
 The E2E suite runs against a throwaway database. It covers:
 
@@ -173,7 +218,7 @@ The E2E suite runs against a throwaway database. It covers:
 * layout restore, drag-to-tile, the whiteboard tile and read mode
 * formatting keys, the delete alert, offline recovery, settings and the phone layout
 * a large-note typing budget
-* theme switching, folder moves, board sync between two devices, empty-note pruning and sliding mode
+* theme switching (including Gruvbox and Everforest contrast variants), the palette's search warm-up, folder moves, board sync between two devices, empty-note pruning and sliding mode
 
 ## Follow-ups worth considering
 

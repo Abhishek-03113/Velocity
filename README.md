@@ -14,7 +14,7 @@ Create, organize, and search notes with near-zero perceived latency. Every inter
 
 - Follows the **Apple Human Interface Guidelines**: a system font stack, semantic colours, vibrancy sidebar materials, a unified toolbar, segmented controls, alerts and sheets
 - **Light, Dark and Auto** appearance, plus the eight macOS **accent colours**
-- **Modular colour themes**: Apple (default), Catppuccin, Catppuccin Macchiato, Gruvbox, Everforest, Nord and Solarized, each in Light and Dark. Pick one in Settings. Each theme also themes the editor's syntax colours (`--syntax-*`), and "Theme default" uses the theme's own accent
+- **Modular colour themes**: Apple (default), Catppuccin (Latte, Frappé, Macchiato, Mocha), Gruvbox and Everforest (Hard, Medium or Soft contrast), Nord and Solarized, each in Light and Dark. Pick a theme and its flavour or contrast in Settings, or from the command palette. Each theme also themes the editor's syntax colours (`--syntax-*`), and "Theme default" uses the theme's own accent
 - Apple Notes-style three-column layout: Folders, a notes list with date sections, previews and folder chips, and the editor
 - Untitled notes take their **title from the first line**
 - **Folders**: Unfiled is listed last. Move a note with the folder chip on its row, the folder subtitle in the toolbar, or `Ctrl+Alt+M` (palette move mode). Each menu offers "New Folder…". Dragging is forgiving: drop on a folder header, and folders spring open while you hover
