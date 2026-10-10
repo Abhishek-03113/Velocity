@@ -105,9 +105,23 @@ export const THEME_FAMILIES: readonly ThemeFamily[] = [
     name: 'Gruvbox',
     appearances: ['light', 'dark'],
     accentName: 'Orange',
+    variantLabel: 'Contrast',
+    defaultVariants: { light: 'medium', dark: 'medium' },
+    variants: {
+      light: [
+        { id: 'hard', name: 'Hard', swatch: { bg: '#f9f5d7', sidebar: '#ebdbb2', accent: '#af3a03', text: '#3c3836' } },
+        { id: 'medium', name: 'Medium', swatch: { bg: '#fbf1c7', sidebar: '#ebdbb2', accent: '#af3a03', text: '#3c3836' } },
+        { id: 'soft', name: 'Soft', swatch: { bg: '#f2e5bc', sidebar: '#ebdbb2', accent: '#af3a03', text: '#3c3836' } },
+      ],
+      dark: [
+        { id: 'hard', name: 'Hard', swatch: { bg: '#1d2021', sidebar: '#3c3836', accent: '#fe8019', text: '#ebdbb2' } },
+        { id: 'medium', name: 'Medium', swatch: { bg: '#282828', sidebar: '#3c3836', accent: '#fe8019', text: '#ebdbb2' } },
+        { id: 'soft', name: 'Soft', swatch: { bg: '#32302f', sidebar: '#3c3836', accent: '#fe8019', text: '#ebdbb2' } },
+      ],
+    },
     swatches: {
       light: { bg: '#fbf1c7', sidebar: '#ebdbb2', accent: '#af3a03', text: '#3c3836' },
-      dark: { bg: '#282828', sidebar: '#1d2021', accent: '#fe8019', text: '#ebdbb2' },
+      dark: { bg: '#282828', sidebar: '#3c3836', accent: '#fe8019', text: '#ebdbb2' },
     },
   },
   {
