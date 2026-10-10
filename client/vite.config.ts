@@ -15,6 +15,8 @@ export default defineConfig(({ mode }) => {
   return {
     envDir: rootDir,
     plugins: [react()],
+    // Pre-bundle the lazy whiteboard at server start so its first open never triggers a mid-session dep re-optimise and reload.
+    optimizeDeps: { include: ['@excalidraw/excalidraw'] },
     build: {
       rollupOptions: {
         output: {
