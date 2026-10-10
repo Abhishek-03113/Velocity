@@ -20,13 +20,12 @@ async function open(page: Page) {
 async function addColumn(page: Page, title: string) {
   await page.keyboard.press('Control+Alt+Backslash')
   const launcher = page.getByRole('textbox', { name: 'Search notes to open in this tile' })
-  await expect(launcher).toBeFocused().catch(async (e) => {
-    console.log('DEBUG', title, await page.evaluate(() => `${document.activeElement?.tagName}.${document.activeElement?.className} tiles=${document.querySelectorAll('section[data-tile-id]').length} sc=${document.querySelector('[data-tiling-mode]')?.getAttribute('data-scroll')}`))
-    throw e
-  })
+  await expect(launcher).toBeFocused()
   await launcher.fill(title)
   await page.keyboard.press('Enter')
   await expect(focusedTile(page)).toContainText(title)
+  // Let the editor finish mounting and taking focus before the next shortcut.
+  await expect(focusedTile(page).locator('.cm-content')).toBeFocused()
 }
 
 /** Tile boxes relative to the workspace, keyed by the note title they show. */
@@ -165,7 +164,8 @@ test('split down stacks inside a column; up/down move within it', async ({ page 
   await page.keyboard.press('Control+Alt+Minus')
   const launcher = page.getByRole('textbox', { name: 'Search notes to open in this tile' })
   await expect(launcher).toBeFocused()
-  await page.keyboard.press('Escape')
+  await expect(tiles(page)).toHaveCount(5)
+  await page.waitForTimeout(500)
   const stacked = await page.evaluate(() => {
     const xs = [...document.querySelectorAll('section[data-tile-id]')].map((el) =>
       Math.round(el.getBoundingClientRect().left),
@@ -203,13 +203,15 @@ test('switching back to dwindle keeps the same notes in tiles', async ({ page })
   await expect(workspace(page)).toHaveAttribute('data-tiling-mode', 'dwindle')
   const after = await tiles(page).evaluateAll((els) => els.map((el) => el.getAttribute('data-tile-id')).sort())
   expect(after).toEqual(before)
-  const boxesNow = await boxes(page)
-  for (const t of TITLES) expect(boxesNow.tiles[t], `${t} still visible`).toBeTruthy()
-  for (const t of TITLES) {
-    const b = boxesNow.tiles[t]!
-    expect(b.left).toBeGreaterThanOrEqual(-1)
-    expect(b.right).toBeLessThanOrEqual(boxesNow.ws.width + 1)
-  }
+  await expect
+    .poll(async () => {
+      const now = await boxes(page)
+      return TITLES.every((t) => {
+        const b = now.tiles[t]
+        return !!b && b.left >= -1 && b.right <= now.ws.width + 1
+      })
+    })
+    .toBe(true)
   await shot(page, 'sliding-back-to-dwindle')
 
   // And the Settings control reflects and drives the mode.
