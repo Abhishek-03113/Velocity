@@ -7,26 +7,110 @@ Branch: `feature/apple-hig-ui-revamp`. The plan and the full UX audit are in [PL
 | | Before | After |
 |---|---|---|
 | Main window | ![](../screenshots/before/01-main.png) | ![](../screenshots/after/03-library-light.png) |
-| Search | ![](../screenshots/before/02-search.png) | ![](../screenshots/after/06-palette-search.png) |
-| Phone | ![](../screenshots/before/03-mobile.png) | ![](../screenshots/after/24-mobile-editor.png) |
+| Search | ![](../screenshots/before/02-search.png) | ![](../screenshots/after/12-palette-search.png) |
+| Phone | ![](../screenshots/before/03-mobile.png) | ![](../screenshots/after/57-mobile-editor.png) |
 
-Every screenshot in `docs/screenshots/after/` comes from the Playwright suite (`cd client && npm run test:e2e`) and is regenerated on each run:
+The screenshots from this round are in [Round 2](#round-2-themes-folders-synced-whiteboards-cleanup-sliding-tiling). Every screenshot in `docs/screenshots/after/` comes from the Playwright suite (`cd client && npm run test:e2e`) and is regenerated on each run:
 
-| # | Screen | # | Screen |
-|---|---|---|---|
-| 01 | First-run welcome note | 14 | Drag a note onto a tile edge |
-| 02 | Folder filter | 15 | Whiteboard as a tile |
-| 03 | Library, light | 16 | Read mode |
-| 04 | New note autosaved | 17 | Delete alert (HIG) |
-| 05 | Inline rename (F2) | 18 | Offline indicator |
-| 06 | Palette: full-text search | 19 | Settings sheet |
-| 07 | Palette: commands (`>`) | 20 | Orange accent + serif font |
-| 08 | Dark mode | 21 | Keyboard shortcuts sheet |
-| 09 | Empty tile launcher | 22 | Sidebar hidden |
-| 10 | Three tiles, dwindle layout | 23 | Dark, tiled, with whiteboard |
-| 11 | Zoomed tile | 24 | Phone: editor |
-| 12 | Rotated split | 25 | Phone: sidebar sheet |
-| 13 | Layout restored after reload | | |
+| # | Screen |
+|---|---|
+| 01 | First-run welcome note |
+| 02 | Folder filter |
+| 03 | Library, light |
+| 04 | New note autosaved |
+| 05 | Inline rename (F2) |
+| 06–11 | Folders and move menus (Round 2) |
+| 12 | Palette: full-text search |
+| 13 | Palette: commands (`>`) |
+| 14 | Dark mode |
+| 15 | Empty tile launcher |
+| 16 | Three tiles, dwindle layout |
+| 17 | Zoomed tile |
+| 18 | Rotated split |
+| 19 | Layout restored after reload |
+| 20 | Drag a note onto a tile edge |
+| 21 | Whiteboard as a tile |
+| 22 | Read mode |
+| 23 | Delete alert (HIG) |
+| 24 | Offline indicator |
+| 25 | Settings sheet |
+| 26 | Orange accent + serif font |
+| 27–53 | Themes, picker and app per family and appearance (Round 2) |
+| 54 | Keyboard shortcuts sheet |
+| 55 | Sidebar hidden |
+| 56 | Dark, tiled, with whiteboard |
+| 57 | Phone: editor |
+| 58 | Phone: sidebar sheet |
+| 59–61 | Empty-note cleanup and synced boards (Round 2) |
+| 62–71 | Sliding tiling mode (Round 2) |
+
+## Round 2: themes, folders, synced whiteboards, cleanup, sliding tiling
+
+Branch: `feature/themes-groups-whiteboard-sync-tiling-modes`. Screenshots are in `docs/screenshots/after/`.
+
+### Colour themes
+
+Seven families (Apple, Catppuccin, Catppuccin Macchiato, Gruvbox, Everforest, Nord, Solarized), each Light and Dark. Each family is one CSS file in `client/src/styles/themes/`, registered in `client/src/lib/themes.ts` and in the pre-paint map in `client/index.html`, so there is no flash on load. `--syntax-*` variables theme the editor, and "Theme default" follows the family's accent.
+
+| Screen | Shot |
+|---|---|
+| Picker, Apple | ![](../screenshots/after/27-theme-picker-apple.png) |
+| Catppuccin light / dark | ![](../screenshots/after/29-app-catppuccin-light.png) ![](../screenshots/after/31-app-catppuccin-dark.png) |
+| Macchiato light / dark | ![](../screenshots/after/33-app-catppuccin-macchiato-light.png) ![](../screenshots/after/35-app-catppuccin-macchiato-dark.png) |
+| Gruvbox light / dark | ![](../screenshots/after/37-app-gruvbox-light.png) ![](../screenshots/after/39-app-gruvbox-dark.png) |
+| Everforest light / dark | ![](../screenshots/after/41-app-everforest-light.png) ![](../screenshots/after/43-app-everforest-dark.png) |
+| Solarized light / dark | ![](../screenshots/after/45-app-solarized-light.png) ![](../screenshots/after/47-app-solarized-dark.png) |
+| Nord light / dark | ![](../screenshots/after/49-app-nord-light.png) ![](../screenshots/after/51-app-nord-dark.png) |
+| Whiteboard and find panel in Gruvbox dark | ![](../screenshots/after/52-whiteboard-gruvbox-dark.png) ![](../screenshots/after/53-find-panel-gruvbox-dark.png) |
+
+The picker shots (28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50) show Settings for each family and appearance.
+
+### Folders
+
+Unfiled is listed last. "Move to Folder" is on the note-row chip, the toolbar folder subtitle and `Ctrl+Alt+M`, and every menu has "New Folder…". Drops on a folder header work, and folders spring open on hover. The fountain-pen logo is the favicon and sidebar mark.
+
+| Screen | Shot |
+|---|---|
+| Unfiled last | ![](../screenshots/after/06-folders-unfiled-last.png) |
+| Move menu from the row chip | ![](../screenshots/after/07-move-menu-row.png) |
+| Move menu from the toolbar | ![](../screenshots/after/08-move-menu-toolbar.png) |
+| New Folder… | ![](../screenshots/after/09-move-new-folder.png) |
+| Palette move mode | ![](../screenshots/after/10-move-palette.png) |
+| Header drop and spring-open | ![](../screenshots/after/11-drag-header-spring-open.png) |
+
+### Whiteboards in SQLite
+
+Scenes live in the `whiteboards` table (`ON DELETE CASCADE`), behind `GET/PUT/DELETE /api/pastes/:id/whiteboard` with a 10 MB cap. `boardSync.ts` queues saves, `boardMigration.ts` uploads old `localStorage` boards once, and list rows carry `has_whiteboard`.
+
+| Screen | Shot |
+|---|---|
+| Board drawn on device A | ![](../screenshots/after/60-board-drawn-device-a.png) |
+| Same board loaded on device B | ![](../screenshots/after/61-board-loaded-device-b.png) |
+
+### Empty-note cleanup
+
+Untitled, blank, board-less notes are pruned. The client removes inactive ones (not open, not dirty, over 30 s old) beyond the 5 most recently used, using the guarded `DELETE ?only_if_empty=1` (409 if the note gained content). A server sweep runs at startup and hourly, skips notes edited in the last 10 minutes, and is disabled with `EMPTY_NOTE_CLEANUP=off`.
+
+| Screen | Shot |
+|---|---|
+| Empty notes pruned | ![](../screenshots/after/59-empty-notes-pruned.png) |
+
+### Sliding tiling
+
+A scrolling mode beside dwindle, in `client/src/lib/sliding.ts`. The layout persists to `velocity.layout.v3` and migrates from v2. `Ctrl+Alt+T` toggles the mode, `Ctrl+Alt+C` cycles column width (½, ⅔, full, ⅓) and `Ctrl+Alt+-` stacks a tile. Wheel or drag pans, a column edge resizes, and a minimap shows the strip.
+
+| Screen | Shot |
+|---|---|
+| Switch mode from the palette | ![](../screenshots/after/62-sliding-palette.png) |
+| Four columns | ![](../screenshots/after/63-sliding-four-columns.png) |
+| Scrolled to the start | ![](../screenshots/after/64-sliding-scrolled-start.png) |
+| Width ⅔ / full / ⅓ | ![](../screenshots/after/65-sliding-width-two-thirds.png) ![](../screenshots/after/66-sliding-width-full.png) ![](../screenshots/after/67-sliding-width-third.png) |
+| Stacked tiles | ![](../screenshots/after/68-sliding-stacked.png) |
+| Back to dwindle | ![](../screenshots/after/69-sliding-back-to-dwindle.png) |
+| Settings "Tiling" row | ![](../screenshots/after/70-sliding-settings.png) |
+| Dark | ![](../screenshots/after/71-sliding-dark.png) |
+
+Excalidraw is also pre-bundled through `optimizeDeps.include` in `client/vite.config.ts`, so the first whiteboard open in dev no longer triggers a dependency re-optimise.
 
 ## Performance
 
@@ -78,9 +162,9 @@ The API also stopped echoing the note body in `PUT` responses, and note routes a
 
 | Suite | Command | Count |
 |---|---|---|
-| Client unit (Vitest) | `cd client && npm test` | 40 |
-| Server API + worker (`node:test`) | `cd server && npm test` | 10 |
-| End-to-end (Playwright, headless Chromium) | `cd client && npm run test:e2e` | 22 |
+| Client unit (Vitest) | `cd client && npm test` | 94 |
+| Server API + worker (`node:test`) | `cd server && npm test` | 20 |
+| End-to-end (Playwright, headless Chromium) | `cd client && npm run test:e2e` | 35 |
 
 The E2E suite runs against a throwaway database. It covers:
 
@@ -89,10 +173,10 @@ The E2E suite runs against a throwaway database. It covers:
 * layout restore, drag-to-tile, the whiteboard tile and read mode
 * formatting keys, the delete alert, offline recovery, settings and the phone layout
 * a large-note typing budget
+* theme switching, folder moves, board sync between two devices, empty-note pruning and sliding mode
 
 ## Follow-ups worth considering
 
-* Store whiteboards in SQLite. They are still per-browser `localStorage`, as before.
 * Pinned notes and a "Recently Deleted" folder. Both need a small schema change.
 * Verify multi-cursor by hand (CodeMirror native). It is still unchecked in the CLAUDE.md checklist.
 * User-rebindable shortcuts. The command registry already makes this a small change.
