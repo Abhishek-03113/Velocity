@@ -56,6 +56,9 @@ function highlight(text: string, query: string): ReactNode {
 export default function CommandPalette() {
   const mode = useUiStore((s) => s.paletteMode)
   const close = useUiStore((s) => s.closePalette)
+  // The search index warms in the background after startup and then refreshes `pastes`;
+  // depending on it re-runs an already-typed query once the note text becomes searchable.
+  const pastes = useEditorStore((s) => s.pastes)
   const [value, setValue] = useState(mode === 'notes' ? '' : '>')
   const [index, setIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -86,7 +89,6 @@ export default function CommandPalette() {
         .sort((a, b) => a.score - b.score)
         .map(({ c }) => ({ type: 'command' as const, command: c }))
     }
-    const { pastes } = useEditorStore.getState()
     const groups = useGroupStore.getState().groups
     const groupName = (id: number | null | undefined) => groups.find((g) => g.id === id)?.name ?? 'Unfiled'
     const now = Date.now()
@@ -126,7 +128,7 @@ export default function CommandPalette() {
       })
     }
     return [...notes.slice(0, 30), { type: 'create', title: query }]
-  }, [isCommand, query, moveOnly])
+  }, [isCommand, query, moveOnly, pastes])
 
   useEffect(() => setIndex(0), [value])
 
