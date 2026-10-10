@@ -18,19 +18,30 @@
       href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <script>
-      // Resolve theme family + appearance before first paint to avoid a flash.
-      // Mirrors resolveAppearance() in src/lib/themes.ts; this map is kept in sync
-      // with THEME_FAMILIES by a unit test (themes.test.ts).
+      // Resolve theme family + appearance + variant before first paint to avoid a flash.
+      // Mirrors resolveAppearance()/resolveVariant() in src/lib/themes.ts. THEMES (family ->
+      // appearances + variant ids/defaults) and LEGACY (old family ids) are kept in sync with
+      // the registry by a unit test (themes.test.ts); regenerate them from themeIndex()/LEGACY_THEME_FAMILIES.
       try {
-        var THEMES = {"apple":["light","dark"],"catppuccin":["light","dark"],"catppuccin-macchiato":["light","dark"],"gruvbox":["light","dark"],"everforest":["light","dark"],"nord":["light","dark"],"solarized":["light","dark"]}
+        var THEMES = {"apple":{"appearances":["light","dark"]},"catppuccin":{"appearances":["light","dark"],"variants":{"light":{"default":"latte","ids":["latte"]},"dark":{"default":"mocha","ids":["frappe","macchiato","mocha"]}}},"gruvbox":{"appearances":["light","dark"]},"everforest":{"appearances":["light","dark"]},"nord":{"appearances":["light","dark"]},"solarized":{"appearances":["light","dark"]}}
+        var LEGACY = {"catppuccin-macchiato":{"family":"catppuccin","variants":{"dark":"macchiato"}}}
         var d = document.documentElement
         var p = JSON.parse(localStorage.getItem('velocity.prefs.v1') || '{}')
-        var f = typeof p.themeFamily === 'string' && THEMES.hasOwnProperty(p.themeFamily) ? p.themeFamily : 'apple'
+        var lg = typeof p.themeFamily === 'string' && LEGACY.hasOwnProperty(p.themeFamily) ? LEGACY[p.themeFamily] : null
+        var fid = lg ? lg.family : p.themeFamily
+        var f = typeof fid === 'string' && THEMES.hasOwnProperty(fid) ? fid : 'apple'
+        var F = THEMES[f]
         var t = p.theme === 'light' || p.theme === 'dark' ? p.theme
           : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-        if (THEMES[f].indexOf(t) < 0) t = THEMES[f][0]
+        if (F.appearances.indexOf(t) < 0) t = F.appearances[0]
         d.dataset.themeFamily = f
         d.dataset.theme = t
+        var V = F.variants && F.variants[t]
+        if (V) {
+          var sv = p.themeVariants && p.themeVariants[f] && p.themeVariants[f][t]
+          if (!(typeof sv === 'string' && V.ids.indexOf(sv) >= 0)) sv = lg && lg.variants && lg.variants[t]
+          d.dataset.themeVariant = typeof sv === 'string' && V.ids.indexOf(sv) >= 0 ? sv : V.default
+        }
         d.dataset.accent = p.accent || 'theme'
       } catch (e) {}
     </script>

@@ -1,12 +1,17 @@
 import { create } from 'zustand'
 import {
   DEFAULT_THEME_FAMILY,
+  LEGACY_THEME_FAMILIES,
   getThemeFamily,
   resolveAppearance,
+  resolveVariant,
   sanitizeAppearancePref,
   sanitizeThemeFamily,
+  sanitizeThemeVariants,
   swatchFor,
+  variantsFor,
   type Appearance,
+  type ThemeVariantPrefs,
 } from '../lib/themes'
 
 export type ThemePref = 'system' | 'light' | 'dark'
@@ -20,6 +25,8 @@ export const ACCENTS: Accent[] = ['theme', 'blue', 'purple', 'pink', 'red', 'ora
 
 export interface Preferences {
   themeFamily: string
+  /** Chosen variant per family and appearance (see ThemeFamily.variants); missing = family default. */
+  themeVariants: ThemeVariantPrefs
   theme: ThemePref
   accent: Accent
   editorFont: EditorFont
@@ -32,6 +39,7 @@ export interface Preferences {
 
 export const DEFAULT_PREFS: Preferences = {
   themeFamily: DEFAULT_THEME_FAMILY,
+  themeVariants: {},
   theme: 'system',
   accent: 'theme',
   editorFont: 'system',
@@ -71,6 +79,8 @@ interface UiState {
   setPref: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void
   /** Switch colour theme family; the accent resets to the theme's own. */
   setThemeFamily: (id: string) => void
+  /** Remember the variant (e.g. Catppuccin "Mocha") to use for a family in an appearance. */
+  setThemeVariant: (familyId: string, appearance: Appearance, variantId: string) => void
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   toggleFolders: () => void
@@ -102,7 +112,16 @@ function writeJson(key: string, value: unknown): void {
 
 export function sanitizePrefs(raw: Partial<Preferences>): Preferences {
   const p = { ...DEFAULT_PREFS }
-  p.themeFamily = sanitizeThemeFamily(raw.themeFamily)
+  const legacy = typeof raw.themeFamily === 'string' ? LEGACY_THEME_FAMILIES[raw.themeFamily] : undefined
+  p.themeFamily = sanitizeThemeFamily(legacy ? legacy.family : raw.themeFamily)
+  p.themeVariants = sanitizeThemeVariants(raw.themeVariants)
+  if (legacy?.variants) {
+    // Migrated family: carry over the variants its old id implied (without overriding explicit choices).
+    p.themeVariants = sanitizeThemeVariants({
+      ...p.themeVariants,
+      [legacy.family]: { ...legacy.variants, ...p.themeVariants[legacy.family] },
+    })
+  }
   p.theme = sanitizeAppearancePref(raw.theme, DEFAULT_PREFS.theme)
   if (raw.accent && ACCENTS.includes(raw.accent)) p.accent = raw.accent
   if (raw.editorFont === 'system' || raw.editorFont === 'serif' || raw.editorFont === 'mono') {
@@ -144,15 +163,19 @@ const FONTS: Record<EditorFont, string> = {
 export function applyPreferences(prefs: Preferences, theme: Appearance): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
+  const family = getThemeFamily(prefs.themeFamily)
+  const variant = resolveVariant(family, theme, prefs.themeVariants)
   root.dataset.themeFamily = prefs.themeFamily
   root.dataset.theme = theme
+  if (variant) root.dataset.themeVariant = variant
+  else delete root.dataset.themeVariant
   root.dataset.accent = prefs.accent
   root.style.setProperty('--editor-font', FONTS[prefs.editorFont])
   root.style.setProperty('--editor-size', `${prefs.editorSize}px`)
   root.style.setProperty('--editor-measure', MEASURES[prefs.measure])
   root.style.setProperty('--tile-gap', prefs.tileGaps ? '8px' : '0px')
   const meta = document.querySelector('meta[name="theme-color"]')
-  meta?.setAttribute('content', swatchFor(getThemeFamily(prefs.themeFamily), theme).bg)
+  meta?.setAttribute('content', swatchFor(family, theme, variant).bg)
 }
 
 const initialPrefs = sanitizePrefs(readJson<Preferences>(PREFS_KEY))
@@ -178,6 +201,17 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
   setThemeFamily: (id) => {
     const prefs = { ...get().prefs, themeFamily: sanitizeThemeFamily(id), accent: 'theme' as Accent }
+    writeJson(PREFS_KEY, prefs)
+    set({ prefs, resolvedTheme: resolveTheme(prefs) })
+  },
+  setThemeVariant: (familyId, appearance, variantId) => {
+    const family = getThemeFamily(familyId)
+    if (!variantsFor(family, appearance).some((v) => v.id === variantId)) return
+    const current = get().prefs.themeVariants
+    const prefs = {
+      ...get().prefs,
+      themeVariants: { ...current, [family.id]: { ...current[family.id], [appearance]: variantId } },
+    }
     writeJson(PREFS_KEY, prefs)
     set({ prefs, resolvedTheme: resolveTheme(prefs) })
   },

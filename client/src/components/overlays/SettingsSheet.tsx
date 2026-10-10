@@ -1,7 +1,16 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useLayoutStore } from '../../store/layoutStore'
 import { ACCENTS, useUiStore, type Accent } from '../../store/uiStore'
-import { THEME_FAMILIES, getThemeFamily, swatchFor, type ThemeFamily, type Appearance } from '../../lib/themes'
+import {
+  THEME_FAMILIES,
+  getThemeFamily,
+  resolveVariant,
+  swatchFor,
+  variantsFor,
+  type Appearance,
+  type ThemeFamily,
+} from '../../lib/themes'
+import { setThemeVariant } from '../../lib/workspace'
 import { Icon } from '../Icon'
 import { Segmented } from '../ui/Segmented'
 import { Sheet } from './Sheet'
@@ -70,15 +79,17 @@ function TilingModeRow() {
 function ThemeCard({
   family,
   appearance,
+  variantId,
   selected,
   onSelect,
 }: {
   family: ThemeFamily
   appearance: Appearance
+  variantId?: string
   selected: boolean
   onSelect: () => void
 }) {
-  const sw = swatchFor(family, appearance)
+  const sw = swatchFor(family, appearance, variantId)
   const modes = family.appearances.length === 2 ? 'Light & Dark' : family.appearances[0] === 'dark' ? 'Dark only' : 'Light only'
   return (
     <button
@@ -107,6 +118,55 @@ function ThemeCard({
       <span className={styles.themeName}>{family.name}</span>
       <span className={styles.themeModes}>{modes}</span>
     </button>
+  )
+}
+
+/**
+ * Variant chips ("Flavour: Frappé · Macchiato · Mocha") for the selected family. One row for the
+ * current appearance; in Auto, a Light and a Dark row when either appearance offers a choice.
+ */
+function VariantRows({ family, appearance, auto }: { family: ThemeFamily; appearance: Appearance; auto: boolean }) {
+  const variantPrefs = useUiStore((s) => s.prefs.themeVariants)
+  const shown: Appearance[] = auto
+    ? family.appearances.filter((a) => variantsFor(family, a).length > 0)
+    : family.appearances.includes(appearance)
+      ? [appearance]
+      : []
+  const hasChoice = shown.some((a) => variantsFor(family, a).length > 1)
+  if (!hasChoice) return null
+  const noun = family.variantLabel ?? 'Variant'
+  return (
+    <div className={styles.variantBlock} data-variant-rows={family.id}>
+      {shown.map((a) => {
+        const label = auto ? `${a === 'light' ? 'Light' : 'Dark'} ${noun.toLowerCase()}` : noun
+        const current = resolveVariant(family, a, variantPrefs)
+        return (
+          <div key={a} className={styles.variantRow}>
+            <span className={styles.variantLabel}>{label}</span>
+            <div className={styles.variantChips} role="radiogroup" aria-label={label}>
+              {variantsFor(family, a).map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={v.id === current}
+                  data-variant={v.id}
+                  className={`${styles.variantChip} ${v.id === current ? styles.variantChipSelected : ''}`}
+                  onClick={() => setThemeVariant(family.id, a, v.id)}
+                >
+                  <span
+                    className={styles.variantDot}
+                    style={{ background: `linear-gradient(135deg, ${v.swatch.bg} 50%, ${v.swatch.accent} 50%)` }}
+                    aria-hidden="true"
+                  />
+                  {v.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -139,11 +199,13 @@ export default function SettingsSheet() {
                 key={f.id}
                 family={f}
                 appearance={resolvedTheme}
+                variantId={f.id === prefs.themeFamily ? resolveVariant(f, resolvedTheme, prefs.themeVariants) : undefined}
                 selected={f.id === prefs.themeFamily}
                 onSelect={() => setThemeFamily(f.id)}
               />
             ))}
           </div>
+          <VariantRows family={family} appearance={resolvedTheme} auto={prefs.theme === 'system'} />
         </div>
         <Row
           label="Appearance"

@@ -439,7 +439,6 @@ test('themes: picker switches families, supports light and dark, persists', asyn
 
   const families: Array<[string, string]> = [
     ['Catppuccin', 'catppuccin'],
-    ['Catppuccin Macchiato', 'catppuccin-macchiato'],
     ['Gruvbox', 'gruvbox'],
     ['Everforest', 'everforest'],
     ['Solarized', 'solarized'],
@@ -491,6 +490,99 @@ test('themes: picker switches families, supports light and dark, persists', asyn
   await page.evaluate(() => localStorage.setItem('velocity.prefs.v1', JSON.stringify({ themeFamily: '<x>', theme: 'neon' })))
   await page.reload()
   await expect(html).toHaveAttribute('data-theme-family', 'apple')
+})
+
+test('themes: Catppuccin flavours via the variant control, Auto rows, persistence, migration', async ({ page }) => {
+  await open(page)
+  await openNoteByTitle(page, 'Q4 Product Roadmap')
+  await editorIn(page).click()
+  const html = page.locator('html')
+  await page.keyboard.press('Control+Comma')
+  const sheet = page.getByRole('dialog', { name: 'Settings' })
+  const themes = sheet.getByRole('radiogroup', { name: 'Theme' })
+  const appearance = sheet.getByRole('radiogroup', { name: 'Appearance' })
+
+  // Families without variants show no flavour control.
+  await themes.getByRole('radio', { name: 'Nord', exact: true }).click()
+  await expect(html).not.toHaveAttribute('data-theme-variant', /.*/)
+  await expect(sheet.locator('[data-variant-rows]')).toHaveCount(0)
+
+  await themes.getByRole('radio', { name: 'Catppuccin', exact: true }).click()
+  await expect(html).toHaveAttribute('data-theme-family', 'catppuccin')
+
+  // Auto: both Light and Dark rows (the dark one offers a choice).
+  await appearance.getByRole('radio', { name: 'Auto' }).click()
+  await expect(sheet.getByRole('radiogroup', { name: 'Light flavour' })).toBeVisible()
+  const darkRow = sheet.getByRole('radiogroup', { name: 'Dark flavour' })
+  await expect(darkRow.getByRole('radio')).toHaveCount(3)
+  await shot(page, 'catppuccin-picker-auto-rows')
+
+  // Explicit Dark: a single "Flavour" row, default Mocha.
+  await appearance.getByRole('radio', { name: 'Dark' }).click()
+  const flavour = sheet.getByRole('radiogroup', { name: 'Flavour', exact: true })
+  await expect(sheet.getByRole('radiogroup', { name: 'Light flavour' })).toHaveCount(0)
+  await expect(html).toHaveAttribute('data-theme-variant', 'mocha')
+  await expect(flavour.getByRole('radio', { name: 'Mocha' })).toHaveAttribute('aria-checked', 'true')
+  await shot(page, 'catppuccin-picker-flavour')
+
+  for (const [name, id] of [['Frappé', 'frappe'], ['Macchiato', 'macchiato'], ['Mocha', 'mocha']] as const) {
+    await flavour.getByRole('radio', { name }).click()
+    await expect(html).toHaveAttribute('data-theme-variant', id)
+    await expect(html).toHaveAttribute('data-theme', 'dark')
+    await page.keyboard.press('Escape')
+    await shot(page, `catppuccin-app-${id}`)
+    await page.keyboard.press('Control+Comma')
+  }
+
+  // Latte is the only light flavour: no choice, so no control in explicit Light.
+  await appearance.getByRole('radio', { name: 'Light' }).click()
+  await expect(html).toHaveAttribute('data-theme-variant', 'latte')
+  await expect(sheet.locator('[data-variant-rows]')).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await shot(page, 'catppuccin-app-latte')
+
+  // Choice persists across a reload (no flash: the pre-paint script applies it).
+  await page.keyboard.press('Control+Comma')
+  await appearance.getByRole('radio', { name: 'Dark' }).click()
+  await flavour.getByRole('radio', { name: 'Macchiato' }).click()
+  await page.keyboard.press('Escape')
+  await page.reload()
+  await expect(html).toHaveAttribute('data-theme-variant', 'macchiato')
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+
+  // Palette commands: Theme: Catppuccin Frappé / Latte.
+  await page.keyboard.press('Control+Shift+KeyP')
+  await page.keyboard.type('Theme: Catppuccin Frapp')
+  await page.keyboard.press('Enter')
+  await expect(html).toHaveAttribute('data-theme-variant', 'frappe')
+  await page.keyboard.press('Control+Shift+KeyP')
+  await page.keyboard.type('Theme: Catppuccin Latte')
+  await page.keyboard.press('Enter')
+  await expect(html).toHaveAttribute('data-theme-variant', 'latte')
+  await expect(html).toHaveAttribute('data-theme', 'light')
+
+  // Phone width: the flavour control fits.
+  await page.setViewportSize({ width: 390, height: 780 })
+  await page.keyboard.press('Control+Comma')
+  await appearance.getByRole('radio', { name: 'Auto' }).click()
+  await sheet.getByRole('radiogroup', { name: 'Dark flavour' }).scrollIntoViewIfNeeded()
+  const box = await sheet.getByRole('radiogroup', { name: 'Dark flavour' }).boundingBox()
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+  await shot(page, 'catppuccin-picker-phone')
+  await page.keyboard.press('Escape')
+
+  // A stored legacy Macchiato family migrates to Catppuccin + the macchiato flavour.
+  await page.evaluate(() =>
+    localStorage.setItem('velocity.prefs.v1', JSON.stringify({ themeFamily: 'catppuccin-macchiato', theme: 'dark' })),
+  )
+  await page.reload()
+  await expect(html).toHaveAttribute('data-theme-family', 'catppuccin')
+  await expect(html).toHaveAttribute('data-theme-variant', 'macchiato')
+  await page.keyboard.press('Control+Comma')
+  await expect(page.getByRole('dialog', { name: 'Settings' }).getByRole('radio', { name: 'Macchiato' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
 })
 
 test('keyboard shortcuts sheet lists every command', async ({ page }) => {

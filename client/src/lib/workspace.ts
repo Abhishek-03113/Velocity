@@ -11,7 +11,7 @@ import { focusedNoteId, useLayoutStore, type SplitRequest } from '../store/layou
 import { useUiStore } from '../store/uiStore'
 import { focusEditor, getEditor } from './editorRegistry'
 import { displayTitle } from './noteMeta'
-import { getThemeFamily } from './themes'
+import { getThemeFamily, variantsFor, type Appearance } from './themes'
 import { findLeaf, leaves, type Direction } from './tiling'
 
 const narrow = () => typeof window !== 'undefined' && window.innerWidth < 760
@@ -259,6 +259,18 @@ export function setThemeFamily(id: string) {
   const ui = useUiStore.getState()
   ui.setThemeFamily(id)
   ui.showFlash(`Theme: ${getThemeFamily(id).name}`)
+}
+
+/** Select a family variant (e.g. Catppuccin Mocha) and show the appearance it belongs to. */
+export function setThemeVariant(familyId: string, appearance: Appearance, variantId: string) {
+  const ui = useUiStore.getState()
+  const family = getThemeFamily(familyId)
+  const variant = variantsFor(family, appearance).find((v) => v.id === variantId)
+  if (!variant) return
+  if (ui.prefs.themeFamily !== family.id) ui.setThemeFamily(family.id)
+  ui.setThemeVariant(family.id, appearance, variantId)
+  ui.setPref('theme', appearance)
+  ui.showFlash(`Theme: ${family.name} ${variant.name}`)
 }
 
 export function focusNotesList() {
