@@ -56,7 +56,10 @@ function highlight(text: string, query: string): ReactNode {
 export default function CommandPalette() {
   const mode = useUiStore((s) => s.paletteMode)
   const close = useUiStore((s) => s.closePalette)
-  const [value, setValue] = useState(mode === 'commands' ? '>' : '')
+  // The search index warms in the background after startup and then refreshes `pastes`;
+  // depending on it re-runs an already-typed query once the note text becomes searchable.
+  const pastes = useEditorStore((s) => s.pastes)
+  const [value, setValue] = useState(mode === 'notes' ? '' : '>')
   const [index, setIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -70,13 +73,15 @@ export default function CommandPalette() {
     }
   }, [])
 
+  const moveOnly = mode === 'move'
   const isCommand = value.startsWith('>')
   const query = isCommand ? value.slice(1).trim() : value.trim()
 
   const items = useMemo<Item[]>(() => {
     if (isCommand) {
-      const all = [...COMMANDS, ...dynamicCommands()].filter(
-        (c) => !c.paletteHidden && (!c.enabled || c.enabled()),
+      // "Move Note to Folder…" shows only this note's move targets.
+      const all = (moveOnly ? dynamicCommands() : [...COMMANDS, ...dynamicCommands()]).filter(
+        (c) => !c.paletteHidden && (!c.enabled || c.enabled()) && (!moveOnly || c.id.startsWith('note.moveTo.')),
       )
       return all
         .map((c) => ({ c, score: fuzzyScore(`${c.title} ${c.keywords ?? ''} ${c.section}`, query) }))
@@ -84,7 +89,6 @@ export default function CommandPalette() {
         .sort((a, b) => a.score - b.score)
         .map(({ c }) => ({ type: 'command' as const, command: c }))
     }
-    const { pastes } = useEditorStore.getState()
     const groups = useGroupStore.getState().groups
     const groupName = (id: number | null | undefined) => groups.find((g) => g.id === id)?.name ?? 'Unfiled'
     const now = Date.now()
@@ -124,7 +128,7 @@ export default function CommandPalette() {
       })
     }
     return [...notes.slice(0, 30), { type: 'create', title: query }]
-  }, [isCommand, query])
+  }, [isCommand, query, moveOnly, pastes])
 
   useEffect(() => setIndex(0), [value])
 
@@ -157,7 +161,7 @@ export default function CommandPalette() {
     } else if (e.key === 'Enter') {
       e.preventDefault()
       activate(items[index], e.altKey || (isMac ? e.metaKey : e.ctrlKey))
-    } else if (e.key === 'Backspace' && value === '>') {
+    } else if (e.key === 'Backspace' && value === '>' && !moveOnly) {
       e.preventDefault()
       setValue('')
     }
@@ -182,7 +186,7 @@ export default function CommandPalette() {
             data-bare
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={isCommand ? 'Run a command…' : 'Search notes, or type > for commands'}
+            placeholder={moveOnly ? 'Move note to folder…' : isCommand ? 'Run a command…' : 'Search notes, or type > for commands'}
             aria-label="Search"
             aria-controls="palette-list"
             aria-activedescendant={`palette-item-${index}`}

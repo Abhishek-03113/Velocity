@@ -14,6 +14,7 @@ import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
 import { useUiStore } from '../store/uiStore'
 import { displayTitle } from './noteMeta'
+import { THEME_FAMILIES, variantsFor } from './themes'
 import { isMac } from './platform'
 import { findLeaf, leaves } from './tiling'
 import * as ws from './workspace'
@@ -36,6 +37,7 @@ export interface Command {
 
 const hasNote = () => ws.currentNoteId() != null
 const multipleTiles = () => leaves(useLayoutStore.getState().root).length > 1
+const isSliding = () => useLayoutStore.getState().mode === 'sliding'
 const focusedIsNote = () => {
   const { root, focusedId } = useLayoutStore.getState()
   return findLeaf(root, focusedId)?.content.kind === 'note'
@@ -49,6 +51,35 @@ const tabCommands: Command[] = Array.from({ length: 9 }, (_, i) => ({
   run: () => ws.goToTab(i + 1),
   paletteHidden: true,
 }))
+
+const themeCommands: Command[] = THEME_FAMILIES.map((f) => ({
+  id: `theme.${f.id}`,
+  title: `Theme: ${f.name}`,
+  section: 'View' as const,
+  keywords: 'colour color theme palette appearance dark light',
+  run: () => ws.setThemeFamily(f.id),
+}))
+
+/** "Theme: Catppuccin Mocha" — one per family variant, for families that offer a choice. */
+const themeVariantCommands: Command[] = THEME_FAMILIES.flatMap((f) => {
+  const hasChoice = (['light', 'dark'] as const).some((a) => variantsFor(f, a).length > 1)
+  if (!hasChoice) return []
+  const names = (['light', 'dark'] as const).flatMap((a) => variantsFor(f, a).map((v) => v.name))
+  return (['light', 'dark'] as const).flatMap((appearance) =>
+    variantsFor(f, appearance).map((v) => {
+      // Qualify with the appearance only when the bare name would be ambiguous (e.g. Hard in both).
+      const ambiguous = names.filter((n) => n === v.name).length > 1
+      const label = ambiguous ? `${appearance === 'light' ? 'Light' : 'Dark'} ${v.name}` : v.name
+      return {
+        id: `theme.${f.id}.${appearance}.${v.id}`,
+        title: `Theme: ${f.name} ${label}`,
+        section: 'View' as const,
+        keywords: `colour color theme palette flavour variant ${appearance}`,
+        run: () => ws.setThemeVariant(f.id, appearance, v.id),
+      }
+    }),
+  )
+})
 
 export const COMMANDS: Command[] = [
   // ---- Notes ---------------------------------------------------------------
@@ -123,6 +154,15 @@ export const COMMANDS: Command[] = [
     keys: ['Mod+Shift+Backspace'],
     keywords: 'remove trash discard',
     run: () => ws.requestDelete(),
+    enabled: hasNote,
+  },
+  {
+    id: 'note.moveToFolder',
+    title: 'Move Note to Folder…',
+    section: 'Notes',
+    keys: ['Ctrl+Alt+KeyM'],
+    keywords: 'file folder group assign organise organize',
+    run: () => useUiStore.getState().openPalette('move'),
     enabled: hasNote,
   },
   {
@@ -263,13 +303,47 @@ export const COMMANDS: Command[] = [
     enabled: multipleTiles,
   },
   {
+    id: 'tile.mode',
+    title: 'Toggle Tiling Mode (Dwindle / Sliding)',
+    section: 'Tiles',
+    keys: ['Ctrl+Alt+KeyT'],
+    keywords: 'layout columns scrolling niri paperwm hyprland switch',
+    run: () => ws.toggleTilingMode(),
+  },
+  {
+    id: 'tile.cycleWidth',
+    title: 'Cycle Column Width',
+    section: 'Tiles',
+    keys: ['Ctrl+Alt+KeyC'],
+    keywords: 'sliding resize third half two thirds full',
+    run: () => useLayoutStore.getState().cycleColumnWidth(1),
+    enabled: isSliding,
+  },
+  ...(
+    [
+      ['One Third', 1 / 3],
+      ['One Half', 1 / 2],
+      ['Two Thirds', 2 / 3],
+      ['Full Width', 1],
+    ] as const
+  ).map(
+    ([name, width]): Command => ({
+      id: `tile.width.${name.toLowerCase().replace(/ /g, '-')}`,
+      title: `Column Width: ${name}`,
+      section: 'Tiles',
+      keywords: 'sliding resize column',
+      run: () => ws.setFocusedColumnWidth(width),
+      enabled: isSliding,
+    }),
+  ),
+  {
     id: 'tile.rotate',
     title: 'Rotate Split',
     section: 'Tiles',
     keys: ['Ctrl+Alt+KeyR'],
     keywords: 'toggle orientation togglesplit',
     run: () => useLayoutStore.getState().rotate(),
-    enabled: multipleTiles,
+    enabled: () => multipleTiles() && !isSliding(),
   },
 
   // ---- View ----------------------------------------------------------------
@@ -339,6 +413,8 @@ export const COMMANDS: Command[] = [
     keywords: 'theme light appearance',
     run: () => ws.cycleAppearance(),
   },
+  ...themeCommands,
+  ...themeVariantCommands,
 
   // ---- App -----------------------------------------------------------------
   {
@@ -378,6 +454,14 @@ export function dynamicCommands(): Command[] {
       keywords: 'folder group assign',
       run: () => useEditorStore.getState().assignGroup(noteId, g.id),
     }))
+  move.push({
+    id: 'note.moveTo.new',
+    title: `Move “${name}” to New Folder…`,
+    section: 'Notes',
+    keywords: 'folder group create',
+    run: () => ws.moveNoteToNewFolder(noteId),
+  })
+  // Unfiled always comes last.
   if (paste.group_id != null) {
     move.push({
       id: 'note.moveTo.none',

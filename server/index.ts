@@ -3,9 +3,11 @@ import 'dotenv/config'
 import { runMigrations } from './db/migrate.ts'
 import { createApp } from './app.ts'
 import { startMarkdownSync } from './workers/markdownSync.ts'
+import { startEmptyNoteCleanup } from './workers/emptyNoteCleanup.ts'
 
 runMigrations()
 startMarkdownSync()
+startEmptyNoteCleanup()
 
 const app = createApp()
 const PORT = Number(process.env.PORT ?? 3000)

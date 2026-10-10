@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { primaryKey } from '../../lib/commands'
+import { moveMenuItems } from '../../lib/moveMenu'
 import { displayTitle } from '../../lib/noteMeta'
+import { comboLabel } from '../../lib/platform'
 import { findLeaf, leaves } from '../../lib/tiling'
 import {
   closeTile,
@@ -64,6 +66,7 @@ export default function Toolbar() {
   const { sidebarOpen, toggleSidebar } = useUiStore(
     useShallow((s) => ({ sidebarOpen: s.sidebarOpen, toggleSidebar: s.toggleSidebar })),
   )
+  const sliding = useLayoutStore((s) => s.mode === 'sliding')
   const { noteId, tileMode, tileCount, focusedKind, boardOpen } = useLayoutStore(
     useShallow((s) => {
       const leaf = findLeaf(s.root, s.focusedId)
@@ -97,6 +100,12 @@ export default function Toolbar() {
   const setEditingTitleId = useEditorStore((s) => s.setEditingTitleId)
   const [menu, setMenu] = useState<MenuState | null>(null)
 
+  const moveMenu = (e: MouseEvent<HTMLButtonElement>) => {
+    if (noteId == null) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setMenu({ x: rect.left, y: rect.bottom + 6, items: [{ heading: 'Move to' }, ...moveMenuItems(noteId)] })
+  }
+
   const moreMenu = (e: MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const id = noteId
@@ -108,8 +117,8 @@ export default function Toolbar() {
         { label: 'Duplicate', icon: 'doc.on.doc', disabled: id == null, onSelect: () => duplicateNote(id) },
         { label: 'Export as Markdown', icon: 'square.and.arrow.down', shortcut: primaryKey('note.export'), disabled: id == null, onSelect: () => exportMarkdown(id) },
         { separator: true },
-        { label: 'Split Right', icon: 'rectangle.split.2x1', shortcut: primaryKey('tile.splitRight'), onSelect: () => splitTile('row') },
-        { label: 'Split Down', icon: 'rectangle.split.1x2', shortcut: primaryKey('tile.splitDown'), onSelect: () => splitTile('column') },
+        { label: sliding ? 'New Column' : 'Split Right', icon: 'rectangle.split.2x1', shortcut: primaryKey('tile.splitRight'), onSelect: () => splitTile('row') },
+        { label: sliding ? 'Stack Below' : 'Split Down', icon: 'rectangle.split.1x2', shortcut: primaryKey('tile.splitDown'), onSelect: () => splitTile('column') },
         ...(tileCount > 1
           ? [
               { label: 'Zoom Tile', icon: 'arrow.up.left.and.arrow.down.right' as const, shortcut: primaryKey('tile.zoom'), onSelect: () => useLayoutStore.getState().toggleZoom() },
@@ -150,16 +159,21 @@ export default function Toolbar() {
               <span className={styles.titleText}>{noteId == null ? 'Velocity' : title}</span>
             </button>
           )}
-          <span className={styles.subtitle}>
-            {focusedKind === 'empty' ? (
-              'Empty tile'
-            ) : (
-              <>
-                <Icon name="folder" size={11} />
-                {groupName ?? 'Unfiled'}
-              </>
-            )}
-          </span>
+          {focusedKind === 'empty' || noteId == null ? (
+            <span className={styles.subtitle}>Empty tile</span>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.subtitle} ${styles.subtitleButton}`}
+              title={`Move to Folder (${comboLabel(primaryKey('note.moveToFolder') ?? '')})`}
+              aria-haspopup="menu"
+              onClick={moveMenu}
+            >
+              <Icon name="folder" size={11} />
+              <span>{groupName ?? 'Unfiled'}</span>
+              <Icon name="chevron.down" size={9} strokeWidth={2.4} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -190,7 +204,7 @@ export default function Toolbar() {
         <ToolbarButton
           className={styles.hideCompact}
           icon="rectangle.split.2x1"
-          label="Split Tile"
+          label={sliding ? 'New Column' : 'Split Tile'}
           shortcut={primaryKey('tile.split')}
           onClick={() => splitTile('auto')}
         />

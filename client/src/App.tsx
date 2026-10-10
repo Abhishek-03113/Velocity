@@ -1,3 +1,4 @@
+import { startEmptyNoteCleanup } from './lib/emptyNoteCleanup'
 import { lazy, Suspense, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import StatusBar from './components/chrome/StatusBar'
@@ -53,6 +54,12 @@ export default function App() {
     void useGroupStore.getState().initialize()
     prefetchOnIdle()
   }, [])
+
+  // Prune empty, unnamed, inactive notes (LRU, keep 5) once the library is loaded.
+  useEffect(() => {
+    if (!loaded) return
+    return startEmptyNoteCleanup()
+  }, [loaded])
 
   useGlobalShortcuts()
 

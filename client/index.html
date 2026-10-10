@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/brand/favicon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Velocity — a fast, private notes app with Markdown, tiling and whiteboards." />
     <meta name="theme-color" content="#ffffff" />
@@ -16,13 +18,31 @@
       href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <script>
-      // Resolve appearance before first paint to avoid a light/dark flash.
+      // Resolve theme family + appearance + variant before first paint to avoid a flash.
+      // Mirrors resolveAppearance()/resolveVariant() in src/lib/themes.ts. THEMES (family ->
+      // appearances + variant ids/defaults) and LEGACY (old family ids) are kept in sync with
+      // the registry by a unit test (themes.test.ts); regenerate them from themeIndex()/LEGACY_THEME_FAMILIES.
       try {
+        var THEMES = {"apple":{"appearances":["light","dark"]},"catppuccin":{"appearances":["light","dark"],"variants":{"light":{"default":"latte","ids":["latte"]},"dark":{"default":"mocha","ids":["frappe","macchiato","mocha"]}}},"gruvbox":{"appearances":["light","dark"],"variants":{"light":{"default":"medium","ids":["hard","medium","soft"]},"dark":{"default":"medium","ids":["hard","medium","soft"]}}},"everforest":{"appearances":["light","dark"],"variants":{"light":{"default":"medium","ids":["hard","medium","soft"]},"dark":{"default":"medium","ids":["hard","medium","soft"]}}},"nord":{"appearances":["light","dark"]},"solarized":{"appearances":["light","dark"]}}
+        var LEGACY = {"catppuccin-macchiato":{"family":"catppuccin","variants":{"dark":"macchiato"}}}
+        var d = document.documentElement
         var p = JSON.parse(localStorage.getItem('velocity.prefs.v1') || '{}')
+        var lg = typeof p.themeFamily === 'string' && LEGACY.hasOwnProperty(p.themeFamily) ? LEGACY[p.themeFamily] : null
+        var fid = lg ? lg.family : p.themeFamily
+        var f = typeof fid === 'string' && THEMES.hasOwnProperty(fid) ? fid : 'apple'
+        var F = THEMES[f]
         var t = p.theme === 'light' || p.theme === 'dark' ? p.theme
           : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-        document.documentElement.dataset.theme = t
-        document.documentElement.dataset.accent = p.accent || 'blue'
+        if (F.appearances.indexOf(t) < 0) t = F.appearances[0]
+        d.dataset.themeFamily = f
+        d.dataset.theme = t
+        var V = F.variants && F.variants[t]
+        if (V) {
+          var sv = p.themeVariants && p.themeVariants[f] && p.themeVariants[f][t]
+          if (!(typeof sv === 'string' && V.ids.indexOf(sv) >= 0)) sv = lg && lg.variants && lg.variants[t]
+          d.dataset.themeVariant = typeof sv === 'string' && V.ids.indexOf(sv) >= 0 ? sv : V.default
+        }
+        d.dataset.accent = p.accent || 'theme'
       } catch (e) {}
     </script>
   </head>

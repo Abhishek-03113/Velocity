@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const API_PORT = 3199
-const WEB_PORT = 5199
+const API_PORT = Number(process.env.E2E_API_PORT ?? 3199)
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5199)
 
 /**
  * End-to-end suite: real Hono server on a throwaway SQLite DB + Vite dev

@@ -1,0 +1,289 @@
+/* Gruvbox — https://github.com/morhetz/gruvbox
+ *
+ * One family, two appearances, three contrast levels (variants) each: Hard, Medium (default), Soft.
+ * Exact hex values from colors/gruvbox.vim (https://raw.githubusercontent.com/morhetz/gruvbox/master/colors/gruvbox.vim,
+ * header "Last Modified: 12 Aug 2017"; repository master read at commit ef8864b). Palette names in comments are gruvbox.vim's.
+ * Selector convention: :root[data-theme-family='gruvbox'][data-theme='<light|dark>'][data-theme-variant='<hard|medium|soft>']
+ *
+ * Layout of this file:
+ *   1. Palette: one block per appearance + contrast defining --gb-* custom properties (hex only).
+ *   2. Shared mapping: semantic tokens (tokens.css) derived from --gb-* once for light, once for dark.
+ * Following gruvbox.vim: dark uses the bright accents on dark0*, light uses the faded accents on light0*;
+ * hard/medium/soft change only bg0 (dark0_hard/dark0/dark0_soft, light0_hard/light0/light0_soft).
+ * bg1..bg4 = dark1..4 (light1..4), fg1..fg4 = light1..4 (dark1..4), gray = #928374.
+ * --gb-dim is the recessed workspace colour: dark0_hard in dark, light2 in light.
+ * Syntax follows gruvbox.vim highlight groups: Keyword/Statement red, String green, Number/Constant purple,
+ * Function green, Type yellow, Identifier/property blue, Comment gray. Accent is orange (the signature Gruvbox
+ * accent; bright_orange on dark, faded_orange on light). --theme-accent is the "Theme default" accent;
+ * --on-system is text drawn on system colours.
+ */
+
+/* ---- 1. Palette: Dark Hard (dark0_hard) ---- */
+:root[data-theme-family='gruvbox'][data-theme='dark'][data-theme-variant='hard'] {
+  color-scheme: dark;
+
+  --gb-bg0: #1d2021;
+  --gb-bg1: #3c3836;
+  --gb-bg2: #504945;
+  --gb-bg3: #665c54;
+  --gb-bg4: #7c6f64;
+  --gb-fg1: #ebdbb2;
+  --gb-fg2: #d5c4a1;
+  --gb-fg3: #bdae93;
+  --gb-fg4: #a89984;
+  --gb-gray: #928374;
+  --gb-red: #fb4934;
+  --gb-green: #b8bb26;
+  --gb-yellow: #fabd2f;
+  --gb-blue: #83a598;
+  --gb-purple: #d3869b;
+  --gb-aqua: #8ec07c;
+  --gb-orange: #fe8019;
+  --gb-dim: #1d2021;
+}
+
+/* ---- 1. Palette: Dark Medium (dark0) ---- */
+:root[data-theme-family='gruvbox'][data-theme='dark'][data-theme-variant='medium'] {
+  color-scheme: dark;
+
+  --gb-bg0: #282828;
+  --gb-bg1: #3c3836;
+  --gb-bg2: #504945;
+  --gb-bg3: #665c54;
+  --gb-bg4: #7c6f64;
+  --gb-fg1: #ebdbb2;
+  --gb-fg2: #d5c4a1;
+  --gb-fg3: #bdae93;
+  --gb-fg4: #a89984;
+  --gb-gray: #928374;
+  --gb-red: #fb4934;
+  --gb-green: #b8bb26;
+  --gb-yellow: #fabd2f;
+  --gb-blue: #83a598;
+  --gb-purple: #d3869b;
+  --gb-aqua: #8ec07c;
+  --gb-orange: #fe8019;
+  --gb-dim: #1d2021;
+}
+
+/* ---- 1. Palette: Dark Soft (dark0_soft) ---- */
+:root[data-theme-family='gruvbox'][data-theme='dark'][data-theme-variant='soft'] {
+  color-scheme: dark;
+
+  --gb-bg0: #32302f;
+  --gb-bg1: #3c3836;
+  --gb-bg2: #504945;
+  --gb-bg3: #665c54;
+  --gb-bg4: #7c6f64;
+  --gb-fg1: #ebdbb2;
+  --gb-fg2: #d5c4a1;
+  --gb-fg3: #bdae93;
+  --gb-fg4: #a89984;
+  --gb-gray: #928374;
+  --gb-red: #fb4934;
+  --gb-green: #b8bb26;
+  --gb-yellow: #fabd2f;
+  --gb-blue: #83a598;
+  --gb-purple: #d3869b;
+  --gb-aqua: #8ec07c;
+  --gb-orange: #fe8019;
+  --gb-dim: #1d2021;
+}
+
+/* ---- 1. Palette: Light Hard (light0_hard) ---- */
+:root[data-theme-family='gruvbox'][data-theme='light'][data-theme-variant='hard'] {
+  color-scheme: light;
+
+  --gb-bg0: #f9f5d7;
+  --gb-bg1: #ebdbb2;
+  --gb-bg2: #d5c4a1;
+  --gb-bg3: #bdae93;
+  --gb-bg4: #a89984;
+  --gb-fg1: #3c3836;
+  --gb-fg2: #504945;
+  --gb-fg3: #665c54;
+  --gb-fg4: #7c6f64;
+  --gb-gray: #928374;
+  --gb-red: #9d0006;
+  --gb-green: #79740e;
+  --gb-yellow: #b57614;
+  --gb-blue: #076678;
+  --gb-purple: #8f3f71;
+  --gb-aqua: #427b58;
+  --gb-orange: #af3a03;
+  --gb-dim: #d5c4a1;
+}
+
+/* ---- 1. Palette: Light Medium (light0) ---- */
+:root[data-theme-family='gruvbox'][data-theme='light'][data-theme-variant='medium'] {
+  color-scheme: light;
+
+  --gb-bg0: #fbf1c7;
+  --gb-bg1: #ebdbb2;
+  --gb-bg2: #d5c4a1;
+  --gb-bg3: #bdae93;
+  --gb-bg4: #a89984;
+  --gb-fg1: #3c3836;
+  --gb-fg2: #504945;
+  --gb-fg3: #665c54;
+  --gb-fg4: #7c6f64;
+  --gb-gray: #928374;
+  --gb-red: #9d0006;
+  --gb-green: #79740e;
+  --gb-yellow: #b57614;
+  --gb-blue: #076678;
+  --gb-purple: #8f3f71;
+  --gb-aqua: #427b58;
+  --gb-orange: #af3a03;
+  --gb-dim: #d5c4a1;
+}
+
+/* ---- 1. Palette: Light Soft (light0_soft) ---- */
+:root[data-theme-family='gruvbox'][data-theme='light'][data-theme-variant='soft'] {
+  color-scheme: light;
+
+  --gb-bg0: #f2e5bc;
+  --gb-bg1: #ebdbb2;
+  --gb-bg2: #d5c4a1;
+  --gb-bg3: #bdae93;
+  --gb-bg4: #a89984;
+  --gb-fg1: #3c3836;
+  --gb-fg2: #504945;
+  --gb-fg3: #665c54;
+  --gb-fg4: #7c6f64;
+  --gb-gray: #928374;
+  --gb-red: #9d0006;
+  --gb-green: #79740e;
+  --gb-yellow: #b57614;
+  --gb-blue: #076678;
+  --gb-purple: #8f3f71;
+  --gb-aqua: #427b58;
+  --gb-orange: #af3a03;
+  --gb-dim: #d5c4a1;
+}
+
+/* ---- 2. Shared mapping (--gb-* -> semantic tokens) ---- */
+:root[data-theme-family='gruvbox'][data-theme='light'][data-theme-variant] {
+  --bg-window: var(--gb-bg0);
+  --bg-content: var(--gb-bg0);
+  --bg-secondary: var(--gb-bg1);
+  --bg-tertiary: var(--gb-bg2);
+  --bg-elevated: var(--gb-bg0);
+  --bg-sidebar: color-mix(in srgb, var(--gb-bg1) 80%, transparent);
+  --bg-sidebar-solid: var(--gb-bg1);
+  --bg-notes-list: color-mix(in srgb, var(--gb-bg0) 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, var(--gb-bg1) 84%, transparent);
+  --bg-sheet: color-mix(in srgb, var(--gb-bg0) 96%, transparent);
+  --bg-scrim: color-mix(in srgb, var(--gb-fg1) 28%, transparent);
+  --bg-workspace: var(--gb-dim);
+  --bg-code: color-mix(in srgb, var(--gb-bg2) 45%, transparent);
+
+  --label: var(--gb-fg1);
+  --label-secondary: var(--gb-fg3);
+  --label-tertiary: var(--gb-fg4);
+  --label-quaternary: var(--gb-gray);
+
+  --separator: color-mix(in srgb, var(--gb-bg3) 55%, transparent);
+  --separator-opaque: var(--gb-bg2);
+
+  --fill: color-mix(in srgb, var(--gb-bg3) 60%, transparent);
+  --fill-secondary: color-mix(in srgb, var(--gb-bg2) 70%, transparent);
+  --fill-tertiary: color-mix(in srgb, var(--gb-bg2) 50%, transparent);
+  --fill-quaternary: color-mix(in srgb, var(--gb-bg1) 70%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 0 0.5px color-mix(in srgb, var(--gb-fg1) 12%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.1), 0 0 0 0.5px color-mix(in srgb, var(--gb-fg1) 14%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.2), 0 0 0 0.5px color-mix(in srgb, var(--gb-fg1) 18%, transparent);
+
+  --system-red: var(--gb-red);
+  --system-orange: var(--gb-orange);
+  --system-yellow: var(--gb-yellow);
+  --system-green: var(--gb-green);
+  --system-mint: var(--gb-aqua);
+  --system-teal: var(--gb-aqua);
+  --system-cyan: var(--gb-blue);
+  --system-blue: var(--gb-blue);
+  --system-indigo: var(--gb-blue);
+  --system-purple: var(--gb-purple);
+  --system-pink: var(--gb-purple);
+  --system-gray: var(--gb-gray);
+  --on-system: var(--gb-bg0);
+
+  --selection-alpha: 20%;
+  --selection-inactive: color-mix(in srgb, var(--gb-fg1) 10%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  --syntax-keyword: var(--gb-red);
+  --syntax-string: var(--gb-green);
+  --syntax-number: var(--gb-purple);
+  --syntax-function: var(--gb-green);
+  --syntax-type: var(--gb-yellow);
+  --syntax-property: var(--gb-blue);
+  --syntax-comment: var(--gb-gray);
+
+  --theme-accent: var(--gb-orange);
+  --theme-accent-contrast: var(--gb-bg0);
+}
+
+/* ---- 2. Shared mapping (--gb-* -> semantic tokens) ---- */
+:root[data-theme-family='gruvbox'][data-theme='dark'][data-theme-variant] {
+  --bg-window: var(--gb-bg0);
+  --bg-content: var(--gb-bg0);
+  --bg-secondary: var(--gb-bg1);
+  --bg-tertiary: var(--gb-bg2);
+  --bg-elevated: var(--gb-bg1);
+  --bg-sidebar: color-mix(in srgb, var(--gb-bg1) 80%, transparent);
+  --bg-sidebar-solid: var(--gb-bg1);
+  --bg-notes-list: color-mix(in srgb, var(--gb-bg0) 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, var(--gb-bg1) 84%, transparent);
+  --bg-sheet: color-mix(in srgb, var(--gb-bg1) 96%, transparent);
+  --bg-scrim: color-mix(in srgb, var(--gb-dim) 62%, transparent);
+  --bg-workspace: var(--gb-dim);
+  --bg-code: color-mix(in srgb, var(--gb-bg1) 70%, transparent);
+
+  --label: var(--gb-fg1);
+  --label-secondary: var(--gb-fg3);
+  --label-tertiary: var(--gb-fg4);
+  --label-quaternary: var(--gb-gray);
+
+  --separator: color-mix(in srgb, var(--gb-bg3) 55%, transparent);
+  --separator-opaque: var(--gb-bg2);
+
+  --fill: color-mix(in srgb, var(--gb-bg4) 55%, transparent);
+  --fill-secondary: color-mix(in srgb, var(--gb-bg3) 55%, transparent);
+  --fill-tertiary: color-mix(in srgb, var(--gb-bg2) 70%, transparent);
+  --fill-quaternary: color-mix(in srgb, var(--gb-bg1) 70%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, var(--gb-fg1) 12%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, var(--gb-fg1) 14%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 0.5px color-mix(in srgb, var(--gb-fg1) 18%, transparent);
+
+  --system-red: var(--gb-red);
+  --system-orange: var(--gb-orange);
+  --system-yellow: var(--gb-yellow);
+  --system-green: var(--gb-green);
+  --system-mint: var(--gb-aqua);
+  --system-teal: var(--gb-aqua);
+  --system-cyan: var(--gb-blue);
+  --system-blue: var(--gb-blue);
+  --system-indigo: var(--gb-blue);
+  --system-purple: var(--gb-purple);
+  --system-pink: var(--gb-purple);
+  --system-gray: var(--gb-gray);
+  --on-system: var(--gb-dim);
+
+  --selection-alpha: 30%;
+  --selection-inactive: color-mix(in srgb, var(--gb-fg1) 12%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --syntax-keyword: var(--gb-red);
+  --syntax-string: var(--gb-green);
+  --syntax-number: var(--gb-purple);
+  --syntax-function: var(--gb-green);
+  --syntax-type: var(--gb-yellow);
+  --syntax-property: var(--gb-blue);
+  --syntax-comment: var(--gb-gray);
+
+  --theme-accent: var(--gb-orange);
+  --theme-accent-contrast: var(--gb-dim);
+}

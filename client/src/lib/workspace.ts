@@ -3,6 +3,7 @@
  * DOM focus. UI components and keyboard commands both call these so behaviour
  * is identical no matter how an action is triggered.
  */
+import { WIDE_QUERY } from '../hooks/useMediaQuery'
 import { openSearchPanel } from '@codemirror/search'
 import { useEditorStore } from '../store/editorStore'
 import { useGroupStore } from '../store/groupStore'
@@ -10,6 +11,7 @@ import { focusedNoteId, useLayoutStore, type SplitRequest } from '../store/layou
 import { useUiStore } from '../store/uiStore'
 import { focusEditor, getEditor } from './editorRegistry'
 import { displayTitle } from './noteMeta'
+import { getThemeFamily, variantsFor, type Appearance } from './themes'
 import { findLeaf, leaves, type Direction } from './tiling'
 
 const narrow = () => typeof window !== 'undefined' && window.innerWidth < 760
@@ -86,6 +88,19 @@ export function swapDirection(dir: Direction) {
 export function splitTile(request: SplitRequest) {
   useLayoutStore.getState().split(request, { kind: 'empty' })
   focusTile(useLayoutStore.getState().focusedId, { dom: true })
+}
+
+export function toggleTilingMode() {
+  const layout = useLayoutStore.getState()
+  layout.toggleTilingMode()
+  const mode = useLayoutStore.getState().mode
+  useUiStore.getState().showFlash(mode === 'sliding' ? 'Sliding tiling: tiles are columns' : 'Dwindle tiling')
+}
+
+export function setFocusedColumnWidth(width: number) {
+  const { columns, focusedId, setColumnWidth } = useLayoutStore.getState()
+  const col = columns.find((c) => c.tiles.includes(focusedId))
+  if (col) setColumnWidth(col.id, width, true)
 }
 
 export function closeTile(tileId?: string) {
@@ -230,9 +245,32 @@ export function adjustTextSize(delta: number) {
 }
 
 export function cycleAppearance() {
-  const { prefs, resolvedTheme, setPref } = useUiStore.getState()
-  if (prefs.theme === 'system') setPref('theme', resolvedTheme === 'dark' ? 'light' : 'dark')
-  else setPref('theme', prefs.theme === 'dark' ? 'light' : 'dark')
+  const { prefs, resolvedTheme, setPref, showFlash } = useUiStore.getState()
+  const family = getThemeFamily(prefs.themeFamily)
+  const next = resolvedTheme === 'dark' ? 'light' : 'dark'
+  if (!family.appearances.includes(next)) {
+    showFlash(`${family.name} only has a ${resolvedTheme} appearance`)
+    return
+  }
+  setPref('theme', next)
+}
+
+export function setThemeFamily(id: string) {
+  const ui = useUiStore.getState()
+  ui.setThemeFamily(id)
+  ui.showFlash(`Theme: ${getThemeFamily(id).name}`)
+}
+
+/** Select a family variant (e.g. Catppuccin Mocha) and show the appearance it belongs to. */
+export function setThemeVariant(familyId: string, appearance: Appearance, variantId: string) {
+  const ui = useUiStore.getState()
+  const family = getThemeFamily(familyId)
+  const variant = variantsFor(family, appearance).find((v) => v.id === variantId)
+  if (!variant) return
+  if (ui.prefs.themeFamily !== family.id) ui.setThemeFamily(family.id)
+  ui.setThemeVariant(family.id, appearance, variantId)
+  ui.setPref('theme', appearance)
+  ui.showFlash(`Theme: ${family.name} ${variant.name}`)
 }
 
 export function focusNotesList() {
@@ -244,4 +282,18 @@ export function focusNotesList() {
       document.querySelector<HTMLElement>('[data-note-row]')
     el?.focus()
   })
+}
+
+/**
+ * Create a folder and file a note into it in one step. The folder starts with
+ * the temp id; `assignGroup` defers the server write and `replaceGroupId`
+ * reconciles it once the folder POST returns. When the folders column is on
+ * screen the new folder opens for inline naming.
+ */
+export function moveNoteToNewFolder(noteId: number) {
+  const ui = useUiStore.getState()
+  const foldersVisible =
+    ui.sidebarOpen && ui.foldersOpen && typeof window !== 'undefined' && window.matchMedia(WIDE_QUERY).matches
+  const groupId = useGroupStore.getState().addGroup({ edit: foldersVisible })
+  useEditorStore.getState().assignGroup(noteId, groupId)
 }

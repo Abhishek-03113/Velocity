@@ -80,6 +80,15 @@
   gap: 8px;
 }
 
+.brandLogo {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.15), 0 1px 2px rgb(0 0 0 / 0.18);
+}
+
 .brandMark {
   display: grid;
   width: 22px;
@@ -177,13 +186,26 @@
 }
 
 .sourceRow + .sourceRow {
-  margin-top: 1px;
+  margin-top: 0;
+}
+
+.sectionHeaderDrop {
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--accent);
+}
+
+.unfiledList {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--separator);
 }
 
 .sourceButton {
   display: flex;
   width: 100%;
-  height: 30px;
+  height: 34px;
   align-items: center;
   gap: 8px;
   padding: 0 8px;
@@ -498,5 +520,41 @@ li:has(+ li > .noteRowSelected) > .noteRow::after,
 
   .noteRow {
     padding: 12px 14px;
+  }
+}
+
+/* Move-to-folder chip on note rows: hover / selected / keyboard focus. */
+.moveChip {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: inline-flex;
+  width: 26px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated, var(--fill-secondary));
+  box-shadow: 0 0 0 0.5px var(--separator);
+  color: var(--label-secondary);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.noteRow:hover .moveChip,
+.noteRowSelected .moveChip,
+.noteRow:focus-within .moveChip,
+.moveChip:focus-visible {
+  opacity: 1;
+}
+
+.moveChip:hover {
+  background: var(--fill-secondary);
+  color: var(--accent);
+}
+
+@media (pointer: coarse) {
+  .moveChip {
+    opacity: 1;
   }
 }

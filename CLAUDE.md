@@ -72,6 +72,10 @@ Velocity/
 - **FlexSearch** — full-text search index, serialized to `localStorage` for persistence across page loads
 - **CSS Modules + design tokens** — scoped styles, zero runtime cost. `src/styles/tokens.css` defines Apple HIG semantic colours (light/dark), accent colours, the type ramp, radii and motion. Components consume tokens only, never raw hex values
 - **Tiling workspace** — `lib/tiling.ts` holds the pure binary split-tree engine and `store/layoutStore.ts` the state. Tiles are absolutely positioned and keyed by tile id, so editors never remount
+- **Sliding tiling** — `lib/sliding.ts` is a second pure engine (scrolling columns of stacked tiles, niri/PaperWM style). `layoutStore` picks a per-mode strategy (dwindle or sliding) and persists to `velocity.layout.v3`, migrating from v2. Tile contents stay in the shared tree, so everything else is mode-agnostic
+- **Themes** — `lib/themes.ts` is the registry of theme families: Apple, Catppuccin, Gruvbox, Everforest, Nord and Solarized, each Light and Dark. A family can also have per-appearance **variants**: Catppuccin has Latte (light) and Frappé / Macchiato / Mocha (dark, Mocha default); Gruvbox and Everforest have Hard / Medium / Soft in both appearances. The chosen variant is stored per family and appearance in the preferences and applied as `<html data-theme-variant>`, which is only present when the family has variants for the current appearance. Settings shows a chip row for it ("Flavour" or "Contrast"), the command palette gets one "Theme: <Family> <Variant>" command per variant, and the retired `catppuccin-macchiato` family migrates to `catppuccin` + `macchiato`. Each non-Apple family is one file in `styles/themes/` that overrides semantic tokens and the per-theme `--syntax-*` variables (variant families write one block per appearance and variant). A "Theme default" accent uses the family's own accent. To add a theme: one CSS file, an `@import` in `themes/index.css`, a registry entry (plus `variants` and `defaultVariants` if it has any), and the pre-paint `var THEMES = ...` line in `client/index.html`, regenerated from `themeIndex()` (`themes.test.ts` fails until it matches)
+- **Whiteboards** — scenes live in SQLite, not `localStorage`. `lib/boardSync.ts` is the save queue; `lib/boardMigration.ts` uploads legacy `localStorage` boards once. Excalidraw is pre-bundled via `optimizeDeps.include` in `vite.config.ts`
+- **Empty-note cleanup** — `lib/emptyNoteCleanup.ts` holds the policy and runner. Empty = untitled, blank content, no whiteboard. Inactive = not in a tab or tile, not dirty, older than 30 s. The 5 most recently used are kept. Deletes use the guarded `DELETE ?only_if_empty=1`
 - **Command registry** — `lib/commands.ts` is the single source of truth for shortcuts, the command palette, the shortcuts sheet and tooltips. One capture-phase key handler lives in `hooks/useGlobalShortcuts.ts`
 
 The entire UX interaction loop is client-side. Writes to the backend are **async and debounced** by the auto-save worker (`lib/syncEngine.ts`). It tracks a revision per note and keeps a single request in flight. It debounces for 800 ms with a 5 s max-wait and sends only the changed fields. It flushes on tab close and on `pagehide`, and retries with exponential back-off up to 3 attempts. After that the note is parked as "offline" and retried when the browser comes back online, the window regains focus, or the user presses ⌘S.
@@ -81,6 +85,8 @@ The entire UX interaction loop is client-side. Writes to the backend are **async
 - **Hono** on Node.js — thin REST API
 - **better-sqlite3** — synchronous SQLite driver
 - The server is a **persistence layer only** — no business logic in the critical path
+- **Whiteboard routes** — `GET/PUT/DELETE /api/pastes/:id/whiteboard`, 10 MB cap (413). `GET /api/pastes` rows include `has_whiteboard`, `is_empty` and `content_length`
+- **Empty-note sweep** — `workers/emptyNoteCleanup.ts` runs at startup and hourly, never touches notes edited in the last 10 minutes, and is disabled with `EMPTY_NOTE_CLEANUP=off`. `DELETE /api/pastes/:id?only_if_empty=1` returns 409 if the note gained content
 
 ### Database Schema
 
@@ -99,8 +105,15 @@ CREATE TABLE pastes (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE whiteboards (
+  paste_id   INTEGER PRIMARY KEY REFERENCES pastes(id) ON DELETE CASCADE,
+  scene      TEXT NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
+- A paste has at most one whiteboard. Deleting a paste cascades to its whiteboard.
 - A paste belongs to at most one group (flat/tag-style, no nesting).
 - Deleting a group sets `group_id = NULL` on its pastes; pastes are never cascade-deleted.
 
@@ -127,6 +140,9 @@ Defined in `client/src/lib/commands.ts`. `Mod` is ⌘ on macOS and Ctrl elsewher
 | Command palette | `Mod+Shift+P`, `F1` |
 | Find in note | `Mod+F` |
 | Toggle Sidebar | `Ctrl+Alt+S` (`Mod+1` best-effort) |
+| Move note to folder | `Ctrl+Alt+M` |
+| Toggle tiling mode (dwindle / sliding) | `Ctrl+Alt+T` |
+| Cycle column width (sliding) | `Ctrl+Alt+C` |
 | Split tile / right / down | `Mod+\` / `Ctrl+Alt+\` / `Ctrl+Alt+-` |
 | Focus / swap tiles | `Ctrl+Alt+Arrows` / `Ctrl+Alt+Shift+Arrows` |
 | Zoom / close tile | `Ctrl+Alt+Enter` / `Ctrl+Alt+Q` |
@@ -188,6 +204,11 @@ Track feature development status here. Update each item as work is completed.
 - [x] Retry queue: exponential backoff, max 3 attempts
 - [x] Server-side write failure logging (paste ID + timestamp)
 
+### Whiteboards
+- [x] `whiteboards` table in SQLite (cascade on note delete) and `/api/pastes/:id/whiteboard` routes
+- [x] Client save queue (`boardSync.ts`) and one-time `localStorage` migration
+- [x] Excalidraw pre-bundled for dev (`optimizeDeps.include`)
+
 ### Search
 - [x] FlexSearch index on title + content
 - [x] Index serialization to `localStorage` on each write
@@ -206,6 +227,11 @@ Track feature development status here. Update each item as work is completed.
 - [ ] Multi-cursor editing verified (CodeMirror 6 native API)
 - [x] Apple HIG redesign (tokens, light/dark, accent colours, vibrancy, alerts, sheets)
 - [x] Tiling workspace (dwindle splits, directional focus, swap, zoom, drag-to-tile)
+- [x] Sliding tiling mode (columns, width presets, stacking, pan/resize, minimap, v3 layout migration)
+- [x] Modular colour themes (6 families, light/dark, per-family variants: Catppuccin flavours, Gruvbox and Everforest contrast levels; per-theme syntax tokens, theme-default accent)
+- [x] Folders: Unfiled last, Move to Folder (row chip, toolbar, `Ctrl+Alt+M`, New Folder…), forgiving drag-and-drop
+- [x] Fountain-pen logo and favicon
+- [x] Empty-note cleanup (client LRU policy + server sweep + guarded delete)
 - [x] Command palette + single command registry
 - [x] Layout and tab restore across reloads
 - [x] Sidebar toggle animation
@@ -216,7 +242,7 @@ Track feature development status here. Update each item as work is completed.
 - [x] API response envelope (`{ success, data?, error? }`) on all routes
 - [x] Input validation on all API routes (Zod)
 - [x] Unit tests: auto-save worker (dirty flag, revisions, retry queue), tiling engine, command registry
-- [x] Integration tests: API routes (paste CRUD, group CRUD) + Markdown export worker
+- [x] Integration tests: API routes (paste CRUD, group CRUD), whiteboards, empty-note cleanup + Markdown export worker
 - [x] E2E tests: paste creation, search, group assignment, tiling, offline sync (Playwright)
 
 ---
@@ -225,7 +251,7 @@ Track feature development status here. Update each item as work is completed.
 
 The current UI is durable across reloads. Migrations run at server startup, paste and group CRUD APIs are wired, client bootstrap loads pastes/groups into Zustand, paste creation/deletion use server IDs, and `setContent` / `setTitle` / group assignment sync through debounced `PUT /api/pastes/:id` calls.
 
-Remaining intentionally incomplete areas are tracked above: rich text mode is not implemented and multi-cursor behaviour has not been manually verified. Whiteboards, preferences and the tile layout are stored per browser in `localStorage`.
+Remaining intentionally incomplete areas are tracked above: rich text mode is not implemented and multi-cursor behaviour has not been manually verified. Whiteboards are now durable in SQLite (synced across devices). Preferences (including theme) and the tile layout are still stored per browser in `localStorage`.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

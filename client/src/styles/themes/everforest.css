@@ -1,0 +1,285 @@
+/* Everforest — https://github.com/sainnhe/everforest (Sainnhe Park)
+ *
+ * One family, three contrast levels (variants) per appearance, exact values from
+ * autoload/everforest.vim (`everforest#get_palette`) at master commit 85a86eb (latest release v0.3.0, 1e62563):
+ * https://raw.githubusercontent.com/sainnhe/everforest/master/autoload/everforest.vim
+ *   Dark  · Hard, Medium (default), Soft      Light · Hard, Medium (default), Soft
+ * Selector convention: :root[data-theme-family='everforest'][data-theme='<light|dark>'][data-theme-variant='<hard|medium|soft>']
+ *
+ * Layout of this file:
+ *   1. Backgrounds: one block per appearance + contrast defining --ef-bg-dim, --ef-bg0..5, --ef-bg-visual,
+ *      --ef-bg-red/yellow/green/blue/purple (these are what change with contrast).
+ *   2. Shared mapping per appearance: the foreground palette (--ef-fg, colours, greys; identical across
+ *      contrast levels, different between dark and light) and the semantic tokens (tokens.css) derived from it.
+ * Mapping follows Everforest's conventions: bg0 -> content; bg_dim -> workspace (and the sidebar in dark,
+ * bg1 in light); bg1..bg5 -> fills and separators; fg -> label with grey2/grey1/grey0 for
+ * secondary/tertiary/quaternary; syntax per colors/everforest.vim: keyword red, string and function green,
+ * number purple, type yellow, property blue, comment grey1.
+ * Accent is green, Everforest's signature. In light the exact green (#8da101) is only ~2.7:1 on bg0,
+ * so the "Theme default" accent blends it 65/35 with fg; --system-green stays the exact palette value.
+ * --theme-accent is the "Theme default" accent; --on-system is text drawn on system colours.
+ */
+
+/* ---- 1. Backgrounds: Dark Hard ---- */
+:root[data-theme-family='everforest'][data-theme='dark'][data-theme-variant='hard'] {
+  color-scheme: dark;
+
+  --ef-bg-dim: #1e2326;
+  --ef-bg0: #272e33;
+  --ef-bg1: #2e383c;
+  --ef-bg2: #374145;
+  --ef-bg3: #414b50;
+  --ef-bg4: #495156;
+  --ef-bg5: #4f5b58;
+  --ef-bg-visual: #4c3743;
+  --ef-bg-red: #493b40;
+  --ef-bg-yellow: #45443c;
+  --ef-bg-green: #3c4841;
+  --ef-bg-blue: #384b55;
+  --ef-bg-purple: #463f48;
+}
+
+/* ---- 1. Backgrounds: Light Hard ---- */
+:root[data-theme-family='everforest'][data-theme='light'][data-theme-variant='hard'] {
+  color-scheme: light;
+
+  --ef-bg-dim: #f2efdf;
+  --ef-bg0: #fffbef;
+  --ef-bg1: #f8f5e4;
+  --ef-bg2: #f2efdf;
+  --ef-bg3: #edeada;
+  --ef-bg4: #e8e5d5;
+  --ef-bg5: #bec5b2;
+  --ef-bg-visual: #f0f2d4;
+  --ef-bg-red: #ffe7de;
+  --ef-bg-yellow: #fef2d5;
+  --ef-bg-green: #f3f5d9;
+  --ef-bg-blue: #ecf5ed;
+  --ef-bg-purple: #fceced;
+}
+
+/* ---- 1. Backgrounds: Dark Medium ---- */
+:root[data-theme-family='everforest'][data-theme='dark'][data-theme-variant='medium'] {
+  color-scheme: dark;
+
+  --ef-bg-dim: #232a2e;
+  --ef-bg0: #2d353b;
+  --ef-bg1: #343f44;
+  --ef-bg2: #3d484d;
+  --ef-bg3: #475258;
+  --ef-bg4: #4f585e;
+  --ef-bg5: #56635f;
+  --ef-bg-visual: #543a48;
+  --ef-bg-red: #514045;
+  --ef-bg-yellow: #4d4c43;
+  --ef-bg-green: #425047;
+  --ef-bg-blue: #3a515d;
+  --ef-bg-purple: #4a444e;
+}
+
+/* ---- 1. Backgrounds: Light Medium ---- */
+:root[data-theme-family='everforest'][data-theme='light'][data-theme-variant='medium'] {
+  color-scheme: light;
+
+  --ef-bg-dim: #efebd4;
+  --ef-bg0: #fdf6e3;
+  --ef-bg1: #f4f0d9;
+  --ef-bg2: #efebd4;
+  --ef-bg3: #e6e2cc;
+  --ef-bg4: #e0dcc7;
+  --ef-bg5: #bdc3af;
+  --ef-bg-visual: #eaedc8;
+  --ef-bg-red: #fde3da;
+  --ef-bg-yellow: #faedcd;
+  --ef-bg-green: #f0f1d2;
+  --ef-bg-blue: #e9f0e9;
+  --ef-bg-purple: #fae8e2;
+}
+
+/* ---- 1. Backgrounds: Dark Soft ---- */
+:root[data-theme-family='everforest'][data-theme='dark'][data-theme-variant='soft'] {
+  color-scheme: dark;
+
+  --ef-bg-dim: #293136;
+  --ef-bg0: #333c43;
+  --ef-bg1: #3a464c;
+  --ef-bg2: #434f55;
+  --ef-bg3: #4d5960;
+  --ef-bg4: #555f66;
+  --ef-bg5: #5d6b66;
+  --ef-bg-visual: #5c3f4f;
+  --ef-bg-red: #59464c;
+  --ef-bg-yellow: #55544a;
+  --ef-bg-green: #48584e;
+  --ef-bg-blue: #3f5865;
+  --ef-bg-purple: #4e4953;
+}
+
+/* ---- 1. Backgrounds: Light Soft ---- */
+:root[data-theme-family='everforest'][data-theme='light'][data-theme-variant='soft'] {
+  color-scheme: light;
+
+  --ef-bg-dim: #e5dfc5;
+  --ef-bg0: #f3ead3;
+  --ef-bg1: #eae4ca;
+  --ef-bg2: #e5dfc5;
+  --ef-bg3: #ddd8be;
+  --ef-bg4: #d8d3ba;
+  --ef-bg5: #b9c0ab;
+  --ef-bg-visual: #e1e4bd;
+  --ef-bg-red: #fadbd0;
+  --ef-bg-yellow: #f1e4c5;
+  --ef-bg-green: #e5e6c5;
+  --ef-bg-blue: #e1e7dd;
+  --ef-bg-purple: #f1ddd4;
+}
+
+/* ---- 2. Shared mapping: Light (foreground palette + semantic tokens) ---- */
+:root[data-theme-family='everforest'][data-theme='light'][data-theme-variant] {
+  --ef-fg: #5c6a72;
+  --ef-red: #f85552;
+  --ef-orange: #f57d26;
+  --ef-yellow: #dfa000;
+  --ef-green: #8da101;
+  --ef-aqua: #35a77c;
+  --ef-blue: #3a94c5;
+  --ef-purple: #df69ba;
+  --ef-grey0: #a6b0a0;
+  --ef-grey1: #939f91;
+  --ef-grey2: #829181;
+
+  --bg-window: var(--ef-bg0);
+  --bg-content: var(--ef-bg0);
+  --bg-secondary: var(--ef-bg1);
+  --bg-tertiary: var(--ef-bg2);
+  --bg-elevated: color-mix(in srgb, var(--ef-bg0) 55%, #ffffff);
+  --bg-sidebar: color-mix(in srgb, var(--ef-bg1) 80%, transparent);
+  --bg-sidebar-solid: var(--ef-bg1);
+  --bg-notes-list: color-mix(in srgb, var(--ef-bg0) 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, var(--ef-bg1) 84%, transparent);
+  --bg-sheet: color-mix(in srgb, var(--ef-bg0) 95%, transparent);
+  --bg-scrim: color-mix(in srgb, var(--ef-fg) 28%, transparent);
+  --bg-workspace: var(--ef-bg3);
+  --bg-code: color-mix(in srgb, var(--ef-bg2) 80%, transparent);
+
+  --label: var(--ef-fg);
+  --label-secondary: var(--ef-grey2);
+  --label-tertiary: var(--ef-grey1);
+  --label-quaternary: var(--ef-grey0);
+
+  --separator: color-mix(in srgb, var(--ef-bg5) 45%, transparent);
+  --separator-opaque: var(--ef-bg4);
+
+  --fill: color-mix(in srgb, var(--ef-bg5) 60%, transparent);
+  --fill-secondary: color-mix(in srgb, var(--ef-bg4) 60%, transparent);
+  --fill-tertiary: color-mix(in srgb, var(--ef-bg3) 70%, transparent);
+  --fill-quaternary: color-mix(in srgb, var(--ef-bg2) 50%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 0 0.5px color-mix(in srgb, var(--ef-grey1) 22%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.1), 0 0 0 0.5px color-mix(in srgb, var(--ef-grey1) 26%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.2), 0 0 0 0.5px color-mix(in srgb, var(--ef-grey1) 30%, transparent);
+
+  --system-red: var(--ef-red);
+  --system-orange: var(--ef-orange);
+  --system-yellow: var(--ef-yellow);
+  --system-green: var(--ef-green);
+  --system-mint: var(--ef-aqua);
+  --system-teal: color-mix(in srgb, var(--ef-aqua) 50%, var(--ef-blue));
+  --system-cyan: var(--ef-blue);
+  --system-blue: var(--ef-blue);
+  --system-indigo: color-mix(in srgb, var(--ef-blue) 60%, var(--ef-purple));
+  --system-purple: var(--ef-purple);
+  --system-pink: color-mix(in srgb, var(--ef-purple) 70%, var(--ef-red));
+  --system-gray: var(--ef-grey1);
+  --on-system: var(--ef-bg0);
+
+  --selection-alpha: 20%;
+  --selection-inactive: color-mix(in srgb, var(--ef-grey1) 16%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  --syntax-keyword: var(--ef-red);
+  --syntax-string: var(--ef-green);
+  --syntax-number: var(--ef-purple);
+  --syntax-function: var(--ef-green);
+  --syntax-type: var(--ef-yellow);
+  --syntax-property: var(--ef-blue);
+  --syntax-comment: var(--ef-grey1);
+
+  --theme-accent: color-mix(in srgb, var(--ef-green) 65%, var(--ef-fg));
+  --theme-accent-contrast: var(--ef-bg0);
+}
+
+/* ---- 2. Shared mapping: Dark (foreground palette + semantic tokens) ---- */
+:root[data-theme-family='everforest'][data-theme='dark'][data-theme-variant] {
+  --ef-fg: #d3c6aa;
+  --ef-red: #e67e80;
+  --ef-orange: #e69875;
+  --ef-yellow: #dbbc7f;
+  --ef-green: #a7c080;
+  --ef-aqua: #83c092;
+  --ef-blue: #7fbbb3;
+  --ef-purple: #d699b6;
+  --ef-grey0: #7a8478;
+  --ef-grey1: #859289;
+  --ef-grey2: #9da9a0;
+
+  --bg-window: var(--ef-bg0);
+  --bg-content: var(--ef-bg0);
+  --bg-secondary: var(--ef-bg1);
+  --bg-tertiary: var(--ef-bg2);
+  --bg-elevated: var(--ef-bg2);
+  --bg-sidebar: color-mix(in srgb, var(--ef-bg-dim) 80%, transparent);
+  --bg-sidebar-solid: var(--ef-bg-dim);
+  --bg-notes-list: color-mix(in srgb, var(--ef-bg0) 88%, transparent);
+  --bg-toolbar: color-mix(in srgb, var(--ef-bg-dim) 84%, transparent);
+  --bg-sheet: color-mix(in srgb, var(--ef-bg2) 95%, transparent);
+  --bg-scrim: color-mix(in srgb, var(--ef-bg-dim) 62%, transparent);
+  --bg-workspace: var(--ef-bg-dim);
+  --bg-code: color-mix(in srgb, var(--ef-bg2) 60%, transparent);
+
+  --label: var(--ef-fg);
+  --label-secondary: var(--ef-grey2);
+  --label-tertiary: var(--ef-grey1);
+  --label-quaternary: var(--ef-grey0);
+
+  --separator: color-mix(in srgb, var(--ef-bg5) 50%, transparent);
+  --separator-opaque: var(--ef-bg3);
+
+  --fill: color-mix(in srgb, var(--ef-bg5) 60%, transparent);
+  --fill-secondary: color-mix(in srgb, var(--ef-bg4) 60%, transparent);
+  --fill-tertiary: color-mix(in srgb, var(--ef-bg3) 70%, transparent);
+  --fill-quaternary: color-mix(in srgb, var(--ef-bg2) 50%, transparent);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, var(--ef-grey1) 18%, transparent);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 0.5px color-mix(in srgb, var(--ef-grey1) 22%, transparent);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 0.5px color-mix(in srgb, var(--ef-grey1) 26%, transparent);
+
+  --system-red: var(--ef-red);
+  --system-orange: var(--ef-orange);
+  --system-yellow: var(--ef-yellow);
+  --system-green: var(--ef-green);
+  --system-mint: var(--ef-aqua);
+  --system-teal: color-mix(in srgb, var(--ef-aqua) 50%, var(--ef-blue));
+  --system-cyan: var(--ef-blue);
+  --system-blue: var(--ef-blue);
+  --system-indigo: color-mix(in srgb, var(--ef-blue) 60%, var(--ef-purple));
+  --system-purple: var(--ef-purple);
+  --system-pink: color-mix(in srgb, var(--ef-purple) 70%, var(--ef-red));
+  --system-gray: var(--ef-grey1);
+  --on-system: var(--ef-bg-dim);
+
+  --selection-alpha: 30%;
+  --selection-inactive: color-mix(in srgb, var(--ef-grey1) 18%, transparent);
+  --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+
+  --syntax-keyword: var(--ef-red);
+  --syntax-string: var(--ef-green);
+  --syntax-number: var(--ef-purple);
+  --syntax-function: var(--ef-green);
+  --syntax-type: var(--ef-yellow);
+  --syntax-property: var(--ef-blue);
+  --syntax-comment: var(--ef-grey1);
+
+  --theme-accent: var(--ef-green);
+  --theme-accent-contrast: var(--ef-bg-dim);
+}

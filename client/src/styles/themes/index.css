@@ -1,0 +1,13 @@
+/* One import per theme family (Apple lives in ../tokens.css). Register new families in lib/themes.ts.
+ *
+ * Selector convention (see the header of lib/themes.ts for the full recipe):
+ *   :root[data-theme-family='<family>'][data-theme='<light|dark>']                                   no variants
+ *   :root[data-theme-family='<family>'][data-theme='<light|dark>'][data-theme-variant='<variant>']   family with variants
+ * `data-theme-variant` is set on <html> only when the family declares variants for the resolved
+ * appearance, and always to a valid id (pre-paint script + uiStore fall back to the family default),
+ * so a bare `[data-theme-variant]` selector can be used for blocks shared by every variant. */
+@import './catppuccin.css';
+@import './gruvbox.css';
+@import './everforest.css';
+@import './nord.css';
+@import './solarized.css';

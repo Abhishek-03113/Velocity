@@ -1,11 +1,23 @@
 import { useShallow } from 'zustand/react/shallow'
+import { useLayoutStore } from '../../store/layoutStore'
 import { ACCENTS, useUiStore, type Accent } from '../../store/uiStore'
+import {
+  THEME_FAMILIES,
+  getThemeFamily,
+  resolveVariant,
+  swatchFor,
+  variantsFor,
+  type Appearance,
+  type ThemeFamily,
+} from '../../lib/themes'
+import { setThemeVariant } from '../../lib/workspace'
 import { Icon } from '../Icon'
 import { Segmented } from '../ui/Segmented'
 import { Sheet } from './Sheet'
 import styles from './Overlays.module.css'
 
 const ACCENT_LABELS: Record<Accent, string> = {
+  theme: 'Theme default',
   blue: 'Blue',
   purple: 'Purple',
   pink: 'Pink',
@@ -43,18 +55,162 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   )
 }
 
+function TilingModeRow() {
+  const mode = useLayoutStore((s) => s.mode)
+  return (
+    <Row
+      label="Tiling"
+      hint={mode === 'sliding' ? 'Columns on a scrolling strip' : 'Splits that halve the focused tile'}
+    >
+      <Segmented
+        label="Tiling mode"
+        value={mode}
+        onChange={(v) => useLayoutStore.getState().setTilingMode(v)}
+        options={[
+          { value: 'dwindle', label: 'Dwindle' },
+          { value: 'sliding', label: 'Sliding' },
+        ]}
+      />
+    </Row>
+  )
+}
+
+/** Mini window drawn in the theme's own colours: sidebar, text lines and an accent pill. */
+function ThemeCard({
+  family,
+  appearance,
+  variantId,
+  selected,
+  onSelect,
+}: {
+  family: ThemeFamily
+  appearance: Appearance
+  variantId?: string
+  selected: boolean
+  onSelect: () => void
+}) {
+  const sw = swatchFor(family, appearance, variantId)
+  const modes = family.appearances.length === 2 ? 'Light & Dark' : family.appearances[0] === 'dark' ? 'Dark only' : 'Light only'
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      aria-label={family.name}
+      title={`${family.name} · ${modes} · ${family.accentName} accent`}
+      className={`${styles.themeCard} ${selected ? styles.themeCardSelected : ''}`}
+      data-theme-card={family.id}
+      onClick={onSelect}
+    >
+      <span className={styles.themePreview} style={{ background: sw.bg, color: sw.text }} aria-hidden="true">
+        <span className={styles.themePreviewSidebar} style={{ background: sw.sidebar }}>
+          <i style={{ background: sw.accent }} />
+          <i />
+          <i />
+        </span>
+        <span className={styles.themePreviewBody}>
+          <b />
+          <i />
+          <i />
+          <em style={{ background: sw.accent }} />
+        </span>
+      </span>
+      <span className={styles.themeName}>{family.name}</span>
+      <span className={styles.themeModes}>{modes}</span>
+    </button>
+  )
+}
+
+/**
+ * Variant chips ("Flavour: Frappé · Macchiato · Mocha") for the selected family. One row for the
+ * current appearance; in Auto, a Light and a Dark row when either appearance offers a choice.
+ */
+function VariantRows({ family, appearance, auto }: { family: ThemeFamily; appearance: Appearance; auto: boolean }) {
+  const variantPrefs = useUiStore((s) => s.prefs.themeVariants)
+  const shown: Appearance[] = auto
+    ? family.appearances.filter((a) => variantsFor(family, a).length > 0)
+    : family.appearances.includes(appearance)
+      ? [appearance]
+      : []
+  const hasChoice = shown.some((a) => variantsFor(family, a).length > 1)
+  if (!hasChoice) return null
+  const noun = family.variantLabel ?? 'Variant'
+  return (
+    <div className={styles.variantBlock} data-variant-rows={family.id}>
+      {shown.map((a) => {
+        const label = auto ? `${a === 'light' ? 'Light' : 'Dark'} ${noun.toLowerCase()}` : noun
+        const current = resolveVariant(family, a, variantPrefs)
+        return (
+          <div key={a} className={styles.variantRow}>
+            <span className={styles.variantLabel}>{label}</span>
+            <div className={styles.variantChips} role="radiogroup" aria-label={label}>
+              {variantsFor(family, a).map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={v.id === current}
+                  data-variant={v.id}
+                  className={`${styles.variantChip} ${v.id === current ? styles.variantChipSelected : ''}`}
+                  onClick={() => setThemeVariant(family.id, a, v.id)}
+                >
+                  <span
+                    className={styles.variantDot}
+                    style={{ background: `linear-gradient(135deg, ${v.swatch.bg} 50%, ${v.swatch.accent} 50%)` }}
+                    aria-hidden="true"
+                  />
+                  {v.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /** Settings (⌘,) — grouped inset rows in the style of System Settings. */
 export default function SettingsSheet() {
-  const { prefs, setPref, setSettingsOpen } = useUiStore(
-    useShallow((s) => ({ prefs: s.prefs, setPref: s.setPref, setSettingsOpen: s.setSettingsOpen })),
+  const { prefs, resolvedTheme, setPref, setThemeFamily, setSettingsOpen } = useUiStore(
+    useShallow((s) => ({
+      prefs: s.prefs,
+      resolvedTheme: s.resolvedTheme,
+      setPref: s.setPref,
+      setThemeFamily: s.setThemeFamily,
+      setSettingsOpen: s.setSettingsOpen,
+    })),
   )
+  const family = getThemeFamily(prefs.themeFamily)
   const close = () => setSettingsOpen(false)
 
   return (
     <Sheet title="Settings" onClose={close} width={600}>
       <h3 className={styles.groupHeading}>Appearance</h3>
       <div className={styles.group}>
-        <Row label="Appearance">
+        <div className={styles.themeBlock}>
+          <div className={styles.settingLabel}>
+            <span>Theme</span>
+            <span className={styles.settingHint}>{family.name} · {family.accentName} accent</span>
+          </div>
+          <div className={styles.themeGrid} role="radiogroup" aria-label="Theme">
+            {THEME_FAMILIES.map((f) => (
+              <ThemeCard
+                key={f.id}
+                family={f}
+                appearance={resolvedTheme}
+                variantId={f.id === prefs.themeFamily ? resolveVariant(f, resolvedTheme, prefs.themeVariants) : undefined}
+                selected={f.id === prefs.themeFamily}
+                onSelect={() => setThemeFamily(f.id)}
+              />
+            ))}
+          </div>
+          <VariantRows family={family} appearance={resolvedTheme} auto={prefs.theme === 'system'} />
+        </div>
+        <Row
+          label="Appearance"
+          hint={family.appearances.length === 1 ? `${family.name} only has a ${family.appearances[0]} appearance` : undefined}
+        >
           <Segmented
             label="Appearance"
             value={prefs.theme}
@@ -68,21 +224,24 @@ export default function SettingsSheet() {
         </Row>
         <Row label="Accent colour">
           <div className={styles.swatches} role="radiogroup" aria-label="Accent colour">
-            {ACCENTS.map((a) => (
+            {ACCENTS.map((a) => {
+              const label = a === 'theme' ? `Theme default (${family.name}: ${family.accentName})` : ACCENT_LABELS[a]
+              return (
               <button
                 key={a}
                 type="button"
                 role="radio"
                 aria-checked={prefs.accent === a}
-                aria-label={ACCENT_LABELS[a]}
-                title={ACCENT_LABELS[a]}
+                aria-label={label}
+                title={label}
                 className={`${styles.swatch} ${prefs.accent === a ? styles.swatchSelected : ''}`}
                 data-swatch={a}
                 onClick={() => setPref('accent', a)}
               >
-                {prefs.accent === a && <Icon name="checkmark" size={11} strokeWidth={2.6} />}
+                {prefs.accent === a && a !== 'theme' && <Icon name="checkmark" size={11} strokeWidth={2.6} />}
               </button>
-            ))}
+              )
+            })}
           </div>
         </Row>
         <Row label="Gaps between tiles" hint="Floating tiles with an accent border on the focused one">
@@ -140,6 +299,11 @@ export default function SettingsSheet() {
         <Row label="Check spelling">
           <Toggle label="Check spelling" checked={prefs.spellcheck} onChange={(v) => setPref('spellcheck', v)} />
         </Row>
+      </div>
+
+      <h3 className={styles.groupHeading}>Tiling</h3>
+      <div className={styles.group}>
+        <TilingModeRow />
       </div>
 
       <h3 className={styles.groupHeading}>Notes list</h3>
