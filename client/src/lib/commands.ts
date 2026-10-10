@@ -14,7 +14,7 @@ import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
 import { useUiStore } from '../store/uiStore'
 import { displayTitle } from './noteMeta'
-import { THEME_FAMILIES } from './themes'
+import { THEME_FAMILIES, variantsFor } from './themes'
 import { isMac } from './platform'
 import { findLeaf, leaves } from './tiling'
 import * as ws from './workspace'
@@ -59,6 +59,27 @@ const themeCommands: Command[] = THEME_FAMILIES.map((f) => ({
   keywords: 'colour color theme palette appearance dark light',
   run: () => ws.setThemeFamily(f.id),
 }))
+
+/** "Theme: Catppuccin Mocha" — one per family variant, for families that offer a choice. */
+const themeVariantCommands: Command[] = THEME_FAMILIES.flatMap((f) => {
+  const hasChoice = (['light', 'dark'] as const).some((a) => variantsFor(f, a).length > 1)
+  if (!hasChoice) return []
+  const names = (['light', 'dark'] as const).flatMap((a) => variantsFor(f, a).map((v) => v.name))
+  return (['light', 'dark'] as const).flatMap((appearance) =>
+    variantsFor(f, appearance).map((v) => {
+      // Qualify with the appearance only when the bare name would be ambiguous (e.g. Hard in both).
+      const ambiguous = names.filter((n) => n === v.name).length > 1
+      const label = ambiguous ? `${appearance === 'light' ? 'Light' : 'Dark'} ${v.name}` : v.name
+      return {
+        id: `theme.${f.id}.${appearance}.${v.id}`,
+        title: `Theme: ${f.name} ${label}`,
+        section: 'View' as const,
+        keywords: `colour color theme palette flavour variant ${appearance}`,
+        run: () => ws.setThemeVariant(f.id, appearance, v.id),
+      }
+    }),
+  )
+})
 
 export const COMMANDS: Command[] = [
   // ---- Notes ---------------------------------------------------------------
@@ -393,6 +414,7 @@ export const COMMANDS: Command[] = [
     run: () => ws.cycleAppearance(),
   },
   ...themeCommands,
+  ...themeVariantCommands,
 
   // ---- App -----------------------------------------------------------------
   {

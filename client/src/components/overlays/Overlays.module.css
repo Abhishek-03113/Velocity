@@ -524,6 +524,77 @@
   gap: 12px 10px;
 }
 
+/* Variant (flavour) chips under the theme grid */
+.variantBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--separator);
+}
+
+.variantRow {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.variantLabel {
+  min-width: 84px;
+  color: var(--label-secondary);
+  font-size: var(--text-callout);
+}
+
+.variantChips {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.variantChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px 0 6px;
+  border-radius: 14px;
+  background: var(--fill-tertiary);
+  color: var(--label);
+  font-size: var(--text-callout);
+  font-weight: 500;
+  transition: background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.variantChip:hover {
+  background: var(--fill-secondary);
+}
+
+.variantChipSelected,
+.variantChipSelected:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.variantDot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.5px var(--separator-opaque), 0 0 0 2px var(--bg-elevated);
+}
+
+@media (max-width: 520px) {
+  .variantLabel {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+}
+
 .themeCard {
   display: flex;
   min-width: 0;
