@@ -82,6 +82,42 @@ describe('theme registry', () => {
   })
 })
 
+describe('Everforest family', () => {
+  const ef = getThemeFamily('everforest')
+
+  it('has hard/medium/soft contrast in both appearances, defaulting to medium', () => {
+    expect(ef.variantLabel).toBe('Contrast')
+    for (const a of ['light', 'dark'] as const) {
+      expect(variantsFor(ef, a).map((v) => v.id)).toEqual(['hard', 'medium', 'soft'])
+      expect(variantsFor(ef, a).map((v) => v.name)).toEqual(['Hard', 'Medium', 'Soft'])
+      expect(defaultVariantId(ef, a)).toBe('medium')
+    }
+    expect(themeIndex()['everforest']?.variants).toEqual({
+      light: { default: 'medium', ids: ['hard', 'medium', 'soft'] },
+      dark: { default: 'medium', ids: ['hard', 'medium', 'soft'] },
+    })
+  })
+
+  it('keeps the family id and previews each contrast level', () => {
+    expect(swatchFor(ef, 'dark', 'hard').bg).toBe('#272e33')
+    expect(swatchFor(ef, 'dark').bg).toBe('#2d353b')
+    expect(swatchFor(ef, 'dark', 'soft').bg).toBe('#333c43')
+    expect(swatchFor(ef, 'light', 'hard').bg).toBe('#fffbef')
+    expect(swatchFor(ef, 'light', 'soft').bg).toBe('#f3ead3')
+    expect(resolveVariant(ef, 'light', { everforest: { light: 'soft' } })).toBe('soft')
+    expect(sanitizePrefs({ themeFamily: 'everforest', themeVariants: { everforest: { dark: 'hard' } } })).toMatchObject({
+      themeFamily: 'everforest',
+      themeVariants: { everforest: { dark: 'hard' } },
+    })
+  })
+
+  it('generates unambiguous palette commands that name the appearance', () => {
+    const titles = (a: string) => ['hard', 'medium', 'soft'].map((v) => COMMANDS.find((c) => c.id === `theme.everforest.${a}.${v}`)?.title)
+    expect(titles('dark')).toEqual(['Theme: Everforest Dark Hard', 'Theme: Everforest Dark Medium', 'Theme: Everforest Dark Soft'])
+    expect(titles('light')).toEqual(['Theme: Everforest Light Hard', 'Theme: Everforest Light Medium', 'Theme: Everforest Light Soft'])
+  })
+})
+
 describe('appearance resolution', () => {
   it('follows the preference or the OS when the family ships both', () => {
     expect(resolveAppearance('gruvbox', 'light', true)).toBe('light')
