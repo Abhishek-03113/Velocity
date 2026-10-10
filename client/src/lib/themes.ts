@@ -115,8 +115,22 @@ export const THEME_FAMILIES: readonly ThemeFamily[] = [
     name: 'Everforest',
     appearances: ['light', 'dark'],
     accentName: 'Green',
+    variantLabel: 'Contrast',
+    defaultVariants: { light: 'medium', dark: 'medium' },
+    variants: {
+      light: [
+        { id: 'hard', name: 'Hard', swatch: { bg: '#fffbef', sidebar: '#f8f5e4', accent: '#7c8e29', text: '#5c6a72' } },
+        { id: 'medium', name: 'Medium', swatch: { bg: '#fdf6e3', sidebar: '#f4f0d9', accent: '#7c8e29', text: '#5c6a72' } },
+        { id: 'soft', name: 'Soft', swatch: { bg: '#f3ead3', sidebar: '#eae4ca', accent: '#7c8e29', text: '#5c6a72' } },
+      ],
+      dark: [
+        { id: 'hard', name: 'Hard', swatch: { bg: '#272e33', sidebar: '#1e2326', accent: '#a7c080', text: '#d3c6aa' } },
+        { id: 'medium', name: 'Medium', swatch: { bg: '#2d353b', sidebar: '#232a2e', accent: '#a7c080', text: '#d3c6aa' } },
+        { id: 'soft', name: 'Soft', swatch: { bg: '#333c43', sidebar: '#293136', accent: '#a7c080', text: '#d3c6aa' } },
+      ],
+    },
     swatches: {
-      light: { bg: '#fdf6e3', sidebar: '#f4f0d9', accent: '#6f8a00', text: '#5c6a72' },
+      light: { bg: '#fdf6e3', sidebar: '#f4f0d9', accent: '#7c8e29', text: '#5c6a72' },
       dark: { bg: '#2d353b', sidebar: '#232a2e', accent: '#a7c080', text: '#d3c6aa' },
     },
   },
