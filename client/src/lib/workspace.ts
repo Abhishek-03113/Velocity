@@ -88,6 +88,19 @@ export function splitTile(request: SplitRequest) {
   focusTile(useLayoutStore.getState().focusedId, { dom: true })
 }
 
+export function toggleTilingMode() {
+  const layout = useLayoutStore.getState()
+  layout.toggleTilingMode()
+  const mode = useLayoutStore.getState().mode
+  useUiStore.getState().showFlash(mode === 'sliding' ? 'Sliding tiling: tiles are columns' : 'Dwindle tiling')
+}
+
+export function setFocusedColumnWidth(width: number) {
+  const { columns, focusedId, setColumnWidth } = useLayoutStore.getState()
+  const col = columns.find((c) => c.tiles.includes(focusedId))
+  if (col) setColumnWidth(col.id, width, true)
+}
+
 export function closeTile(tileId?: string) {
   const layout = useLayoutStore.getState()
   const id = tileId ?? layout.focusedId

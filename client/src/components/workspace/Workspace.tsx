@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 import { useShallow } from 'zustand/react/shallow'
 import { COMPACT_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
 import { NOTE_DRAG_TYPE } from '../../lib/groupColors'
+import { geometry as slidingGeometry } from '../../lib/sliding'
 import { computeGeometry, leaves, type Rect, type SplitGeometry } from '../../lib/tiling'
 import { useLayoutStore } from '../../store/layoutStore'
 import { useEditorStore } from '../../store/editorStore'
 import { placeNoteInTile } from '../../lib/workspace'
+import { ColumnMap } from './ColumnMap'
 import { Tile, type DropZone } from './Tile'
 import styles from './Workspace.module.css'
 
@@ -60,15 +62,21 @@ function zoneFor(e: DragEvent, el: HTMLElement): DropZone {
  * ever remounting an editor.
  */
 export default function Workspace() {
-  const { root, focusedId, zoomedId, setRatio, setAspect } = useLayoutStore(
-    useShallow((s) => ({
-      root: s.root,
-      focusedId: s.focusedId,
-      zoomedId: s.zoomedId,
-      setRatio: s.setRatio,
-      setAspect: s.setAspect,
-    })),
-  )
+  const { root, focusedId, zoomedId, setRatio, setAspect, mode, columns, scrollX, setColumnWidth, scrollTo } =
+    useLayoutStore(
+      useShallow((s) => ({
+        root: s.root,
+        focusedId: s.focusedId,
+        zoomedId: s.zoomedId,
+        setRatio: s.setRatio,
+        setAspect: s.setAspect,
+        mode: s.mode,
+        columns: s.columns,
+        scrollX: s.scrollX,
+        setColumnWidth: s.setColumnWidth,
+        scrollTo: s.scrollTo,
+      })),
+    )
   const compact = useMediaQuery(COMPACT_QUERY)
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
@@ -87,12 +95,21 @@ export default function Workspace() {
   }, [setAspect])
 
   const all = useMemo(() => leaves(root), [root])
-  const geometry = useMemo(() => computeGeometry(root), [root])
+  const sliding = mode === 'sliding'
+  const slideGeo = useMemo(() => (sliding ? slidingGeometry(columns) : null), [sliding, columns])
+  const geometry = useMemo(
+    () => (slideGeo ? { tiles: slideGeo.tiles, splits: [] as SplitGeometry[] } : computeGeometry(root)),
+    [root, slideGeo],
+  )
   // Stable DOM order (creation order) — reordering would detach live editors.
   const ordered = useMemo(() => [...all].sort((a, b) => (a.id < b.id ? -1 : 1)), [all])
 
   const monocleId = compact ? focusedId : zoomedId
   const tiled = all.length > 1 && !monocleId
+  const strip = sliding && !monocleId
+  const stripScroll = strip ? scrollX : 0
+  const total = slideGeo?.total ?? 1
+  const showMap = strip && columns.length > 1
 
   const startResize = useCallback(
     (split: SplitGeometry) => (e: PointerEvent<HTMLDivElement>) => {
@@ -124,6 +141,72 @@ export default function Workspace() {
     },
     [setRatio],
   )
+
+  const startColumnResize = useCallback(
+    (col: { id: string; x: number }) => (e: PointerEvent<HTMLDivElement>) => {
+      const el = stageRef.current
+      if (!el) return
+      e.preventDefault()
+      const target = e.currentTarget
+      target.setPointerCapture(e.pointerId)
+      setResizing(col.id)
+      const bounds = el.getBoundingClientRect()
+      const onMove = (ev: globalThis.PointerEvent) => {
+        const edge = (ev.clientX - bounds.left) / bounds.width + useLayoutStore.getState().scrollX
+        setColumnWidth(col.id, edge - col.x)
+      }
+      const onUp = () => {
+        setResizing(null)
+        target.removeEventListener('pointermove', onMove)
+        target.removeEventListener('pointerup', onUp)
+        target.removeEventListener('pointercancel', onUp)
+      }
+      target.addEventListener('pointermove', onMove)
+      target.addEventListener('pointerup', onUp)
+      target.addEventListener('pointercancel', onUp)
+    },
+    [setColumnWidth],
+  )
+
+  // Horizontal wheel / trackpad scroll pans the strip (vertical scroll stays with the notes).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || !strip) return
+    const onWheel = (e: WheelEvent) => {
+      const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey
+      if (!horizontal) return
+      e.preventDefault()
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      const width = el.clientWidth || 1
+      scrollTo(useLayoutStore.getState().scrollX + delta / width)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [strip, scrollTo])
+
+  // Drag the empty space between tiles to pan the strip.
+  const onStripPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!strip || e.button !== 0) return
+    if (e.target !== e.currentTarget) return
+    const el = containerRef.current
+    if (!el) return
+    const startX = e.clientX
+    const startScroll = useLayoutStore.getState().scrollX
+    const target = e.currentTarget
+    target.setPointerCapture(e.pointerId)
+    setResizing('pan')
+    const onMove = (ev: globalThis.PointerEvent) =>
+      scrollTo(startScroll - (ev.clientX - startX) / (el.clientWidth || 1))
+    const onUp = () => {
+      setResizing(null)
+      target.removeEventListener('pointermove', onMove)
+      target.removeEventListener('pointerup', onUp)
+      target.removeEventListener('pointercancel', onUp)
+    }
+    target.addEventListener('pointermove', onMove)
+    target.addEventListener('pointerup', onUp)
+    target.addEventListener('pointercancel', onUp)
+  }
 
   const onDragOver = (tileId: string) => (e: DragEvent<HTMLDivElement>) => {
     if (!e.dataTransfer.types.includes(NOTE_DRAG_TYPE)) return
@@ -165,10 +248,25 @@ export default function Workspace() {
   return (
     <div
       ref={containerRef}
-      className={`${styles.workspace} ${tiled ? styles.tiled : ''} ${resizing ? styles.resizing : ''}`}
+      className={`${styles.workspace} ${tiled ? styles.tiled : ''} ${resizing ? styles.resizing : ''} ${
+        showMap ? styles.hasMap : ''
+      }`}
       data-tiles={all.length}
+      data-tiling-mode={mode}
+      // Focusing an input inside an off-screen column must not scroll the clipped container natively.
+      onScroll={(e) => {
+        e.currentTarget.scrollLeft = 0
+        e.currentTarget.scrollTop = 0
+      }}
+      data-scroll={strip ? stripScroll.toFixed(3) : undefined}
     >
       <div ref={stageRef} className={styles.stage}>
+      <div
+        className={`${styles.strip} ${strip ? styles.stripSliding : ''}`}
+        style={strip ? { transform: `translateX(${-stripScroll * 100}%)` } : undefined}
+        onPointerDown={onStripPointerDown}
+        data-strip
+      >
       {ordered.map((leaf) => {
         const rect = monocleId ? FULL : (geometry.tiles[leaf.id] ?? FULL)
         const hidden = monocleId != null && leaf.id !== monocleId
@@ -210,7 +308,42 @@ export default function Workspace() {
             onDoubleClick={() => setRatio(split.id, 0.5)}
           />
         ))}
+
+      {tiled &&
+        slideGeo &&
+        columns.length > 1 &&
+        slideGeo.columns.slice(0, -1).map((col) => (
+          <div
+            key={col.id}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize column"
+            title="Drag to resize column · double-click to reset width"
+            data-column-handle={col.id}
+            className={`${styles.divider} ${styles.dividerV} ${resizing === col.id ? styles.dividerActive : ''}`}
+            style={{ left: `calc(${(col.x + col.w) * 100}% - 4px)`, top: 0, width: '8px', height: '100%' }}
+            onPointerDown={startColumnResize(col)}
+            onDoubleClick={() => setColumnWidth(col.id, 0.5)}
+          />
+        ))}
       </div>
+      </div>
+
+      {strip && (
+        <>
+          <div
+            className={`${styles.edge} ${styles.edgeLeft} ${stripScroll > 0.001 ? styles.edgeOn : ''}`}
+            aria-hidden="true"
+            data-edge="left"
+          />
+          <div
+            className={`${styles.edge} ${styles.edgeRight} ${stripScroll < total - 1 - 0.001 ? styles.edgeOn : ''}`}
+            aria-hidden="true"
+            data-edge="right"
+          />
+        </>
+      )}
+      {showMap && <ColumnMap columns={columns} focusedId={focusedId} scrollX={stripScroll} total={total} />}
     </div>
   )
 }
