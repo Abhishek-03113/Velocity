@@ -3,6 +3,8 @@ export interface Paste {
   title: string
   content: string | undefined
   dirty: boolean
+  /** Stable client key that survives the temp-id → server-id swap (keeps editors mounted). */
+  cid?: string
   group_id?: number | null
   created_at?: string
   updated_at?: string

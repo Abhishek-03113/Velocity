@@ -32,6 +32,11 @@ npm run build
 
 # Lint the client
 cd client && npm run lint
+
+# Tests
+cd client && npm test          # Vitest unit tests
+cd server && npm test          # node:test API + export worker tests
+cd client && npm run test:e2e  # Playwright E2E (headless Chromium); screenshots → docs/screenshots/after
 ```
 
 Server runs on `http://localhost:3000`, client on `http://localhost:5173`.
@@ -65,9 +70,11 @@ Velocity/
 - **CodeMirror 6** — editor engine (multi-cursor, Markdown, keymaps)
 - **Zustand** — client-side state (primary source of truth during runtime)
 - **FlexSearch** — full-text search index, serialized to `localStorage` for persistence across page loads
-- **CSS Modules** — scoped styles, zero runtime cost
+- **CSS Modules + design tokens** — scoped styles, zero runtime cost. `src/styles/tokens.css` defines Apple HIG semantic colours (light/dark), accent colours, the type ramp, radii and motion. Components consume tokens only, never raw hex values
+- **Tiling workspace** — `lib/tiling.ts` holds the pure binary split-tree engine and `store/layoutStore.ts` the state. Tiles are absolutely positioned and keyed by tile id, so editors never remount
+- **Command registry** — `lib/commands.ts` is the single source of truth for shortcuts, the command palette, the shortcuts sheet and tooltips. One capture-phase key handler lives in `hooks/useGlobalShortcuts.ts`
 
-The entire UX interaction loop is client-side. Writes to the backend are **async and debounced**. Dirty state is tracked in Zustand; failed writes enter a retry queue (exponential backoff, max 3 attempts).
+The entire UX interaction loop is client-side. Writes to the backend are **async and debounced** by the auto-save worker (`lib/syncEngine.ts`). It tracks a revision per note and keeps a single request in flight. It debounces for 800 ms with a 5 s max-wait and sends only the changed fields. It flushes on tab close and on `pagehide`, and retries with exponential back-off up to 3 attempts. After that the note is parked as "offline" and retried when the browser comes back online, the window regains focus, or the user presses ⌘S.
 
 ### Backend (server/)
 
@@ -102,7 +109,7 @@ CREATE TABLE pastes (
 ## Key Design Constraints
 
 - **No IndexedDB** — SQLite on the filesystem is the sole durability guarantee.
-- **No toast notifications** — backend write failures are logged server-side only; a dirty-state indicator in the UI is the only user-facing signal.
+- **No toast notifications.** Backend write failures are logged server-side only. The status-bar save state ("Edited" / "Saving…" / "Offline") and the per-note dirty dots are the only user-facing signals.
 - **1 MB soft cap per paste** — warn in the editor status bar; no hard enforcement.
 - **Sub-50ms interaction latency** — never block the UI on a network call.
 - **Search latency < 10ms** — FlexSearch index is hydrated from `localStorage` on startup, never rebuilt cold.
@@ -111,12 +118,18 @@ CREATE TABLE pastes (
 
 ## Keyboard Shortcuts
 
+Defined in `client/src/lib/commands.ts`. `Mod` is ⌘ on macOS and Ctrl elsewhere. Browser-reserved combos (`Mod+N/W/T/1–9`) always have a working `Ctrl+Alt` alternative.
+
 | Action | Shortcut |
 |---|---|
-| New Paste | `Ctrl/Cmd + N` |
-| Search | `Ctrl/Cmd + F` |
-| Global Search | `Ctrl/Cmd + Shift + F` |
-| Toggle Sidebar | `Ctrl/Cmd + 1` |
+| New Note | `Ctrl+Alt+N` (`Mod+N` best-effort) |
+| Search notes / quick open | `Mod+P`, `Mod+Shift+F` |
+| Command palette | `Mod+Shift+P`, `F1` |
+| Find in note | `Mod+F` |
+| Toggle Sidebar | `Ctrl+Alt+S` (`Mod+1` best-effort) |
+| Split tile / right / down | `Mod+\` / `Ctrl+Alt+\` / `Ctrl+Alt+-` |
+| Focus / swap tiles | `Ctrl+Alt+Arrows` / `Ctrl+Alt+Shift+Arrows` |
+| Zoom / close tile | `Ctrl+Alt+Enter` / `Ctrl+Alt+Q` |
 | Multi-cursor | `Alt + Click` (CodeMirror 6 native) |
 
 ---
@@ -142,7 +155,7 @@ Track feature development status here. Update each item as work is completed.
 - [x] Plain text mode (Markdown treated as plain text, no syntax highlighting)
 - [x] Markdown edit mode with CodeMirror Markdown language support
 - [x] "Read Mode" Markdown preview toggle (renders via `marked`)
-- [ ] 1MB soft cap warning in editor status bar
+- [x] 1MB soft cap warning in editor status bar
 
 ### UI Shell
 - [x] Browser-style tab bar (open pastes as tabs)
@@ -191,16 +204,20 @@ Track feature development status here. Update each item as work is completed.
 
 ### UX Polish
 - [ ] Multi-cursor editing verified (CodeMirror 6 native API)
+- [x] Apple HIG redesign (tokens, light/dark, accent colours, vibrancy, alerts, sheets)
+- [x] Tiling workspace (dwindle splits, directional focus, swap, zoom, drag-to-tile)
+- [x] Command palette + single command registry
+- [x] Layout and tab restore across reloads
 - [x] Sidebar toggle animation
-- [x] CSS Modules applied to all components (global CSS limited to app reset/base styles)
+- [x] CSS Modules applied to all components (global CSS limited to tokens + app reset/base styles)
 - [x] Responsive layout
 
 ### Quality & Reliability
 - [x] API response envelope (`{ success, data?, error? }`) on all routes
 - [x] Input validation on all API routes (Zod)
-- [ ] Unit tests: Zustand store logic (dirty flag, retry queue)
-- [ ] Integration tests: API routes (paste CRUD, group CRUD)
-- [ ] E2E tests: paste creation, search, group assignment (Playwright)
+- [x] Unit tests: auto-save worker (dirty flag, revisions, retry queue), tiling engine, command registry
+- [x] Integration tests: API routes (paste CRUD, group CRUD) + Markdown export worker
+- [x] E2E tests: paste creation, search, group assignment, tiling, offline sync (Playwright)
 
 ---
 
@@ -208,7 +225,7 @@ Track feature development status here. Update each item as work is completed.
 
 The current UI is durable across reloads. Migrations run at server startup, paste and group CRUD APIs are wired, client bootstrap loads pastes/groups into Zustand, paste creation/deletion use server IDs, and `setContent` / `setTitle` / group assignment sync through debounced `PUT /api/pastes/:id` calls.
 
-Remaining intentionally incomplete areas are tracked above: rich text mode is not implemented, the 1MB editor status warning is not implemented, multi-cursor behavior has not been manually verified, and automated tests have not been added.
+Remaining intentionally incomplete areas are tracked above: rich text mode is not implemented and multi-cursor behaviour has not been manually verified. Whiteboards, preferences and the tile layout are stored per browser in `localStorage`.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

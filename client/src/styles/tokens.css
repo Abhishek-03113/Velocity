@@ -1,0 +1,195 @@
+/*
+ * Velocity design tokens — modelled on Apple HIG dynamic system colors.
+ *
+ * Theme resolution:
+ *   <html data-theme="light|dark">   set by uiStore (System follows prefers-color-scheme)
+ *   <html data-accent="blue|…">      one of the eight macOS accent colors
+ *
+ * Components must only consume these semantic tokens — never raw hex values —
+ * so every surface adapts to light/dark and to the chosen accent.
+ */
+
+:root {
+  /* ---- Typography ---------------------------------------------------- */
+  --font-system: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Inter',
+    'Segoe UI Variable', 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-rounded: ui-rounded, 'SF Pro Rounded', var(--font-system);
+  --font-serif: 'New York', ui-serif, 'Iowan Old Style', 'Charter', 'Georgia', 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Menlo', 'Cascadia Code', 'Consolas', monospace;
+
+  /* macOS type ramp, scaled +1pt for comfortable web reading */
+  --text-large-title: 28px;
+  --text-title1: 22px;
+  --text-title2: 18px;
+  --text-title3: 16px;
+  --text-headline: 14px;
+  --text-body: 14px;
+  --text-callout: 13px;
+  --text-subheadline: 12px;
+  --text-footnote: 11px;
+  --text-caption: 11px;
+
+  /* ---- Shape --------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-sheet: 16px;
+
+  /* ---- Motion -------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 280ms;
+
+  /* ---- Layout -------------------------------------------------------- */
+  --toolbar-height: 52px;
+  --tabbar-height: 36px;
+  --statusbar-height: 26px;
+  --folders-width: 212px;
+  --notes-width: 288px;
+  --tile-gap: 8px;
+  --control-height: 28px;
+  --hit-target: 28px;
+
+  /* ---- Editor (overridden by settings) -------------------------------- */
+  --editor-font: var(--font-system);
+  --editor-size: 16px;
+  --editor-measure: 720px;
+  --editor-line-height: 1.65;
+
+  color-scheme: light;
+}
+
+/* ===================================================================== */
+/* Light appearance                                                        */
+/* ===================================================================== */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-window: #ffffff;
+  --bg-content: #ffffff;
+  --bg-secondary: #f5f5f7;
+  --bg-tertiary: #ececf0;
+  --bg-elevated: #ffffff;
+  --bg-sidebar: rgba(240, 240, 244, 0.78);
+  --bg-sidebar-solid: #f0f0f4;
+  --bg-notes-list: rgba(255, 255, 255, 0.86);
+  --bg-toolbar: rgba(255, 255, 255, 0.82);
+  --bg-sheet: rgba(255, 255, 255, 0.94);
+  --bg-scrim: rgba(0, 0, 0, 0.22);
+  --bg-workspace: #ececf0;
+  --bg-code: rgba(0, 0, 0, 0.04);
+
+  --label: rgba(0, 0, 0, 0.88);
+  --label-secondary: rgba(60, 60, 67, 0.72);
+  --label-tertiary: rgba(60, 60, 67, 0.48);
+  --label-quaternary: rgba(60, 60, 67, 0.22);
+
+  --separator: rgba(60, 60, 67, 0.14);
+  --separator-opaque: #dcdce0;
+
+  --fill: rgba(120, 120, 128, 0.2);
+  --fill-secondary: rgba(120, 120, 128, 0.14);
+  --fill-tertiary: rgba(118, 118, 128, 0.1);
+  --fill-quaternary: rgba(116, 116, 128, 0.06);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+
+  --system-red: #ff3b30;
+  --system-orange: #ff9500;
+  --system-yellow: #ffcc00;
+  --system-green: #34c759;
+  --system-mint: #00c7be;
+  --system-teal: #30b0c7;
+  --system-cyan: #32ade6;
+  --system-blue: #007aff;
+  --system-indigo: #5856d6;
+  --system-purple: #af52de;
+  --system-pink: #ff2d55;
+  --system-gray: #8e8e93;
+
+  --selection-alpha: 18%;
+  --selection-inactive: rgba(0, 0, 0, 0.07);
+  --editor-selection: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* ===================================================================== */
+/* Dark appearance                                                         */
+/* ===================================================================== */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-window: #1e1e1e;
+  --bg-content: #1e1e1e;
+  --bg-secondary: #262628;
+  --bg-tertiary: #2c2c2e;
+  --bg-elevated: #2c2c2e;
+  --bg-sidebar: rgba(40, 40, 42, 0.72);
+  --bg-sidebar-solid: #28282a;
+  --bg-notes-list: rgba(30, 30, 30, 0.86);
+  --bg-toolbar: rgba(30, 30, 30, 0.82);
+  --bg-sheet: rgba(44, 44, 46, 0.94);
+  --bg-scrim: rgba(0, 0, 0, 0.45);
+  --bg-workspace: #141414;
+  --bg-code: rgba(255, 255, 255, 0.06);
+
+  --label: rgba(255, 255, 255, 0.9);
+  --label-secondary: rgba(235, 235, 245, 0.64);
+  --label-tertiary: rgba(235, 235, 245, 0.4);
+  --label-quaternary: rgba(235, 235, 245, 0.18);
+
+  --separator: rgba(255, 255, 255, 0.1);
+  --separator-opaque: #38383a;
+
+  --fill: rgba(120, 120, 128, 0.36);
+  --fill-secondary: rgba(120, 120, 128, 0.32);
+  --fill-tertiary: rgba(118, 118, 128, 0.24);
+  --fill-quaternary: rgba(118, 118, 128, 0.18);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+
+  --system-red: #ff453a;
+  --system-orange: #ff9f0a;
+  --system-yellow: #ffd60a;
+  --system-green: #30d158;
+  --system-mint: #63e6e2;
+  --system-teal: #40c8e0;
+  --system-cyan: #64d2ff;
+  --system-blue: #0a84ff;
+  --system-indigo: #5e5ce6;
+  --system-purple: #bf5af2;
+  --system-pink: #ff375f;
+  --system-gray: #98989d;
+
+  --selection-alpha: 30%;
+  --selection-inactive: rgba(255, 255, 255, 0.08);
+  --editor-selection: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+/* ===================================================================== */
+/* Accent colors (macOS System Settings → Appearance → Accent color)      */
+/* ===================================================================== */
+:root,
+:root[data-accent='blue'] { --accent: var(--system-blue); --accent-contrast: #fff; }
+:root[data-accent='purple'] { --accent: var(--system-purple); --accent-contrast: #fff; }
+:root[data-accent='pink'] { --accent: var(--system-pink); --accent-contrast: #fff; }
+:root[data-accent='red'] { --accent: var(--system-red); --accent-contrast: #fff; }
+:root[data-accent='orange'] { --accent: var(--system-orange); --accent-contrast: #fff; }
+:root[data-accent='yellow'] { --accent: var(--system-yellow); --accent-contrast: rgba(0, 0, 0, 0.85); }
+:root[data-accent='green'] { --accent: var(--system-green); --accent-contrast: #fff; }
+:root[data-accent='graphite'] { --accent: var(--system-gray); --accent-contrast: #fff; }
+
+:root {
+  --accent-hover: color-mix(in srgb, var(--accent) 88%, var(--label));
+  --accent-soft: color-mix(in srgb, var(--accent) var(--selection-alpha), transparent);
+  --accent-text: color-mix(in srgb, var(--accent) 86%, var(--label));
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
+}

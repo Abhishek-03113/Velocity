@@ -3,6 +3,7 @@ import {
   EditorState,
   RangeSetBuilder,
   StateField,
+  type Transaction,
   type Extension,
   type Range,
 } from '@codemirror/state'
@@ -48,6 +49,21 @@ const MARK_NODES = new Set([
 ])
 
 const hiddenMark = Decoration.replace({})
+
+class BulletWidget extends WidgetType {
+  override eq() {
+    return true
+  }
+
+  toDOM() {
+    const span = document.createElement('span')
+    span.className = 'cm-md-bullet'
+    span.textContent = '•'
+    return span
+  }
+}
+
+const bulletWidget = new BulletWidget()
 
 /** Parse `![alt](url)` / `![alt](url "title")` — returns null when not an image. */
 export function parseImageMarkdown(text: string): { alt: string; url: string } | null {
@@ -206,7 +222,9 @@ export type ImageRange = {
 
 /** Collect markdown image ranges from the syntax tree (with line-regex fallback). */
 export function collectImageRanges(state: EditorState): ImageRange[] {
-  ensureSyntaxTree(state, state.doc.length, 5000)
+  // Small parse budget: the line-regex pass below catches images in any
+  // not-yet-parsed tail, so a huge note never blocks the main thread here.
+  ensureSyntaxTree(state, state.doc.length, 50)
   const found: ImageRange[] = []
   const covered = new Set<string>()
 
@@ -305,10 +323,43 @@ export function buildImageDecorations(state: EditorState): DecorationSet {
 }
 
 /** Height-changing image widgets — must be a StateField (not a ViewPlugin). */
+const IMAGE_SYNTAX = '!['
+
+function linesText(state: EditorState, from: number, to: number): string {
+  return state.doc.sliceString(state.doc.lineAt(from).from, state.doc.lineAt(to).to)
+}
+
+/**
+ * Rebuilding image decorations scans the whole document, so only do it when
+ * an edit or a cursor move actually touches a line containing image syntax.
+ * Everything else (i.e. almost every keystroke) just maps positions.
+ */
+function touchesImages(tr: Transaction): boolean {
+  let hit = false
+  if (tr.docChanged) {
+    tr.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+      if (hit) return
+      hit =
+        linesText(tr.startState, fromA, toA).includes(IMAGE_SYNTAX) ||
+        linesText(tr.state, fromB, toB).includes(IMAGE_SYNTAX)
+    })
+    if (hit) return true
+  }
+  // Images switch between rendered / editable as the cursor enters or leaves their line.
+  for (const r of tr.startState.selection.ranges) {
+    if (linesText(tr.startState, r.from, r.to).includes(IMAGE_SYNTAX)) return true
+  }
+  for (const r of tr.state.selection.ranges) {
+    if (linesText(tr.state, r.from, r.to).includes(IMAGE_SYNTAX)) return true
+  }
+  return false
+}
+
 export const markdownImagePreview = StateField.define<DecorationSet>({
   create: buildImageDecorations,
   update(deco, tr) {
-    if (tr.docChanged || tr.selection) return buildImageDecorations(tr.state)
+    if (!tr.docChanged && !tr.selection) return deco
+    if (touchesImages(tr)) return buildImageDecorations(tr.state)
     return deco.map(tr.changes)
   },
   provide: (field) => [
@@ -359,6 +410,15 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
           return false
         }
 
+        if (name === 'Blockquote') {
+          const first = state.doc.lineAt(node.from).number
+          const last = state.doc.lineAt(node.to).number
+          for (let n = first; n <= last; n++) {
+            widgets.push(Decoration.line({ class: 'cm-md-quote' }).range(state.doc.line(n).from))
+          }
+          return
+        }
+
         if (name === 'TaskMarker') {
           const text = state.doc.sliceString(node.from, node.to)
           const checked = /[xX]/.test(text)
@@ -370,12 +430,38 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
           return false
         }
 
+        if (name === 'Escape') {
+          // Show "\*" as "*" off the cursor line, like other syntax markers.
+          if (!isActive(node.from, node.to)) widgets.push(hiddenMark.range(node.from, node.from + 1))
+          return
+        }
+
+        if (name === 'ListMark') {
+          if (isActive(node.from, node.to)) return
+          const next = node.node.nextSibling
+          const end = state.doc.sliceString(node.to, node.to + 1) === ' ' ? node.to + 1 : node.to
+          // Checklist items render just the checkbox (Apple Notes) — drop the "- ".
+          if (next?.name === 'Task') {
+            widgets.push(hiddenMark.range(node.from, end))
+            return
+          }
+          if (node.node.parent?.parent?.name === 'BulletList') {
+            widgets.push(Decoration.replace({ widget: bulletWidget }).range(node.from, node.to))
+          }
+          return
+        }
+
         if (MARK_NODES.has(name)) {
           // keep ``` fences visible — hiding them makes code blocks confusing
           if (node.node.parent?.name === 'FencedCode') return
           if (node.node.parent?.name === 'Image') return
           if (isActive(node.from, node.to)) return
-          if (node.to > node.from) widgets.push(hiddenMark.range(node.from, node.to))
+          // Hide the space after "##" / ">" too, so text sits flush with paragraphs.
+          const trailing =
+            (name === 'HeaderMark' || name === 'QuoteMark') &&
+            state.doc.sliceString(node.to, node.to + 1) === ' '
+          const to = trailing ? node.to + 1 : node.to
+          if (to > node.from) widgets.push(hiddenMark.range(node.from, to))
         }
       },
     })
@@ -460,4 +546,47 @@ export function insertLink(view: EditorView) {
     { scrollIntoView: true, userEvent: 'input' },
   )
   return true
+}
+
+/** Apply `transform` to every line touched by the selection. */
+function mapSelectedLines(view: EditorView, transform: (text: string) => string) {
+  const { state } = view
+  const seen = new Set<number>()
+  const changes: { from: number; to: number; insert: string }[] = []
+  for (const range of state.selection.ranges) {
+    const first = state.doc.lineAt(range.from).number
+    const last = state.doc.lineAt(range.to).number
+    for (let n = first; n <= last; n++) {
+      if (seen.has(n)) continue
+      seen.add(n)
+      const line = state.doc.line(n)
+      const next = transform(line.text)
+      if (next !== line.text) changes.push({ from: line.from, to: line.to, insert: next })
+    }
+  }
+  if (changes.length) view.dispatch({ changes, scrollIntoView: true, userEvent: 'input' })
+  return true
+}
+
+/** ⇧⌘L — turn lines into a checklist, or back into plain text (Apple Notes). */
+export function toggleChecklist(view: EditorView) {
+  return mapSelectedLines(view, (text) => {
+    const task = /^(\s*)[-*+]\s+\[[ xX]\]\s?/.exec(text)
+    if (task) return task[1] + text.slice(task[0].length)
+    const bullet = /^(\s*)[-*+]\s+/.exec(text)
+    if (bullet) return `${bullet[1]}- [ ] ${text.slice(bullet[0].length)}`
+    const indent = /^\s*/.exec(text)![0]
+    return `${indent}- [ ] ${text.slice(indent.length)}`
+  })
+}
+
+/** ⇧⌘H — cycle a line through H1 → H2 → H3 → body text. */
+export function cycleHeading(view: EditorView) {
+  return mapSelectedLines(view, (text) => {
+    const m = /^(#{1,6})\s+/.exec(text)
+    const level = m ? m[1]!.length : 0
+    const body = m ? text.slice(m[0].length) : text
+    if (level >= 3) return body
+    return `${'#'.repeat(level + 1)} ${body}`
+  })
 }

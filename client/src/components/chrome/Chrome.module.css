@@ -1,0 +1,314 @@
+/* ====================================================================== */
+/* Unified toolbar                                                         */
+/* ====================================================================== */
+.toolbar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  height: var(--toolbar-height);
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px 0 16px;
+  border-bottom: 1px solid var(--separator);
+  background: var(--bg-toolbar);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.toolbarLeading {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbarTrailing {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbarSpacer {
+  width: 8px;
+}
+
+.titleBlock {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.titleButton {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: -5px;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  text-align: left;
+}
+
+.titleButton:hover:not(:disabled) {
+  background: var(--fill-tertiary);
+}
+
+.titleText {
+  overflow: hidden;
+  font-size: var(--text-headline);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titleInput {
+  width: min(420px, 100%);
+  height: 22px;
+  margin-left: -5px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--bg-content);
+  box-shadow: var(--focus-ring);
+  color: var(--label);
+  font-size: var(--text-headline);
+  font-weight: 700;
+}
+
+.subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  color: var(--label-tertiary);
+  font-size: var(--text-subheadline);
+  white-space: nowrap;
+}
+
+.hideWhenSidebar[data-sidebar='open'] {
+  display: none;
+}
+
+/* ====================================================================== */
+/* Tabs                                                                    */
+/* ====================================================================== */
+.tabBar {
+  display: flex;
+  height: var(--tabbar-height);
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--separator);
+  background: var(--bg-secondary);
+  scrollbar-width: none;
+}
+
+.tabBar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  min-width: 96px;
+  max-width: 220px;
+  height: 26px;
+  flex: 1 1 160px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 26px;
+  border-radius: var(--radius-sm);
+  color: var(--label-secondary);
+  font-size: var(--text-callout);
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.tab:hover:not(.tabActive) {
+  background: var(--fill-quaternary);
+  color: var(--label);
+}
+
+.tabActive {
+  background: var(--bg-content);
+  box-shadow: var(--shadow-sm);
+  color: var(--label);
+  font-weight: 600;
+}
+
+.tabVisible {
+  color: var(--label);
+}
+
+.tabVisible::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 14px;
+  height: 2px;
+  margin-left: -7px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+.tabDrop_before {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.tabDrop_after {
+  box-shadow: inset -2px 0 0 var(--accent);
+}
+
+.tabTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabTrail {
+  position: absolute;
+  right: 4px;
+  display: flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.tabDirty {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--system-orange);
+}
+
+.tabClose {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--label-secondary);
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+
+.tab:hover .tabClose,
+.tabActive .tabClose,
+.tabClose:focus-visible {
+  opacity: 1;
+}
+
+.tab:hover .tabDirty,
+.tabActive .tabDirty {
+  opacity: 0;
+}
+
+.tabClose:hover {
+  background: var(--fill-secondary);
+  color: var(--label);
+}
+
+.tabNew {
+  margin-left: 2px;
+}
+
+/* ====================================================================== */
+/* Status bar                                                              */
+/* ====================================================================== */
+.statusBar {
+  display: flex;
+  height: var(--statusbar-height);
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  border-top: 1px solid var(--separator);
+  background: var(--bg-secondary);
+  color: var(--label-secondary);
+  font-size: var(--text-footnote);
+  font-variant-numeric: tabular-nums;
+}
+
+.statusLeading,
+.statusTrailing {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.statusDim {
+  color: var(--label-tertiary);
+}
+
+.statusWarn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--system-orange);
+  font-weight: 600;
+}
+
+.statusSave {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.statusOk {
+  color: var(--label-tertiary);
+}
+
+.statusPending {
+  color: var(--label-secondary);
+}
+
+.statusError {
+  color: var(--system-red);
+  font-weight: 600;
+}
+
+.statusFlash {
+  color: var(--accent-text);
+  font-weight: 600;
+  animation: flash-in var(--dur-base) var(--ease-out);
+}
+
+@keyframes flash-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@media (max-width: 759px) {
+  .hideCompact {
+    display: none;
+  }
+
+  .statusDim {
+    display: none;
+  }
+
+  .toolbar {
+    padding: 0 6px 0 8px;
+    gap: 6px;
+  }
+}

@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import { db } from '../db/client.ts'
+import { requestMarkdownSync } from '../workers/markdownSync.ts'
 
 type Paste = {
   id: number
@@ -83,6 +84,7 @@ pastesRouter.post('/', async (c) => {
       .prepare('SELECT * FROM pastes WHERE id = ?')
       .get(result.lastInsertRowid) as Paste
 
+    requestMarkdownSync(paste.id)
     return c.json<ApiResponse<Paste>>({ success: true, data: paste }, 201)
   } catch (err) {
     logPasteWriteFailure('create', null, err)
@@ -144,8 +146,12 @@ pastesRouter.put('/:id', async (c) => {
       id
     )
 
-    const paste = db.prepare('SELECT * FROM pastes WHERE id = ?').get(id) as Paste
-    return c.json<ApiResponse<Paste>>({ success: true, data: paste })
+    // Autosave sends the body on every save — don't echo it back.
+    const paste = db
+      .prepare('SELECT id, title, group_id, created_at, updated_at FROM pastes WHERE id = ?')
+      .get(id) as Omit<Paste, 'content'>
+    requestMarkdownSync(id)
+    return c.json<ApiResponse<Omit<Paste, 'content'>>>({ success: true, data: paste })
   } catch (err) {
     logPasteWriteFailure('update', id, err)
     return c.json<ApiResponse<never>>({ success: false, error: 'Failed to update paste' }, 500)
@@ -165,6 +171,7 @@ pastesRouter.delete('/:id', (c) => {
       return c.json<ApiResponse<never>>({ success: false, error: 'Not found' }, 404)
     }
 
+    requestMarkdownSync(id)
     return c.json<ApiResponse<{ id: number }>>({ success: true, data: { id } })
   } catch (err) {
     logPasteWriteFailure('delete', id, err)

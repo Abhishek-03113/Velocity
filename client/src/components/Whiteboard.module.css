@@ -6,10 +6,12 @@
 }
 
 .root :global(.excalidraw) {
-  --color-primary: #7aa7ff;
-  --color-primary-darker: #5b8def;
-  --color-primary-darkest: #3a3a3a;
-  font-family: -apple-system, 'Segoe UI', sans-serif;
+  --color-primary: var(--accent);
+  --color-primary-darker: var(--accent-hover);
+  --color-primary-darkest: var(--accent-hover);
+  --color-primary-light: var(--accent-soft);
+  --ui-font: var(--font-system);
+  font-family: var(--font-system);
 }
 
 .root :global(.excalidraw .App-menu__left) {
@@ -22,6 +24,6 @@
   width: 100%;
   align-items: center;
   justify-content: center;
-  color: #888;
-  font: 12px -apple-system, 'Segoe UI', sans-serif;
+  color: var(--label-tertiary);
+  font-size: var(--text-callout);
 }

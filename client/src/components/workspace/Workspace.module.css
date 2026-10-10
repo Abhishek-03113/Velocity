@@ -1,0 +1,417 @@
+/* ====================================================================== */
+/* Workspace — absolutely positioned tiles                                 */
+/* ====================================================================== */
+.workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-content);
+  transition: background-color var(--dur-base) var(--ease-out);
+}
+
+.tiled {
+  background: var(--bg-workspace);
+}
+
+/* Tiles + dividers live on a stage; when tiled it is inset by half a gap and
+   every tile insets by another half, giving uniform gaps everywhere. */
+.stage {
+  position: absolute;
+  inset: 0;
+}
+
+.tiled .stage {
+  inset: calc(var(--tile-gap) / 2);
+}
+
+.slot {
+  position: absolute;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  transition:
+    left var(--dur-slow) var(--ease-spring),
+    top var(--dur-slow) var(--ease-spring),
+    width var(--dur-slow) var(--ease-spring),
+    height var(--dur-slow) var(--ease-spring);
+}
+
+.resizing .slot {
+  transition: none;
+}
+
+.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ---- Tile ------------------------------------------------------------- */
+.tile {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-content);
+  animation: tile-in var(--dur-slow) var(--ease-spring);
+}
+
+@keyframes tile-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+.tileCard {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--dur-base) var(--ease-out);
+}
+
+:global(:root[style*='--tile-gap: 0px']) .tileCard {
+  border-radius: 0;
+}
+
+/* Hyprland-style active border, rendered in the accent colour */
+.tileCard.tileFocused {
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    var(--shadow-md);
+}
+
+.tileHeader {
+  display: flex;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--separator);
+  background: var(--bg-content);
+}
+
+.tileTitle {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  color: var(--label-secondary);
+  font-size: var(--text-callout);
+  font-weight: 600;
+}
+
+.tileFocused .tileTitle {
+  color: var(--label);
+}
+
+.tileTitleIcon {
+  flex-shrink: 0;
+  color: var(--label-tertiary);
+}
+
+.tileFocused .tileTitleIcon {
+  color: var(--accent);
+}
+
+.tileTitleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tileTitleSuffix {
+  color: var(--label-tertiary);
+  font-weight: 500;
+}
+
+.tileDirty {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--system-orange);
+}
+
+.tileActions {
+  display: flex;
+  gap: 2px;
+  opacity: 0.55;
+  transition: opacity var(--dur-fast);
+}
+
+.tile:hover .tileActions,
+.tileFocused .tileActions {
+  opacity: 1;
+}
+
+.tileBody {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.tileBody > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.boardLoading {
+  display: grid;
+  place-items: center;
+  color: var(--label-tertiary);
+  font-size: var(--text-callout);
+}
+
+/* ---- Loading skeleton ----------------------------------------------- */
+.skeleton {
+  display: flex;
+  width: 100%;
+  max-width: var(--editor-measure);
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 auto;
+  padding: 36px 28px;
+}
+
+.skeleton span {
+  display: block;
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--fill-quaternary), var(--fill-tertiary), var(--fill-quaternary));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---- Dividers ---------------------------------------------------------- */
+.divider {
+  position: absolute;
+  z-index: 5;
+  touch-action: none;
+}
+
+.dividerV {
+  cursor: col-resize;
+}
+
+.dividerH {
+  cursor: row-resize;
+}
+
+.divider::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.dividerV::after {
+  top: 30%;
+  bottom: 30%;
+  left: 3px;
+  width: 2px;
+}
+
+.dividerH::after {
+  left: 30%;
+  right: 30%;
+  top: 3px;
+  height: 2px;
+}
+
+.divider:hover::after,
+.dividerActive::after {
+  opacity: 0.8;
+}
+
+/* ---- Drop zones -------------------------------------------------------- */
+.dropZone {
+  position: absolute;
+  z-index: 10;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  pointer-events: none;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.drop_center {
+  inset: 8px;
+}
+
+.drop_left {
+  inset: 8px 50% 8px 8px;
+}
+
+.drop_right {
+  inset: 8px 8px 8px 50%;
+}
+
+.drop_top {
+  inset: 8px 8px 50% 8px;
+}
+
+.drop_bottom {
+  inset: 50% 8px 8px 8px;
+}
+
+/* ---- Empty tile (launcher) -------------------------------------------- */
+.empty {
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+}
+
+.emptyCard {
+  display: flex;
+  width: min(420px, 100%);
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.emptyIcon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.emptyTitle {
+  color: var(--label);
+  font-size: var(--text-title3);
+  font-weight: 650;
+}
+
+.emptySearch {
+  display: flex;
+  width: 100%;
+  height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  background: var(--fill-tertiary);
+  color: var(--label-tertiary);
+}
+
+.emptySearch:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+.emptySearch input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--label);
+  font-size: var(--text-body);
+}
+
+.emptySearch input::placeholder {
+  color: var(--label-tertiary);
+}
+
+.emptyList {
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.emptyItem {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  color: var(--label-secondary);
+  font-size: var(--text-body);
+}
+
+.emptyItemActive {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.emptyItemTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyItem:not(.emptyItemActive) .emptyItemTitle {
+  color: var(--label);
+}
+
+.emptyItemMeta {
+  flex-shrink: 0;
+  font-size: var(--text-subheadline);
+  opacity: 0.75;
+}
+
+.emptyNone {
+  padding: 12px;
+  color: var(--label-tertiary);
+  font-size: var(--text-callout);
+  text-align: center;
+}
+
+.emptyNew {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  color: var(--accent-text);
+  font-size: var(--text-callout);
+  font-weight: 600;
+}
+
+.emptyNew:hover {
+  background: var(--accent-soft);
+}
+
+.emptyNewKey {
+  color: var(--label-tertiary);
+  font-weight: 500;
+}
+
+@container (max-width: 300px) {
+  .emptyNewKey,
+  .emptyItemMeta {
+    display: none;
+  }
+}
