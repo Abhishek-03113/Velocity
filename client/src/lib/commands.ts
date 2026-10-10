@@ -14,6 +14,7 @@ import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
 import { useUiStore } from '../store/uiStore'
 import { displayTitle } from './noteMeta'
+import { THEME_FAMILIES } from './themes'
 import { isMac } from './platform'
 import { findLeaf, leaves } from './tiling'
 import * as ws from './workspace'
@@ -49,6 +50,14 @@ const tabCommands: Command[] = Array.from({ length: 9 }, (_, i) => ({
   keys: [`Ctrl+Alt+Digit${i + 1}`],
   run: () => ws.goToTab(i + 1),
   paletteHidden: true,
+}))
+
+const themeCommands: Command[] = THEME_FAMILIES.map((f) => ({
+  id: `theme.${f.id}`,
+  title: `Theme: ${f.name}`,
+  section: 'View' as const,
+  keywords: 'colour color theme palette appearance dark light',
+  run: () => ws.setThemeFamily(f.id),
 }))
 
 export const COMMANDS: Command[] = [
@@ -124,6 +133,15 @@ export const COMMANDS: Command[] = [
     keys: ['Mod+Shift+Backspace'],
     keywords: 'remove trash discard',
     run: () => ws.requestDelete(),
+    enabled: hasNote,
+  },
+  {
+    id: 'note.moveToFolder',
+    title: 'Move Note to Folder…',
+    section: 'Notes',
+    keys: ['Ctrl+Alt+KeyM'],
+    keywords: 'file folder group assign organise organize',
+    run: () => useUiStore.getState().openPalette('move'),
     enabled: hasNote,
   },
   {
@@ -374,6 +392,7 @@ export const COMMANDS: Command[] = [
     keywords: 'theme light appearance',
     run: () => ws.cycleAppearance(),
   },
+  ...themeCommands,
 
   // ---- App -----------------------------------------------------------------
   {
@@ -413,6 +432,14 @@ export function dynamicCommands(): Command[] {
       keywords: 'folder group assign',
       run: () => useEditorStore.getState().assignGroup(noteId, g.id),
     }))
+  move.push({
+    id: 'note.moveTo.new',
+    title: `Move “${name}” to New Folder…`,
+    section: 'Notes',
+    keywords: 'folder group create',
+    run: () => ws.moveNoteToNewFolder(noteId),
+  })
+  // Unfiled always comes last.
   if (paste.group_id != null) {
     move.push({
       id: 'note.moveTo.none',

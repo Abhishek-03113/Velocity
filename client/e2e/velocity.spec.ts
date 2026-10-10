@@ -126,6 +126,94 @@ test('drag a note onto a folder files it', async ({ page }) => {
   await expect(noteRows(page).first()).toContainText('Launch plan')
 })
 
+test('folders: Unfiled sits last, and notes can be filed without dragging', async ({ page }) => {
+  await open(page)
+  const nav = page.getByRole('navigation', { name: 'Folders' })
+  // Ordering: All Notes, user folders, then Unfiled at the bottom.
+  const labels = await nav.locator('li button').allInnerTexts()
+  const names = labels.map((l) => l.split('\n')[0]!.trim())
+  expect(names[0]).toBe('All Notes')
+  expect(names[names.length - 1]).toBe('Unfiled')
+  await shot(page, 'folders-unfiled-last')
+
+  const groups = await api<Array<{ id: number; name: string }>>('GET', '/api/groups')
+  const gid = (name: string) => groups.find((g) => g.name === name)!.id
+  const groupOf = async (id: number) => (await allNotes()).find((n) => n.id === id)?.group_id
+
+  // 1. Row chip -> Move menu -> folder.
+  const row = noteRows(page).filter({ hasText: 'Reading list' })
+  await row.hover()
+  await row.getByRole('button', { name: 'Move to Folder' }).click()
+  const menu = page.getByRole('menu')
+  const items = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.trim())
+  expect(items[items.length - 1]).toBe('Unfiled')
+  await shot(page, 'move-menu-row')
+  await menu.getByRole('menuitem', { name: 'Personal' }).click()
+  await expect.poll(() => groupOf(ids['Untitled']!)).toBe(gid('Personal'))
+
+  // 2. Toolbar folder button -> Move menu -> another folder.
+  await openNoteByTitle(page, 'Reading list')
+  await page.locator('header').getByRole('button', { name: /Personal/ }).click()
+  await shot(page, 'move-menu-toolbar')
+  await page.getByRole('menuitem', { name: 'Work', exact: true }).click()
+  await expect.poll(() => groupOf(ids['Untitled']!)).toBe(gid('Work'))
+
+  // 3. "New Folder…" creates the folder and files the note in one step.
+  await row.hover()
+  await row.getByRole('button', { name: 'Move to Folder' }).click()
+  await page.getByRole('menuitem', { name: 'New Folder…' }).click()
+  await expect
+    .poll(async () => {
+      const gs = await api<Array<{ id: number; name: string }>>('GET', '/api/groups')
+      const g = gs.find((x) => x.name === 'New Folder')
+      return g != null && (await groupOf(ids['Untitled']!)) === g.id
+    })
+    .toBe(true)
+  await shot(page, 'move-new-folder')
+  // Inline rename is open on the new folder; accept the name.
+  await page.keyboard.press('Enter')
+
+  // 4. Keyboard: Move Note to Folder… opens the palette with only move targets.
+  await openNoteByTitle(page, 'Reading list')
+  await page.keyboard.press('Control+Alt+KeyM')
+  const palette = page.getByRole('dialog', { name: 'Command palette' })
+  await expect(palette).toBeVisible()
+  await shot(page, 'move-palette')
+  await palette.getByRole('option', { name: /to Unfiled/ }).click()
+  await expect.poll(() => groupOf(ids['Untitled']!)).toBeNull()
+})
+
+test('drag onto the Folders header: springs open when collapsed, drop offers a folder menu', async ({ page }) => {
+  await open(page)
+  const nav = page.getByRole('navigation', { name: 'Folders' })
+  const disclosure = nav.getByRole('button', { name: 'Folders', exact: true })
+  const workFolder = nav.getByRole('button', { name: /^Work/ })
+  await disclosure.click() // collapse
+  await expect(workFolder).toHaveCount(0)
+
+  const row = noteRows(page).filter({ hasText: 'Reading list' })
+  const rowBox = (await row.boundingBox())!
+  const headBox = (await disclosure.boundingBox())!
+  await page.mouse.move(rowBox.x + 40, rowBox.y + 20)
+  await page.mouse.down()
+  await page.mouse.move(rowBox.x + 20, rowBox.y + 30, { steps: 4 })
+  await page.mouse.move(headBox.x + 20, headBox.y + headBox.height / 2, { steps: 12 })
+  // Hovering the collapsed header springs the section open.
+  await expect(workFolder).toBeVisible({ timeout: 3000 })
+  await page.mouse.move(headBox.x + 24, headBox.y + headBox.height / 2 + 1, { steps: 2 })
+  await shot(page, 'drag-header-spring-open')
+  await page.mouse.up()
+  // Dropping on the header opens a "Move to" menu.
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
+  await menu.getByRole('menuitem', { name: 'Work', exact: true }).click()
+  const groups = await api<Array<{ id: number; name: string }>>('GET', '/api/groups')
+  const work = groups.find((g) => g.name === 'Work')!
+  await expect
+    .poll(async () => (await allNotes()).find((n) => n.id === ids['Untitled'])?.group_id)
+    .toBe(work.id)
+})
+
 test('command palette: full-text search, highlighting, commands', async ({ page }) => {
   await open(page)
   await page.keyboard.press('Control+KeyP')
@@ -335,6 +423,76 @@ test('settings: accent, font and appearance persist across reloads', async ({ pa
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'orange')
 })
 
+test('themes: picker switches families, supports light and dark, persists', async ({ page }) => {
+  await open(page)
+  await openNoteByTitle(page, 'Q4 Product Roadmap')
+  // Move focus into the editor so the list row doesn't show a keyboard focus ring in screenshots.
+  await editorIn(page).click()
+  const html = page.locator('html')
+  await expect(html).toHaveAttribute('data-theme-family', 'apple')
+  await page.keyboard.press('Control+Comma')
+  const sheet = page.getByRole('dialog', { name: 'Settings' })
+  const themes = sheet.getByRole('radiogroup', { name: 'Theme' })
+  const appearance = sheet.getByRole('radiogroup', { name: 'Appearance' })
+  await expect(sheet.getByRole('radio', { name: /^Theme default/ })).toHaveAttribute('title', /Theme default/)
+  await shot(page, 'theme-picker-apple')
+
+  const families: Array<[string, string]> = [
+    ['Catppuccin', 'catppuccin'],
+    ['Catppuccin Macchiato', 'catppuccin-macchiato'],
+    ['Gruvbox', 'gruvbox'],
+    ['Everforest', 'everforest'],
+    ['Solarized', 'solarized'],
+    ['Nord', 'nord'],
+  ]
+  for (const [name, id] of families) {
+    await themes.getByRole('radio', { name, exact: true }).click()
+    await expect(html).toHaveAttribute('data-theme-family', id)
+    await expect(html).toHaveAttribute('data-accent', 'theme')
+    for (const mode of ['Light', 'Dark']) {
+      await appearance.getByRole('radio', { name: mode }).click()
+      await expect(html).toHaveAttribute('data-theme', mode.toLowerCase())
+      await shot(page, `theme-picker-${id}-${mode.toLowerCase()}`)
+      await page.keyboard.press('Escape')
+      await shot(page, `app-${id}-${mode.toLowerCase()}`)
+      await page.keyboard.press('Control+Comma')
+    }
+  }
+
+  // Gruvbox dark: whiteboard canvas and find panel follow the theme background.
+  await themes.getByRole('radio', { name: 'Gruvbox', exact: true }).click()
+  await appearance.getByRole('radio', { name: 'Dark' }).click()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Control+Shift+KeyD')
+  await expect(page.locator('[data-tile-kind="board"] .excalidraw')).toBeVisible({ timeout: 20_000 })
+  await shot(page, 'whiteboard-gruvbox-dark')
+  await page.keyboard.press('Control+Shift+KeyD')
+  await editorIn(page).click()
+  await page.keyboard.press('Control+KeyF')
+  await expect(page.locator('.cm-panel.cm-search')).toBeVisible()
+  await shot(page, 'find-panel-gruvbox-dark')
+  await page.keyboard.press('Escape')
+
+  // Gruvbox light survives a reload with no flash of the wrong family.
+  await page.keyboard.press('Control+Comma')
+  await appearance.getByRole('radio', { name: 'Light' }).click()
+  await page.keyboard.press('Escape')
+  await page.reload()
+  await expect(html).toHaveAttribute('data-theme-family', 'gruvbox')
+  await expect(html).toHaveAttribute('data-theme', 'light')
+
+  // The command palette switches families too.
+  await page.keyboard.press('Control+Shift+KeyP')
+  await page.keyboard.type('Theme: Everforest')
+  await page.keyboard.press('Enter')
+  await expect(html).toHaveAttribute('data-theme-family', 'everforest')
+
+  // Corrupt stored values are sanitised back to the default family.
+  await page.evaluate(() => localStorage.setItem('velocity.prefs.v1', JSON.stringify({ themeFamily: '<x>', theme: 'neon' })))
+  await page.reload()
+  await expect(html).toHaveAttribute('data-theme-family', 'apple')
+})
+
 test('keyboard shortcuts sheet lists every command', async ({ page }) => {
   await open(page)
   await page.keyboard.press('Control+Slash')
@@ -397,7 +555,62 @@ test('typing stays fast in a large note', async ({ page }) => {
   const elapsed = Date.now() - t0
   // 18 keystrokes into a ~220 KB note; generous bound for CI noise.
   expect(elapsed).toBeLessThan(1500)
+  // Counters follow a large note that was just loaded (never stuck at 0 words).
+  await expect(page.locator('footer').getByText(/^[1-9][\d,]* words$/)).toBeVisible()
   test.info().annotations.push({ type: 'perf', description: `18 keystrokes in ${elapsed}ms` })
   await waitForSaved(page)
   expect(await noteContent(big.id)).toContain('fast typing check')
+})
+
+test('empty, unnamed, inactive notes are pruned (LRU, keep 5); named and non-empty notes stay', async ({ page }) => {
+  test.setTimeout(120_000)
+  type Row = { id: number; title: string; is_empty: boolean }
+  const list = () => api<Row[]>('GET', '/api/pastes')
+  const isEmptyUnnamed = (n: Row) => n.is_empty && (n.title === 'Untitled' || !n.title.trim())
+  const emptyUnnamed = async () => (await list()).filter(isEmptyUnnamed)
+
+  const created: number[] = []
+  for (let i = 0; i < 8; i++) created.push((await api<{ id: number }>('POST', '/api/pastes', {})).id)
+  const titledEmpty = await api<{ id: number }>('POST', '/api/pastes', { title: 'Reminders' })
+  const whitespaceOnly = await api<{ id: number }>('POST', '/api/pastes', { content: '  \n  ' })
+  const anchor = await api<{ id: number }>('POST', '/api/pastes', {
+    title: 'Cleanup anchor',
+    content: '# Cleanup anchor\n\nKeep me.',
+  })
+  const before = await list()
+  expect((await emptyUnnamed()).length).toBeGreaterThanOrEqual(9)
+
+  // Fresh notes are inside the 30 s grace period: loading the app right now must not touch them.
+  await open(page)
+  await page.waitForTimeout(2500)
+  expect((await list()).length).toBe(before.length)
+
+  // Let the grace period lapse, then reload: the initial-load pass prunes the surplus.
+  await page.waitForTimeout(30_000)
+  await open(page)
+  await expect.poll(async () => (await emptyUnnamed()).length, { timeout: 15_000 }).toBeLessThanOrEqual(6)
+
+  const after = await list()
+  const survivors = new Set(after.map((n) => n.id))
+  // Named and non-empty notes are untouched.
+  for (const n of before.filter((b) => !isEmptyUnnamed(b))) {
+    expect(survivors.has(n.id), `note ${n.id} (${n.title}) must survive`).toBe(true)
+  }
+  expect(survivors.has(titledEmpty.id)).toBe(true)
+  expect(survivors.has(anchor.id)).toBe(true)
+  // The kept empties are the most recently used ones.
+  const remaining = (await emptyUnnamed()).map((n) => n.id)
+  const newestFive = [...created, whitespaceOnly.id].sort((a, b) => b - a).slice(0, 5)
+  for (const id of newestFive) expect(remaining).toContain(id)
+
+  // The sidebar mirrors the server.
+  await expect(noteRows(page)).toHaveCount(after.length)
+
+  // An ordinary note opens with real content and a real word count (status bar regression check).
+  await page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /All Notes/ }).click()
+  await noteRows(page).filter({ hasText: 'Cleanup anchor' }).first().click()
+  await expect(focusedTile(page)).toContainText('Keep me.')
+  await expect(page.locator('footer').getByText(/^[1-9][\d,]* words?$/)).toBeVisible()
+  await noteRows(page).first().scrollIntoViewIfNeeded()
+  await shot(page, 'empty-notes-pruned')
 })

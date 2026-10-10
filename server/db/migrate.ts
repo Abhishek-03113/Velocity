@@ -17,6 +17,13 @@ export function runMigrations() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- A board belongs to its note: deleting the note deletes the board.
+    CREATE TABLE IF NOT EXISTS whiteboards (
+      paste_id   INTEGER PRIMARY KEY REFERENCES pastes(id) ON DELETE CASCADE,
+      scene      TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS assets (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       mime_type  TEXT NOT NULL,

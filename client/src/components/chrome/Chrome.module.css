@@ -93,6 +93,18 @@
   white-space: nowrap;
 }
 
+.subtitleButton {
+  margin-left: -5px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.subtitleButton:hover {
+  background: var(--fill-tertiary);
+  color: var(--label);
+}
+
 .hideWhenSidebar[data-sidebar='open'] {
   display: none;
 }

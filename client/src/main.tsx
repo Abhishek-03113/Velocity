@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './styles/tokens.css'
+import './styles/themes/index.css'
 import './styles/global.css'
 // Applies theme/accent to <html> before first paint.
 import './store/uiStore'

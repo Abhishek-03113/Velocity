@@ -54,10 +54,32 @@ function groupExists(groupId: number | null | undefined): boolean {
   return Boolean(db.prepare('SELECT id FROM groups WHERE id = ?').get(groupId))
 }
 
+/**
+ * SQL for "blank content" (NULL, zero bytes, or only space/tab/CR/LF). Byte length is
+ * O(1) via a BLOB cast; the whitespace trim only runs for small bodies, so a huge
+ * whitespace-only note is conservatively reported as non-empty (safe for deletion rules).
+ */
+export const BLANK_CONTENT_SQL = `(content IS NULL OR length(CAST(content AS BLOB)) = 0 OR
+  (length(CAST(content AS BLOB)) <= 4096 AND trim(content, char(32, 9, 10, 13)) = ''))`
+
 pastesRouter.get('/', (c) => {
-  const rows = db
-    .prepare('SELECT id, title, group_id, updated_at FROM pastes ORDER BY updated_at DESC')
-    .all() as Pick<Paste, 'id' | 'title' | 'group_id' | 'updated_at'>[]
+  // Rows are metadata-only, but carry enough to tell empty notes apart without loading bodies.
+  const raw = db
+    .prepare(
+      `SELECT id, title, group_id, updated_at,
+              COALESCE(length(CAST(content AS BLOB)), 0) AS content_length,
+              ${BLANK_CONTENT_SQL} AS is_empty,
+              EXISTS(SELECT 1 FROM whiteboards w WHERE w.paste_id = pastes.id) AS has_whiteboard
+       FROM pastes ORDER BY updated_at DESC`
+    )
+    .all() as Array<
+    Pick<Paste, 'id' | 'title' | 'group_id' | 'updated_at'> & {
+      content_length: number
+      is_empty: number
+      has_whiteboard: 0 | 1
+    }
+  >
+  const rows = raw.map((r) => ({ ...r, is_empty: r.is_empty === 1 }))
   return c.json<ApiResponse<typeof rows>>({ success: true, data: rows })
 })
 
@@ -166,6 +188,21 @@ pastesRouter.delete('/:id', (c) => {
 
   const { id } = parsed.data
   try {
+    // ?only_if_empty=1 — automatic cleanup: refuse to delete a note that has gained content or a title.
+    if (c.req.query('only_if_empty') === '1') {
+      const row = db
+        .prepare(
+          `SELECT title, ${BLANK_CONTENT_SQL} AS blank FROM pastes WHERE id = ?`
+        )
+        .get(id) as { title: string | null; blank: number } | undefined
+      if (!row) {
+        return c.json<ApiResponse<never>>({ success: false, error: 'Not found' }, 404)
+      }
+      const t = (row.title ?? '').trim()
+      if (row.blank !== 1 || (t !== '' && t !== 'Untitled')) {
+        return c.json<ApiResponse<never>>({ success: false, error: 'Note is not empty' }, 409)
+      }
+    }
     const result = db.prepare('DELETE FROM pastes WHERE id = ?').run(id)
     if (result.changes === 0) {
       return c.json<ApiResponse<never>>({ success: false, error: 'Not found' }, 404)

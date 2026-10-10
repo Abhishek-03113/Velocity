@@ -1,12 +1,14 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useLayoutStore } from '../../store/layoutStore'
 import { ACCENTS, useUiStore, type Accent } from '../../store/uiStore'
+import { THEME_FAMILIES, getThemeFamily, swatchFor, type ThemeFamily, type Appearance } from '../../lib/themes'
 import { Icon } from '../Icon'
 import { Segmented } from '../ui/Segmented'
 import { Sheet } from './Sheet'
 import styles from './Overlays.module.css'
 
 const ACCENT_LABELS: Record<Accent, string> = {
+  theme: 'Theme default',
   blue: 'Blue',
   purple: 'Purple',
   pink: 'Pink',
@@ -64,18 +66,89 @@ function TilingModeRow() {
   )
 }
 
+/** Mini window drawn in the theme's own colours: sidebar, text lines and an accent pill. */
+function ThemeCard({
+  family,
+  appearance,
+  selected,
+  onSelect,
+}: {
+  family: ThemeFamily
+  appearance: Appearance
+  selected: boolean
+  onSelect: () => void
+}) {
+  const sw = swatchFor(family, appearance)
+  const modes = family.appearances.length === 2 ? 'Light & Dark' : family.appearances[0] === 'dark' ? 'Dark only' : 'Light only'
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      aria-label={family.name}
+      title={`${family.name} · ${modes} · ${family.accentName} accent`}
+      className={`${styles.themeCard} ${selected ? styles.themeCardSelected : ''}`}
+      data-theme-card={family.id}
+      onClick={onSelect}
+    >
+      <span className={styles.themePreview} style={{ background: sw.bg, color: sw.text }} aria-hidden="true">
+        <span className={styles.themePreviewSidebar} style={{ background: sw.sidebar }}>
+          <i style={{ background: sw.accent }} />
+          <i />
+          <i />
+        </span>
+        <span className={styles.themePreviewBody}>
+          <b />
+          <i />
+          <i />
+          <em style={{ background: sw.accent }} />
+        </span>
+      </span>
+      <span className={styles.themeName}>{family.name}</span>
+      <span className={styles.themeModes}>{modes}</span>
+    </button>
+  )
+}
+
 /** Settings (⌘,) — grouped inset rows in the style of System Settings. */
 export default function SettingsSheet() {
-  const { prefs, setPref, setSettingsOpen } = useUiStore(
-    useShallow((s) => ({ prefs: s.prefs, setPref: s.setPref, setSettingsOpen: s.setSettingsOpen })),
+  const { prefs, resolvedTheme, setPref, setThemeFamily, setSettingsOpen } = useUiStore(
+    useShallow((s) => ({
+      prefs: s.prefs,
+      resolvedTheme: s.resolvedTheme,
+      setPref: s.setPref,
+      setThemeFamily: s.setThemeFamily,
+      setSettingsOpen: s.setSettingsOpen,
+    })),
   )
+  const family = getThemeFamily(prefs.themeFamily)
   const close = () => setSettingsOpen(false)
 
   return (
     <Sheet title="Settings" onClose={close} width={600}>
       <h3 className={styles.groupHeading}>Appearance</h3>
       <div className={styles.group}>
-        <Row label="Appearance">
+        <div className={styles.themeBlock}>
+          <div className={styles.settingLabel}>
+            <span>Theme</span>
+            <span className={styles.settingHint}>{family.name} · {family.accentName} accent</span>
+          </div>
+          <div className={styles.themeGrid} role="radiogroup" aria-label="Theme">
+            {THEME_FAMILIES.map((f) => (
+              <ThemeCard
+                key={f.id}
+                family={f}
+                appearance={resolvedTheme}
+                selected={f.id === prefs.themeFamily}
+                onSelect={() => setThemeFamily(f.id)}
+              />
+            ))}
+          </div>
+        </div>
+        <Row
+          label="Appearance"
+          hint={family.appearances.length === 1 ? `${family.name} only has a ${family.appearances[0]} appearance` : undefined}
+        >
           <Segmented
             label="Appearance"
             value={prefs.theme}
@@ -89,21 +162,24 @@ export default function SettingsSheet() {
         </Row>
         <Row label="Accent colour">
           <div className={styles.swatches} role="radiogroup" aria-label="Accent colour">
-            {ACCENTS.map((a) => (
+            {ACCENTS.map((a) => {
+              const label = a === 'theme' ? `Theme default (${family.name}: ${family.accentName})` : ACCENT_LABELS[a]
+              return (
               <button
                 key={a}
                 type="button"
                 role="radio"
                 aria-checked={prefs.accent === a}
-                aria-label={ACCENT_LABELS[a]}
-                title={ACCENT_LABELS[a]}
+                aria-label={label}
+                title={label}
                 className={`${styles.swatch} ${prefs.accent === a ? styles.swatchSelected : ''}`}
                 data-swatch={a}
                 onClick={() => setPref('accent', a)}
               >
-                {prefs.accent === a && <Icon name="checkmark" size={11} strokeWidth={2.6} />}
+                {prefs.accent === a && a !== 'theme' && <Icon name="checkmark" size={11} strokeWidth={2.6} />}
               </button>
-            ))}
+              )
+            })}
           </div>
         </Row>
         <Row label="Gaps between tiles" hint="Floating tiles with an accent border on the focused one">

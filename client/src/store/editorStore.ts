@@ -8,9 +8,8 @@ import type { Paste, CreatePastePayload, UpdatePastePayload } from '../types'
 import { focusedNoteId, markLayoutRestored, useLayoutStore, visibleNoteIds } from './layoutStore'
 import type { SplitRequest } from './layoutStore'
 import { cachedContent, useSearchStore } from './searchStore'
-import { remapBoard, removeBoardScene } from './whiteboardStore'
+import { migrateLocalBoards, remapBoard, removeBoardScene, seedBoardFlags } from './whiteboardStore'
 
-const MAX_LOCAL_MRU = 5
 const INDEX_DEBOUNCE_MS = 250
 const TABS_KEY = 'velocity.tabs.v1'
 
@@ -50,6 +49,11 @@ interface EditorState {
   closeOtherTabs: (id: number) => void
   moveTab: (id: number, toIndex: number) => void
   deletePaste: (id: number) => void
+  /**
+   * Silently drop inactive notes (empty-note cleanup). Skips any id that is open in a tab or
+   * visible in a tile, and leaves tabs/layout alone. Returns the ids actually removed.
+   */
+  discardNotes: (ids: number[]) => number[]
   setContent: (content: string, id?: number) => void
   setTitle: (id: number, title: string) => void
   assignGroup: (id: number, groupId: number | null) => void
@@ -184,6 +188,19 @@ async function deleteFromServer(id: number, attempt = 1): Promise<void> {
   }
 }
 
+/** Cleanup variant: the server re-checks that the note is still blank and untitled (409 otherwise). */
+async function discardOnServer(id: number, attempt = 1): Promise<void> {
+  if (id < 0) return
+  try {
+    await api.delete<void>(`/api/pastes/${id}?only_if_empty=1`)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'unknown error'
+    if (message === 'Note is not empty' || message === 'Not found') return
+    console.error(`[discardNotes] delete ${id} failed (attempt ${attempt}):`, message)
+    if (attempt < 3) setTimeout(() => void discardOnServer(id, attempt + 1), 1000 * 2 ** attempt)
+  }
+}
+
 type EditorSet = (
   partial: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>),
 ) => void
@@ -281,19 +298,6 @@ async function warmSearchIndex(ids: number[]): Promise<void> {
   useEditorStore.setState((s) => ({ pastes: [...s.pastes] }))
 }
 
-// Trim local-only (id < 0) pastes in the sidebar to the MRU cap.
-// Named pastes (title !== 'Untitled') are always kept regardless of server ID.
-function trimLocalMru(pastes: Paste[], openTabIds: number[]): Paste[] {
-  const openSet = new Set(openTabIds)
-  const closedUntitled = pastes.filter(
-    (p) => p.id < 0 && p.title === UNTITLED && !p.content && !openSet.has(p.id),
-  )
-  const overflow = closedUntitled.length - MAX_LOCAL_MRU
-  if (overflow <= 0) return pastes
-  const drop = new Set(closedUntitled.slice(0, overflow).map((p) => p.id))
-  return pastes.filter((p) => !drop.has(p.id))
-}
-
 function nowStamp(): string {
   return new Date().toISOString()
 }
@@ -330,7 +334,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     let list: Paste[]
     try {
       const res = await api.get<Paste[]>('/api/pastes')
-      list = (res.data ?? []).map((p) => ({ ...p, content: undefined, dirty: false }))
+      list = (res.data ?? []).map((p) => ({
+        ...p,
+        // SQLite returns 0/1.
+        has_whiteboard: Boolean(p.has_whiteboard),
+        content: undefined,
+        dirty: false,
+      }))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'unknown error'
       console.error('[init] failed to load pastes:', message)
@@ -339,6 +349,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       get().addPaste(null, { focus: true })
       return
     }
+
+    seedBoardFlags(list)
+    // Move pre-SQLite localStorage boards to the server (idempotent, in the background).
+    void migrateLocalBoards(list)
 
     if (list.length === 0) {
       set({ loaded: true })
@@ -457,7 +471,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => {
       const openTabIds = [...state.openTabIds, tempId]
       return {
-        pastes: trimLocalMru([paste, ...state.pastes], openTabIds),
+        pastes: [paste, ...state.pastes],
         openTabIds,
         activeId: tempId,
       }
@@ -487,7 +501,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const nextTabs = state.openTabIds.filter((tid) => tid !== id)
       return {
         openTabIds: nextTabs,
-        pastes: trimLocalMru(state.pastes, nextTabs),
         editingTitleId: state.editingTitleId === id ? null : state.editingTitleId,
       }
     })
@@ -546,6 +559,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     useSearchStore.getState().removePaste(id)
     persistTabs()
     void deleteFromServer(id)
+  },
+
+  discardNotes: (ids) => {
+    const inUse = new Set<number>(get().openTabIds)
+    for (const id of visibleNoteIds(useLayoutStore.getState().root)) inUse.add(id)
+    const doomed = ids.filter((id) => !inUse.has(id) && id !== get().activeId)
+    if (doomed.length === 0) return []
+    const gone = new Set(doomed)
+    for (const id of doomed) {
+      syncEngine.forget(id)
+      const pending = indexTimers.get(id)
+      if (pending) clearTimeout(pending)
+      indexTimers.delete(id)
+      useSearchStore.getState().removePaste(id)
+      void discardOnServer(id)
+    }
+    set((state) => ({
+      pastes: state.pastes.filter((p) => !gone.has(p.id)),
+      editingTitleId: state.editingTitleId != null && gone.has(state.editingTitleId) ? null : state.editingTitleId,
+    }))
+    return doomed
   },
 
   setContent: (content: string, id) => {

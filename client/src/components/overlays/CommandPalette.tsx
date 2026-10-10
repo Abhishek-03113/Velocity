@@ -56,7 +56,7 @@ function highlight(text: string, query: string): ReactNode {
 export default function CommandPalette() {
   const mode = useUiStore((s) => s.paletteMode)
   const close = useUiStore((s) => s.closePalette)
-  const [value, setValue] = useState(mode === 'commands' ? '>' : '')
+  const [value, setValue] = useState(mode === 'notes' ? '' : '>')
   const [index, setIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -70,13 +70,15 @@ export default function CommandPalette() {
     }
   }, [])
 
+  const moveOnly = mode === 'move'
   const isCommand = value.startsWith('>')
   const query = isCommand ? value.slice(1).trim() : value.trim()
 
   const items = useMemo<Item[]>(() => {
     if (isCommand) {
-      const all = [...COMMANDS, ...dynamicCommands()].filter(
-        (c) => !c.paletteHidden && (!c.enabled || c.enabled()),
+      // "Move Note to Folder…" shows only this note's move targets.
+      const all = (moveOnly ? dynamicCommands() : [...COMMANDS, ...dynamicCommands()]).filter(
+        (c) => !c.paletteHidden && (!c.enabled || c.enabled()) && (!moveOnly || c.id.startsWith('note.moveTo.')),
       )
       return all
         .map((c) => ({ c, score: fuzzyScore(`${c.title} ${c.keywords ?? ''} ${c.section}`, query) }))
@@ -124,7 +126,7 @@ export default function CommandPalette() {
       })
     }
     return [...notes.slice(0, 30), { type: 'create', title: query }]
-  }, [isCommand, query])
+  }, [isCommand, query, moveOnly])
 
   useEffect(() => setIndex(0), [value])
 
@@ -157,7 +159,7 @@ export default function CommandPalette() {
     } else if (e.key === 'Enter') {
       e.preventDefault()
       activate(items[index], e.altKey || (isMac ? e.metaKey : e.ctrlKey))
-    } else if (e.key === 'Backspace' && value === '>') {
+    } else if (e.key === 'Backspace' && value === '>' && !moveOnly) {
       e.preventDefault()
       setValue('')
     }
@@ -182,7 +184,7 @@ export default function CommandPalette() {
             data-bare
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={isCommand ? 'Run a command…' : 'Search notes, or type > for commands'}
+            placeholder={moveOnly ? 'Move note to folder…' : isCommand ? 'Run a command…' : 'Search notes, or type > for commands'}
             aria-label="Search"
             aria-controls="palette-list"
             aria-activedescendant={`palette-item-${index}`}
