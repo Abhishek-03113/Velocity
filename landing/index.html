@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Velocity: keyboard-first notes</title>
+    <meta
+      name="description"
+      content="Velocity is the notes app for people who live on the keyboard. A command for everything, a tiling workspace, whiteboards, six colour themes, and a UI that never waits on the network."
+    />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta property="og:title" content="Velocity: think at the speed of your keys" />
+    <meta property="og:description" content="Keyboard-first, local-first notes with a tiling workspace." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/png" sizes="32x32" href="brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="brand/favicon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="brand/apple-touch-icon.png" />
+    <script>
+      // Resolve appearance before first paint (no flash). Stored choice wins; otherwise the CSS media query decides.
+      document.documentElement.classList.add('js')
+      try {
+        var t = localStorage.getItem('velocity.landing.theme')
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="styles/tokens.css" />
+    <link rel="stylesheet" href="styles/base.css" />
+    <link rel="stylesheet" href="styles/sections.css" />
+    <link rel="stylesheet" href="styles/interactive.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <!-- ============================ NAV ============================ -->
+    <header class="nav" id="nav">
+      <div class="container container--wide nav__inner">
+        <a class="nav__brand" href="#top" aria-label="Velocity, back to top">
+          <img src="brand/logo-72.png" width="26" height="26" alt="" />
+          Velocity
+        </a>
+        <nav class="nav__links" aria-label="Primary">
+          <a href="#features">Features</a>
+          <a href="#workflow">Workflow</a>
+          <a href="#themes">Themes</a>
+          <a href="#technology">Technology</a>
+        </nav>
+        <button class="icon-btn theme-toggle" id="theme-toggle" type="button" aria-label="Switch appearance">
+          <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" />
+            <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6" />
+          </svg>
+          <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z" />
+          </svg>
+        </button>
+        <a class="btn btn--primary btn--sm" data-cta href="https://github.com/Abhishek-03113/Velocity">Get Velocity</a>
+        <button class="icon-btn nav__menu-btn" id="menu-btn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-sheet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 8h16M4 16h16" />
+          </svg>
+        </button>
+      </div>
+    </header>
+    <div class="nav__sheet" id="nav-sheet" data-open="false">
+      <a href="#features">Features</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#themes">Themes</a>
+      <a href="#technology">Technology</a>
+    </div>
+
+    <main id="main">
+      <!-- ============================ HERO ============================ -->
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="hero__aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="container hero__copy">
+          <p class="hero__pill" data-reveal>
+            <img src="brand/logo-48.png" width="18" height="18" alt="" />
+            Introducing Velocity
+          </p>
+          <h1 class="hero__title" id="hero-title" data-words>Think at the speed <span class="grad">of your keys.</span></h1>
+          <p class="lead hero__lead" data-reveal style="--i: 5">
+            The notes app for people who live on the keyboard. A command for everything, a workspace that tiles itself,
+            and an interface that never waits on a network.
+          </p>
+          <div class="btn-row hero__cta" data-reveal style="--i: 6">
+            <a class="btn btn--primary btn--lg" data-cta href="https://github.com/Abhishek-03113/Velocity">Get Velocity</a>
+            <a class="btn btn--ghost btn--lg" data-cta href="https://github.com/Abhishek-03113/Velocity">
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" /></svg>
+              View on GitHub
+            </a>
+          </div>
+          <p class="hero__fine" data-reveal style="--i: 7">Self-hosted. Your notes live on your own disk.</p>
+        </div>
+
+        <div class="container container--wide hero__stage" id="hero-stage">
+          <div class="hero__glow" aria-hidden="true"></div>
+          <div class="hero__keys" aria-hidden="true">
+            <div class="fk fk--1"><span class="keycap-group"><span class="keycap">⌘</span><span class="keycap">⇧</span><span class="keycap">P</span></span></div>
+            <div class="fk fk--2"><span class="keycap-group"><span class="keycap">⌃</span><span class="keycap">⌥</span><span class="keycap">→</span></span></div>
+            <div class="fk fk--3"><span class="keycap-group"><span class="keycap">⌃</span><span class="keycap">⌥</span><span class="keycap">\</span></span></div>
+            <div class="fk fk--4"><span class="keycap-group"><span class="keycap">⌘</span><span class="keycap">E</span></span></div>
+            <div class="fk fk--5"><span class="keycap-group"><span class="keycap">⌃</span><span class="keycap">⌥</span><span class="keycap">T</span></span></div>
+          </div>
+          <div class="mac hero__window" id="hero-window">
+            <div class="mac__bar">
+              <span class="mac__lights" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="mac__title">Velocity</span>
+            </div>
+            <div class="media" data-media="hero" data-priority="high"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ STATS ============================ -->
+      <section class="stats" aria-label="Velocity at a glance">
+        <ul class="container stats__grid">
+          <li data-reveal style="--i: 0"><b><span data-count="50" data-prefix="&lt; ">50</span><small> ms</small></b><span>Every interaction. The UI never waits on a server.</span></li>
+          <li data-reveal style="--i: 1"><b>6<small> families</small></b><span>Colour themes, each in light and dark.</span></li>
+          <li data-reveal style="--i: 2"><b>100<small>%</small></b><span>Of actions reachable from the keyboard.</span></li>
+          <li data-reveal style="--i: 3"><b>0<small> spinners</small></b><span>Between you and the thought you are typing.</span></li>
+        </ul>
+      </section>
+
+      <!-- ============================ KEYBOARD ============================ -->
+      <section class="section" id="features" aria-labelledby="kb-title">
+        <div class="container">
+          <div class="section__head">
+            <span class="eyebrow" data-reveal>Keyboard-first</span>
+            <h2 class="h1" id="kb-title" data-reveal style="--i: 1">Built for keyboard warriors.</h2>
+            <p class="lead" data-reveal style="--i: 2">
+              Every action in Velocity is a command, and every command has a shortcut. Reach for the mouse when you
+              want to, never because you have to.
+            </p>
+          </div>
+
+          <div class="bento">
+            <article class="card card--palette" data-reveal>
+              <div class="card__text">
+                <span class="eyebrow">Command palette</span>
+                <h3 class="card__title">Press <kbd class="k">⌘</kbd> <kbd class="k">⇧</kbd> <kbd class="k">P</kbd>. Do anything.</h3>
+                <p class="muted">
+                  Type a few letters and run any command: split a tile, switch theme, move a note, toggle read mode.
+                  One list, one rhythm, thousands of keystrokes saved.
+                </p>
+              </div>
+              <div class="mac mac--flat"><div class="media" data-media="palette"></div></div>
+            </article>
+
+            <article class="card card--search" data-reveal style="--i: 1">
+              <span class="eyebrow">Quick open</span>
+              <h3 class="card__title">Search that answers before you finish typing.</h3>
+              <p class="muted">
+                <kbd class="k">⌘</kbd> <kbd class="k">P</kbd> searches every word of every note, with matches highlighted.
+                <kbd class="k">⌘</kbd> <kbd class="k">↩</kbd> opens the result in a new tile.
+              </p>
+              <div class="search-demo" aria-hidden="true">
+                <div class="search-demo__field"><span class="search-demo__q" id="search-q"></span><i></i></div>
+                <ul id="search-hits"></ul>
+              </div>
+            </article>
+
+            <article class="card card--sheet" data-reveal style="--i: 2">
+              <span class="eyebrow">Shortcuts sheet</span>
+              <h3 class="card__title">Forget a key? Press <kbd class="k">⌘</kbd> <kbd class="k">/</kbd>.</h3>
+              <p class="muted">The cheat sheet, tooltips and palette all read from one registry, so they can never disagree.</p>
+              <div class="mac mac--flat"><div class="media" data-media="shot-shortcuts" data-kind="still"></div></div>
+            </article>
+
+            <article class="card card--layer" data-reveal style="--i: 3">
+              <span class="eyebrow">The ⌃⌥ layer</span>
+              <h3 class="card__title">Browser keys? We have twins.</h3>
+              <p class="muted">
+                Browsers keep <kbd class="k">⌘N</kbd> <kbd class="k">⌘W</kbd> <kbd class="k">⌘T</kbd> <kbd class="k">⌘1–9</kbd> for themselves. Every one of them has a
+                <kbd class="k">Ctrl</kbd> <kbd class="k">Alt</kbd> twin that always works, on any keyboard layout. <kbd class="k">AltGr</kbd> is ignored, so typing
+                <kbd class="k">@</kbd> <kbd class="k">{</kbd> <kbd class="k">€</kbd> never fires a command.
+              </p>
+              <ul class="twins" aria-label="Examples of Ctrl+Alt twins">
+                <li><span>New note</span><span class="keycap-group"><kbd class="k">⌃⌥N</kbd></span></li>
+                <li><span>Close tab</span><span class="keycap-group"><kbd class="k">⌃⌥W</kbd></span></li>
+                <li><span>Go to tab 1–9</span><span class="keycap-group"><kbd class="k">⌃⌥1…9</kbd></span></li>
+                <li><span>Toggle sidebar</span><span class="keycap-group"><kbd class="k">⌃⌥S</kbd></span></li>
+              </ul>
+            </article>
+          </div>
+
+          <!-- Interactive keyboard -->
+          <div class="kb" id="try">
+            <div class="kb__head" data-reveal>
+              <h3 class="h2">Try it. Press a shortcut.</h3>
+              <p class="lead">This page listens. Hit a Velocity shortcut on your real keyboard, or tap one below.</p>
+            </div>
+            <div class="kb__stage" data-reveal="scale">
+              <div class="kb__top">
+                <div class="mac kb__mini" aria-label="Mini Velocity workspace that reacts to shortcuts">
+                  <div class="mac__bar">
+                    <span class="mac__lights" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <span class="mac__title">Velocity</span>
+                  </div>
+                  <div class="mini" id="mini" data-sidebar="on" data-read="off">
+                    <aside class="mini__side" aria-hidden="true"><i></i><i></i><i></i><i></i></aside>
+                    <div class="mini__tiles" id="mini-tiles"></div>
+                    <div class="mini__palette" id="mini-palette" aria-hidden="true">
+                      <div class="mini__palette-in"><span>›</span><em>Split tile right</em></div>
+                      <ul><li class="on">Split tile right</li><li>Toggle tiling mode</li><li>Move note to folder</li></ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="kb__result" id="kb-result" aria-live="polite">
+                  <p class="kb__combo" id="kb-combo"><span class="kb__idle">Waiting for a shortcut…</span></p>
+                  <p class="kb__name" id="kb-name">Press <kbd class="k">Ctrl</kbd> <kbd class="k">Alt</kbd> <kbd class="k">\</kbd></p>
+                  <p class="kb__desc muted" id="kb-desc">Every light on the keyboard below is a real key. Modifiers glow while held.</p>
+                  <div class="kb__chips" id="kb-chips" role="group" aria-label="Try a shortcut"></div>
+                </div>
+              </div>
+              <div class="kbd-board" id="kbd-board" role="img" aria-label="On-screen keyboard that lights up as you press keys"></div>
+              <p class="kb__fine muted">Combos your browser reserves are never intercepted, and the page only listens while this section is on screen.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ WORKSPACE ============================ -->
+      <section class="section section--tint" id="workspace" aria-labelledby="ws-title">
+        <div class="container">
+          <div class="section__head">
+            <span class="eyebrow" data-reveal>Workspace</span>
+            <h2 class="h1" id="ws-title" data-reveal style="--i: 1">A workspace that tiles itself.</h2>
+            <p class="lead" data-reveal style="--i: 2">
+              Split the editor into tiles and keep several notes in view. Pick the tiling that fits your head: classic
+              dwindle splits, or a scrolling strip of columns.
+            </p>
+          </div>
+
+          <div class="split">
+            <div class="split__text" data-reveal>
+              <span class="eyebrow">Dwindle</span>
+              <h3 class="h2">Every new tile splits the one you are in.</h3>
+              <p class="lead">
+                Automatic, along the longer side. Zero fiddling, zero dragging, and the layout comes back after a reload.
+              </p>
+              <ul class="ticks">
+                <li>Split <kbd class="k">⌃⌥\</kbd> right or <kbd class="k">⌃⌥-</kbd> down, or <kbd class="k">⌘\</kbd> to let Velocity choose</li>
+                <li>Rotate a split <kbd class="k">⌃⌥R</kbd>, equalise <kbd class="k">⌃⌥=</kbd>, drag dividers to resize</li>
+                <li>Empty tiles are launchers: type, then press <kbd class="k">↩</kbd></li>
+              </ul>
+            </div>
+            <figure class="split__visual" data-reveal="scale" style="--i: 1">
+              <div class="diagram" id="dwindle" aria-hidden="true">
+                <div class="diagram__stage"></div>
+                <div class="diagram__keys"><span class="keycap-group" id="dwindle-keys"></span></div>
+              </div>
+              <figcaption class="sr-only">Animated diagram: tiles split automatically, each new tile dividing the focused one.</figcaption>
+            </figure>
+          </div>
+
+          <div class="split split--reverse">
+            <div class="split__text" data-reveal>
+              <span class="eyebrow">Sliding</span>
+              <h3 class="h2">An endless strip of columns.</h3>
+              <p class="lead">
+                Inspired by niri and PaperWM. Columns sit on a horizontal strip that scrolls to keep your focus in view,
+                so a tile is never squeezed to make room for another.
+              </p>
+              <ul class="ticks">
+                <li>Toggle with <kbd class="k">⌃⌥T</kbd>. Cycle width ½, ⅔, full, ⅓ with <kbd class="k">⌃⌥C</kbd></li>
+                <li>Stack tiles in a column with <kbd class="k">⌃⌥-</kbd></li>
+                <li>Wheel or drag to pan, drag an edge to resize, jump from the minimap</li>
+              </ul>
+            </div>
+            <figure class="split__visual" data-reveal="scale" style="--i: 1">
+              <div class="diagram diagram--sliding" id="sliding" aria-hidden="true">
+                <div class="diagram__stage"><div class="strip" id="strip"></div></div>
+                <div class="diagram__minimap" id="minimap"></div>
+                <div class="diagram__keys"><span class="keycap-group" id="sliding-keys"></span></div>
+              </div>
+              <figcaption class="sr-only">Animated diagram: columns scroll sideways on a strip, keeping the focused column in view.</figcaption>
+            </figure>
+          </div>
+
+          <div class="pair">
+            <figure data-reveal>
+              <div class="mac"><div class="mac__bar"><span class="mac__lights" aria-hidden="true"><i></i><i></i><i></i></span><span class="mac__title">Dwindle</span></div><div class="media" data-media="tiling"></div></div>
+              <figcaption>Three notes, one glance. Splits happen where your eyes already are.</figcaption>
+            </figure>
+            <figure data-reveal style="--i: 1">
+              <div class="mac"><div class="mac__bar"><span class="mac__lights" aria-hidden="true"><i></i><i></i><i></i></span><span class="mac__title">Sliding</span></div><div class="media" data-media="sliding"></div></div>
+              <figcaption>Columns glide. Focus moves with a key and the strip follows.</figcaption>
+            </figure>
+          </div>
+
+          <ul class="mini-grid">
+            <li data-reveal style="--i: 0"><h4>Focus</h4><p><kbd class="k">⌃⌥</kbd> <kbd class="k">←↑↓→</kbd> or <kbd class="k">H J K L</kbd></p></li>
+            <li data-reveal style="--i: 1"><h4>Swap</h4><p>Add <kbd class="k">⇧</kbd> to carry a note to the neighbouring tile.</p></li>
+            <li data-reveal style="--i: 2"><h4>Zoom</h4><p><kbd class="k">⌃⌥↩</kbd> monocle any tile. Again to return.</p></li>
+            <li data-reveal style="--i: 3"><h4>Drag to tile</h4><p>Drop a note on a tile edge to split there, or in the centre to replace.</p></li>
+            <li data-reveal style="--i: 4"><h4>Tiles never reload</h4><p>Editors stay mounted: cursor, scroll and undo history survive every move.</p></li>
+            <li data-reveal style="--i: 5"><h4>Layout restore</h4><p>Tabs and tiles come back exactly as you left them.</p></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============================ WORKFLOW (scrollytelling) ============================ -->
+      <section class="section" id="workflow" aria-labelledby="wf-title">
+        <div class="container">
+          <div class="section__head">
+            <span class="eyebrow" data-reveal>Workflow</span>
+            <h2 class="h1" id="wf-title" data-reveal style="--i: 1">Write. Sketch. Stay organised.</h2>
+            <p class="lead" data-reveal style="--i: 2">One place to think in words, in diagrams, and in folders, with nothing between you and the page.</p>
+          </div>
+
+          <div class="scrolly" id="scrolly">
+            <div class="scrolly__steps">
+              <article class="step" data-step="markdown" id="writing">
+                <span class="eyebrow">Writing</span>
+                <h3 class="h2">A real editor, not a text box.</h3>
+                <p class="lead">Markdown renders as you type, and the keys you already know just work.</p>
+                <ul class="ticks">
+                  <li><strong>Live preview.</strong> Headings, emphasis, bullets, round checklists and images render inline.</li>
+                  <li><strong>Read mode</strong> <kbd class="k">⌘E</kbd> turns any note into typeset, sanitised Markdown.</li>
+                  <li><strong>Multi-cursor.</strong> <kbd class="k">Alt</kbd> + click to edit in many places at once.</li>
+                  <li><strong>Find in note</strong> <kbd class="k">⌘F</kbd>, plus formatting on the keys: <kbd class="k">⌘B</kbd> <kbd class="k">⌘I</kbd> <kbd class="k">⌘K</kbd>.</li>
+                  <li><strong>Paste or drop images.</strong> They are stored right alongside your notes.</li>
+                  <li><strong>Your type, your way.</strong> System, Serif or Mono, with your own text size and line width.</li>
+                  <li><strong>Always aware.</strong> Live word and character count, and a gentle warning past 1 MB.</li>
+                </ul>
+                <div class="step__media"><div class="mac"><div class="media" data-media="markdown"></div></div></div>
+              </article>
+
+              <article class="step" data-step="whiteboard" id="whiteboards">
+                <span class="eyebrow">Whiteboards</span>
+                <h3 class="h2">Every note can think in pictures.</h3>
+                <p class="lead">A full Excalidraw canvas attached to any note, open it as a tile right beside your words.</p>
+                <ul class="ticks">
+                  <li><strong>One keystroke.</strong> <kbd class="k">⌘⇧D</kbd> opens the board as just another tile.</li>
+                  <li><strong>Synced.</strong> Draw on one device, pick it up on another. Boards live in your database, not in a browser.</li>
+                  <li><strong>Roomy.</strong> Scenes up to 10 MB, saved through the same retrying queue as your text.</li>
+                  <li><strong>Tidy.</strong> Delete a note and its board goes with it.</li>
+                </ul>
+                <div class="step__media"><div class="mac"><div class="media" data-media="whiteboard"></div></div></div>
+              </article>
+
+              <article class="step" data-step="folders" id="organisation">
+                <span class="eyebrow">Organisation</span>
+                <h3 class="h2">Order that keeps itself.</h3>
+                <p class="lead">Flat, forgiving folders and a library that tidies up after you.</p>
+                <ul class="ticks">
+                  <li><strong>Folders, Unfiled last.</strong> Move a note from its row chip, the toolbar, or <kbd class="k">⌃⌥M</kbd>, with “New Folder…” always one click away.</li>
+                  <li><strong>Forgiving drag and drop.</strong> Drop on a folder header. Folders spring open as you hover.</li>
+                  <li><strong>Titles for free.</strong> Untitled notes take their name from the first line.</li>
+                  <li><strong>Instant search</strong> across every title and every word.</li>
+                  <li><strong>Auto-tidy.</strong> Blank, untitled, board-less notes are swept away. Recent ones are kept, and anything you touched in the last ten minutes is never deleted.</li>
+                </ul>
+                <div class="step__media"><div class="mac"><div class="media" data-media="folders"></div></div></div>
+              </article>
+            </div>
+
+            <div class="scrolly__sticky" aria-hidden="true">
+              <div class="scrolly__frame mac">
+                <div class="mac__bar"><span class="mac__lights"><i></i><i></i><i></i></span><span class="mac__title" id="scrolly-title">Writing</span></div>
+                <div class="scrolly__stack">
+                  <div class="media" data-media="markdown" data-pane="markdown"></div>
+                  <div class="media" data-media="whiteboard" data-pane="whiteboard"></div>
+                  <div class="media" data-media="folders" data-pane="folders"></div>
+                </div>
+              </div>
+              <ol class="scrolly__dots"><li data-dot="markdown"></li><li data-dot="whiteboard"></li><li data-dot="folders"></li></ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ THEMES ============================ -->
+      <section class="section section--tint" id="themes" aria-labelledby="th-title">
+        <div class="container">
+          <div class="section__head section__head--center">
+            <span class="eyebrow" data-reveal>Themes</span>
+            <h2 class="h1" id="th-title" data-reveal style="--i: 1">Make it yours. Six ways.</h2>
+            <p class="lead" data-reveal style="--i: 2">
+              Apple, Catppuccin, Gruvbox, Everforest, Nord and Solarized, each in light and dark, with flavours and contrast levels
+              of their own. Even the editor’s syntax colours follow along. Go on, click.
+            </p>
+          </div>
+
+          <div class="themer" id="themer" data-reveal="scale">
+            <div class="themer__controls">
+              <div class="chips" id="th-families" role="radiogroup" aria-label="Theme family"></div>
+              <div class="themer__row">
+                <div class="seg" id="th-appearance" role="radiogroup" aria-label="Appearance">
+                  <button type="button" role="radio" data-v="light" aria-checked="false">Light</button>
+                  <button type="button" role="radio" data-v="dark" aria-checked="false">Dark</button>
+                </div>
+                <div class="chips chips--sm" id="th-variants" role="radiogroup" aria-label="Variant"></div>
+              </div>
+              <div class="accents" id="th-accents" role="radiogroup" aria-label="Accent colour"></div>
+            </div>
+
+            <div class="mockwin" id="mockwin">
+              <div class="mockwin__bar"><span class="mac__lights" aria-hidden="true"><i></i><i></i><i></i></span><span class="mockwin__title" id="mock-title">Apple · Light</span></div>
+              <div class="mockwin__body">
+                <aside class="mockwin__side">
+                  <div class="mockwin__search">Search</div>
+                  <p class="mockwin__label">Folders</p>
+                  <ul>
+                    <li class="on"><i style="--c: var(--m-accent)"></i>All Notes</li>
+                    <li><i style="--c: var(--m-orange)"></i>Ideas</li>
+                    <li><i style="--c: var(--m-green)"></i>Personal</li>
+                    <li><i style="--c: var(--m-purple)"></i>Work</li>
+                  </ul>
+                </aside>
+                <div class="mockwin__editor">
+                  <h4><span>#</span> Q4 Roadmap</h4>
+                  <p>Our focus is <b>reliability</b> and <i>delight</i>.</p>
+                  <ul class="mock-tasks">
+                    <li class="done"><i></i>Ship the tiling workspace</li>
+                    <li><i></i>Launch the companion app</li>
+                    <li><i></i>Keep every tap under 50 ms</li>
+                  </ul>
+                  <pre><code><span class="s-kw">export const</span> <span class="s-fn">target</span> = { <span class="s-pr">latencyMs</span>: <span class="s-num">50</span>, <span class="s-pr">mode</span>: <span class="s-str">'instant'</span> } <span class="s-com">// never waits</span></code></pre>
+                  <div class="mock-colors" aria-hidden="true"><i style="background: var(--m-red)"></i><i style="background: var(--m-orange)"></i><i style="background: var(--m-yellow)"></i><i style="background: var(--m-green)"></i><i style="background: var(--m-teal)"></i><i style="background: var(--m-blue)"></i><i style="background: var(--m-purple)"></i><i style="background: var(--m-pink)"></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ul class="mini-grid mini-grid--3">
+            <li data-reveal><h4>Flavours and contrast</h4><p>Catppuccin brings Latte, Frappé, Macchiato and Mocha. Gruvbox and Everforest bring Hard, Medium and Soft.</p></li>
+            <li data-reveal style="--i: 1"><h4>Light, dark, auto</h4><p>Follow the system or pick a side. Eight macOS accent colours or the theme’s own.</p></li>
+            <li data-reveal style="--i: 2"><h4>Palette-fast</h4><p>One command per flavour: type “Theme: Catppuccin Mocha” and press <kbd class="k">↩</kbd>.</p></li>
+          </ul>
+
+          <div class="themes-shot" data-reveal="scale">
+            <div class="mac"><div class="mac__bar"><span class="mac__lights" aria-hidden="true"><i></i><i></i><i></i></span><span class="mac__title">Themes, live in the app</span></div><div class="media" data-media="themes"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ RELIABILITY ============================ -->
+      <section class="section" id="reliability" aria-labelledby="rel-title">
+        <div class="container rel">
+          <div class="rel__text">
+            <span class="eyebrow" data-reveal>Reliability</span>
+            <h2 class="h1" id="rel-title" data-reveal style="--i: 1">Never lose a keystroke.</h2>
+            <p class="lead" data-reveal style="--i: 2">
+              Velocity is local-first. Your typing lands in memory instantly, and a patient background worker carries it to your
+              disk. If the network drops, you will not notice. If the tab closes, nothing is lost.
+            </p>
+            <ul class="ticks ticks--roomy">
+              <li data-reveal><strong>Instant UI.</strong> Every interaction resolves on your machine first. Nothing blocks on a request.</li>
+              <li data-reveal><strong>Auto-save that never blinks.</strong> Changes are batched, sent as small diffs, and flushed when you close the tab.</li>
+              <li data-reveal><strong>Offline, gracefully.</strong> Retries back off, then notes are parked and resume on reconnect, on focus, or on <kbd class="k">⌘S</kbd>.</li>
+              <li data-reveal><strong>Self-hosted.</strong> One command and it runs on your hardware. Your data sits in a database on your own disk.</li>
+              <li data-reveal><strong>Markdown, always.</strong> Every note is mirrored to plain <code>.md</code> files, with images beside them, following renames and deletes.</li>
+            </ul>
+          </div>
+          <div class="rel__visual" data-reveal="scale">
+            <div class="statepill" id="statepill" data-state="edited" role="status" aria-live="off"><i></i><span id="statepill-text">Edited</span></div>
+            <figure class="phone">
+              <div class="phone__frame"><div class="media" data-media="shot-phone" data-kind="still" style="--ar: 9 / 19.5"></div></div>
+              <figcaption class="sr-only">Velocity on a phone</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ TECHNOLOGY / VISION ============================ -->
+      <section class="section section--tint" id="technology" aria-labelledby="tech-title">
+        <div class="container">
+          <div class="section__head">
+            <span class="eyebrow" data-reveal>Technology</span>
+            <h2 class="h1" id="tech-title" data-reveal style="--i: 1">Engineered like it matters.</h2>
+            <p class="lead" data-reveal style="--i: 2">A handful of principles, held without compromise.</p>
+          </div>
+
+          <div class="tech">
+            <article class="tcard tcard--lg" data-reveal>
+              <svg class="tcard__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>
+              <h3>Instant everything</h3>
+              <p class="tcard__big"><span data-count="50" data-prefix="&lt; ">50</span><small> ms</small></p>
+              <p>Typing, tiling, switching, searching. Interactions resolve before you can notice them, because nothing waits on a round trip.</p>
+            </article>
+            <article class="tcard" data-reveal style="--i: 1">
+              <svg class="tcard__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2.5" /><path d="M8 20h8M12 16v4" /></svg>
+              <h3>Local-first core</h3>
+              <p>Your device is the source of truth during every moment you work. The server stores. The interface thinks.</p>
+            </article>
+            <article class="tcard" data-reveal style="--i: 2">
+              <svg class="tcard__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3Z" /><path d="M5 8v8c0 1.7 3.1 3 7 3s7-1.3 7-3V8" /><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3" /></svg>
+              <h3>A durable vault on your own disk</h3>
+              <p>A single database file you can back up, move and own, mirrored to plain Markdown you can read in anything.</p>
+            </article>
+            <article class="tcard" data-reveal style="--i: 3">
+              <svg class="tcard__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></svg>
+              <h3>Search that answers before you finish typing</h3>
+              <p>The index is warmed at startup and never rebuilt cold, so results arrive in under ten milliseconds.</p>
+            </article>
+            <article class="tcard" data-reveal style="--i: 4">
+              <span class="tcard__ico tcard__ico--glyph" aria-hidden="true">⌘</span>
+              <h3>One source of truth for every command</h3>
+              <p>Shortcuts, the palette, tooltips and the cheat sheet all read one registry. Add a command once and it exists everywhere.</p>
+            </article>
+            <article class="tcard tcard--lg" data-reveal style="--i: 5">
+              <svg class="tcard__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7.5" height="17" rx="2" /><rect x="13" y="3.5" width="7.5" height="7.5" rx="2" /><rect x="13" y="13" width="7.5" height="7.5" rx="2" /></svg>
+              <h3>Tiles that never reload</h3>
+              <p>Tiles are positioned, not rebuilt. Split, swap, zoom and rotate while every editor keeps its cursor, scroll position and undo history.</p>
+            </article>
+            <article class="tcard" data-reveal style="--i: 6">
+              <svg class="tcard__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><path d="M9 9.5h.01M15 9.5h.01M8.5 14.5c1 1.4 2.2 2 3.5 2s2.5-.6 3.5-2" /></svg>
+              <h3>Designed with Apple Human Interface principles</h3>
+              <p>Semantic colour, vibrancy, quiet motion and generous targets. It feels native because it follows the same rules.</p>
+            </article>
+          </div>
+          <p class="tech__fine" data-reveal>Built on React, CodeMirror 6, Zustand, FlexSearch, Hono and SQLite.</p>
+        </div>
+      </section>
+
+      <!-- ============================ FINAL CTA ============================ -->
+      <section class="section cta" id="get" aria-labelledby="cta-title">
+        <div class="container">
+          <div class="cta__band" data-reveal="scale">
+            <div class="cta__aurora" aria-hidden="true"></div>
+            <img src="brand/logo.png" width="84" height="84" alt="" class="cta__logo" />
+            <h2 class="h1" id="cta-title">Get Velocity.</h2>
+            <p class="lead">Think faster. Stay on the keys. Keep every word on your own disk.</p>
+            <div class="btn-row cta__row">
+              <a class="btn btn--lg cta__btn" data-cta href="https://github.com/Abhishek-03113/Velocity">Get Velocity</a>
+              <a class="btn btn--lg cta__btn cta__btn--ghost" data-cta href="https://github.com/Abhishek-03113/Velocity">View on GitHub</a>
+            </div>
+            <p class="cta__code"><code>git clone … &amp;&amp; make up</code><span>Runs anywhere Docker runs.</span></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============================ FOOTER ============================ -->
+    <footer class="footer" aria-label="Site footer">
+      <div class="container footer__grid">
+        <div class="footer__brand">
+          <a class="nav__brand" href="#top"><img src="brand/logo-72.png" width="26" height="26" alt="" />Velocity</a>
+          <p>Keyboard-first, local-first notes. Think at the speed of your keys.</p>
+          <a class="btn btn--primary btn--sm" data-cta href="https://github.com/Abhishek-03113/Velocity" style="justify-self: start">Get Velocity</a>
+        </div>
+        <nav aria-label="Product">
+          <h3>Product</h3>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#workspace">Workspace</a></li>
+            <li><a href="#workflow">Workflow</a></li>
+            <li><a href="#themes">Themes</a></li>
+          </ul>
+        </nav>
+        <nav aria-label="Learn">
+          <h3>Learn</h3>
+          <ul>
+            <li><a href="#try">Try the keyboard</a></li>
+            <li><a href="#reliability">Reliability</a></li>
+            <li><a href="#technology">Technology</a></li>
+          </ul>
+        </nav>
+        <nav aria-label="Project">
+          <h3>Project</h3>
+          <ul>
+            <li><a href="https://github.com/Abhishek-03113/Velocity">Source on GitHub</a></li>
+            <li><a href="https://github.com/Abhishek-03113/Velocity/issues">Report an issue</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="container footer__fine">Velocity is self-hosted software. Apple, macOS and SF Pro are trademarks of Apple Inc.; Velocity is not affiliated with Apple.</div>
+    </footer>
+
+    <div class="credit" id="credit">
+      <span id="credit-year">2026</span>
+      <span class="credit__sep" aria-hidden="true">|</span>
+      <span>created by <a href="https://abhishek-3113.vercel.app/">AP3X</a> with ❤️</span>
+      <span class="credit__sep" aria-hidden="true">|</span>
+      <a href="https://github.com/Abhishek-03113" aria-label="GitHub" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" /></svg>
+      </a>
+    </div>
+
+    <script type="module" src="scripts/main.js"></script>
+  </body>
+</html>
