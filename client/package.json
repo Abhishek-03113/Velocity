@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "capture:landing": "E2E_API_PORT=${E2E_API_PORT:-3250} E2E_WEB_PORT=${E2E_WEB_PORT:-5250} playwright test -c playwright.capture.config.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

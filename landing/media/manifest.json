@@ -1,0 +1,260 @@
+{
+  "files": [
+    {
+      "file": "hero.mp4",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 12.2,
+      "poster": "hero-poster.webp",
+      "caption": "Type, open the command palette, split into a second tile, move focus with the keyboard, zoom and unzoom."
+    },
+    {
+      "file": "hero.webm",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 12.2,
+      "poster": "hero-poster.webp",
+      "caption": "Type, open the command palette, split into a second tile, move focus with the keyboard, zoom and unzoom."
+    },
+    {
+      "file": "hero-poster.webp",
+      "type": "poster",
+      "width": 1440,
+      "height": 900,
+      "caption": "Poster frame for hero."
+    },
+    {
+      "file": "palette.mp4",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 7.1,
+      "poster": "palette-poster.webp",
+      "caption": "Quick open finds notes by title and full text, with highlighted matches, and Enter opens the result."
+    },
+    {
+      "file": "palette.webm",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 7.1,
+      "poster": "palette-poster.webp",
+      "caption": "Quick open finds notes by title and full text, with highlighted matches, and Enter opens the result."
+    },
+    {
+      "file": "palette-poster.webp",
+      "type": "poster",
+      "width": 1440,
+      "height": 900,
+      "caption": "Poster frame for palette."
+    },
+    {
+      "file": "tiling.mp4",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 9.6,
+      "poster": "tiling-poster.webp",
+      "caption": "Dwindle tiling: split right and down, swap notes between tiles, close a tile."
+    },
+    {
+      "file": "tiling.webm",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 9.7,
+      "poster": "tiling-poster.webp",
+      "caption": "Dwindle tiling: split right and down, swap notes between tiles, close a tile."
+    },
+    {
+      "file": "tiling-poster.webp",
+      "type": "poster",
+      "width": 1440,
+      "height": 900,
+      "caption": "Poster frame for tiling."
+    },
+    {
+      "file": "sliding.mp4",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 11.5,
+      "poster": "sliding-poster.webp",
+      "caption": "Sliding mode: scrolling columns follow focus, cycle column width, minimap along the bottom."
+    },
+    {
+      "file": "sliding.webm",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 11.6,
+      "poster": "sliding-poster.webp",
+      "caption": "Sliding mode: scrolling columns follow focus, cycle column width, minimap along the bottom."
+    },
+    {
+      "file": "sliding-poster.webp",
+      "type": "poster",
+      "width": 1440,
+      "height": 900,
+      "caption": "Poster frame for sliding."
+    },
+    {
+      "file": "themes.mp4",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 11,
+      "poster": "themes-poster.webp",
+      "caption": "Switch between Catppuccin, Everforest, Nord, Apple and Gruvbox themes from Settings."
+    },
+    {
+      "file": "themes.webm",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 11,
+      "poster": "themes-poster.webp",
+      "caption": "Switch between Catppuccin, Everforest, Nord, Apple and Gruvbox themes from Settings."
+    },
+    {
+      "file": "themes-poster.webp",
+      "type": "poster",
+      "width": 1440,
+      "height": 900,
+      "caption": "Poster frame for themes."
+    },
+    {
+      "file": "whiteboard.mp4",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 11.9,
+      "poster": "whiteboard-poster.webp",
+      "caption": "Open a whiteboard beside the note and sketch a flow with shapes and arrows."
+    },
+    {
+      "file": "whiteboard.webm",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 11.9,
+      "poster": "whiteboard-poster.webp",
+      "caption": "Open a whiteboard beside the note and sketch a flow with shapes and arrows."
+    },
+    {
+      "file": "whiteboard-poster.webp",
+      "type": "poster",
+      "width": 1440,
+      "height": 900,
+      "caption": "Poster frame for whiteboard."
+    },
+    {
+      "file": "folders.mp4",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 7.2,
+      "poster": "folders-poster.webp",
+      "caption": "Move a note into a folder from the keyboard; the sidebar counts update instantly."
+    },
+    {
+      "file": "folders.webm",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 7.3,
+      "poster": "folders-poster.webp",
+      "caption": "Move a note into a folder from the keyboard; the sidebar counts update instantly."
+    },
+    {
+      "file": "folders-poster.webp",
+      "type": "poster",
+      "width": 1440,
+      "height": 900,
+      "caption": "Poster frame for folders."
+    },
+    {
+      "file": "markdown.mp4",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 12.2,
+      "poster": "markdown-poster.webp",
+      "caption": "Write Markdown, then flip to Read Mode for the rendered preview."
+    },
+    {
+      "file": "markdown.webm",
+      "type": "clip",
+      "width": 1440,
+      "height": 900,
+      "duration": 12.2,
+      "poster": "markdown-poster.webp",
+      "caption": "Write Markdown, then flip to Read Mode for the rendered preview."
+    },
+    {
+      "file": "markdown-poster.webp",
+      "type": "poster",
+      "width": 1440,
+      "height": 900,
+      "caption": "Poster frame for markdown."
+    },
+    {
+      "file": "shot-dark.webp",
+      "type": "still",
+      "width": 2880,
+      "height": 1800,
+      "caption": "Dark appearance with two notes tiled side by side."
+    },
+    {
+      "file": "shot-light.webp",
+      "type": "still",
+      "width": 2880,
+      "height": 1800,
+      "caption": "Light appearance with the folder sidebar, note list and a note."
+    },
+    {
+      "file": "shot-themes.webp",
+      "type": "still",
+      "width": 2880,
+      "height": 1800,
+      "caption": "Settings theme picker with Gruvbox contrast levels."
+    },
+    {
+      "file": "shot-shortcuts.webp",
+      "type": "still",
+      "width": 2880,
+      "height": 1800,
+      "caption": "The keyboard shortcuts sheet."
+    },
+    {
+      "file": "shot-palette.webp",
+      "type": "still",
+      "width": 2880,
+      "height": 1800,
+      "caption": "Command palette listing commands with their shortcuts."
+    },
+    {
+      "file": "shot-sliding.webp",
+      "type": "still",
+      "width": 2880,
+      "height": 1800,
+      "caption": "Sliding tiling mode with column minimap."
+    },
+    {
+      "file": "shot-whiteboard.webp",
+      "type": "still",
+      "width": 2880,
+      "height": 1800,
+      "caption": "Whiteboard tile with a hand-drawn diagram next to its note."
+    },
+    {
+      "file": "shot-phone.webp",
+      "type": "still",
+      "width": 1170,
+      "height": 2532,
+      "caption": "Responsive layout on a phone (390x844 at 3x)."
+    }
+  ]
+}
