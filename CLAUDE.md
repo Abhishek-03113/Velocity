@@ -33,6 +33,10 @@ npm run build
 # Lint the client
 cd client && npm run lint
 
+# Marketing landing page (static, landing/) on http://localhost:4173
+npm run landing
+npm run test:landing           # Playwright checks + screenshots → docs/screenshots/landing
+
 # Tests
 cd client && npm test          # Vitest unit tests
 cd server && npm test          # node:test API + export worker tests
