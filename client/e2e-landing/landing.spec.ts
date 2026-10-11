@@ -99,13 +99,20 @@ test.describe('landing page', () => {
     expect(Math.round((again?.y ?? 0) + (again?.height ?? 0))).toBe(vh)
   })
 
-  test('defaults to Gruvbox Dark Hard and the toggle switches to Light Hard', async ({ page }) => {
-    await page.emulateMedia({ colorScheme: 'light' })
+  test('defaults to Gruvbox Light Hard (even when the OS is dark) and the dark choice persists', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/')
     const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-    expect(await bg()).toBe('rgb(29, 32, 33)')
-    await page.locator('#theme-toggle').click()
+    const meta = () => page.locator('meta[name=theme-color]').getAttribute('content')
     expect(await bg()).toBe('rgb(249, 245, 215)')
+    expect(await meta()).toBe('#f9f5d7')
+    await page.locator('#theme-toggle').click()
+    expect(await bg()).toBe('rgb(29, 32, 33)')
+    expect(await meta()).toBe('#1d2021')
+    await page.reload()
+    expect(await bg()).toBe('rgb(29, 32, 33)')
+    expect(await meta()).toBe('#1d2021')
+    await page.locator('#theme-toggle').click()
     await page.reload()
     expect(await bg()).toBe('rgb(249, 245, 215)')
   })
@@ -138,7 +145,7 @@ test.describe('landing page', () => {
   test('theme picker recolours the mock window', async ({ page }) => {
     await page.goto('/')
     await page.locator('#themer').scrollIntoViewIfNeeded()
-    await expect(page.locator('#mock-title')).toHaveText('Gruvbox Hard · Dark')
+    await expect(page.locator('#mock-title')).toHaveText('Gruvbox Hard · Light')
     const bg = () => page.locator('#mockwin').evaluate((el) => getComputedStyle(el).getPropertyValue('--m-bg').trim())
     await page.getByRole('radio', { name: 'Nord' }).click()
     await expect(page.locator('#mock-title')).toContainText('Nord')
@@ -184,7 +191,7 @@ test.describe('review screenshots', () => {
   for (const scheme of ['light', 'dark'] as const) {
     test(`desktop ${scheme}`, async ({ page }) => {
       await page.goto('/')
-      if (scheme === 'light') await page.locator('#theme-toggle').click()
+      if (scheme === 'dark') await page.locator('#theme-toggle').click()
       await page.waitForTimeout(2200)
       await shot(page, `desktop-${scheme}-hero`)
       await settle(page)

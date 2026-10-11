@@ -1,8 +1,8 @@
 /*
  * Velocity landing: design tokens.
  * Apple HIG structure (type ramp, shape, motion, semantic roles) painted with the Gruvbox
- * palette from client/src/styles/themes/gruvbox.css. Default is Gruvbox Dark Hard, whatever
- * the OS says; the nav toggle switches to Gruvbox Light Hard (<html data-theme="light">).
+ * palette from client/src/styles/themes/gruvbox.css. Default is Gruvbox Light Hard, whatever
+ * the OS says; the nav toggle switches to Gruvbox Dark Hard (<html data-theme="dark">).
  */
 
 :root {
@@ -47,9 +47,8 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Gruvbox Dark Hard (default)                                          */
+/* Gruvbox Dark Hard                                                    */
 /* ------------------------------------------------------------------ */
-:root,
 :root[data-theme='dark'] {
   color-scheme: dark;
 
@@ -119,8 +118,9 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Gruvbox Light Hard                                                   */
+/* Gruvbox Light Hard (default)                                         */
 /* ------------------------------------------------------------------ */
+:root,
 :root[data-theme='light'] {
   color-scheme: light;
 

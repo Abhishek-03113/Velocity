@@ -326,10 +326,10 @@ button {
 .theme-toggle .i-sun {
   display: none;
 }
-:root[data-theme='light'] .theme-toggle .i-sun {
+:root:not([data-theme='dark']) .theme-toggle .i-sun {
   display: block;
 }
-:root[data-theme='light'] .theme-toggle .i-moon {
+:root:not([data-theme='dark']) .theme-toggle .i-moon {
   display: none;
 }
 .nav__menu-btn {
@@ -400,7 +400,7 @@ button {
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
   user-select: none;
 }
-:root:not([data-theme='light']) .keycap {
+:root[data-theme='dark'] .keycap {
   box-shadow: 0 1px 0 1px var(--keycap-edge), 0 4px 0 1px var(--keycap-edge), 0 8px 16px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }

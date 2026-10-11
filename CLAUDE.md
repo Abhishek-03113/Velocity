@@ -34,7 +34,7 @@ npm run build
 cd client && npm run lint
 
 # Marketing landing page (static, landing/) on http://localhost:4173
-npm run landing
+npm run landing                # defaults to Gruvbox Light Hard; nav toggle → Dark Hard
 npm run test:landing           # Playwright checks + screenshots → docs/screenshots/landing
 
 # Tests
