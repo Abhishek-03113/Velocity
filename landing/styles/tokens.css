@@ -1,0 +1,202 @@
+/*
+ * Velocity landing: design tokens.
+ * Apple HIG structure (type ramp, shape, motion, semantic roles) painted with the Gruvbox
+ * palette from client/src/styles/themes/gruvbox.css. Default is Gruvbox Dark Hard, whatever
+ * the OS says; the nav toggle switches to Gruvbox Light Hard (<html data-theme="light">).
+ */
+
+:root {
+  /* Typography */
+  --font-system: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'SF Pro', 'Inter',
+    'Segoe UI Variable', 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-rounded: ui-rounded, 'SF Pro Rounded', var(--font-system);
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Menlo', 'Cascadia Code', 'Consolas', monospace;
+
+  /* Marketing type ramp (HIG large-title scale, stretched for the web) */
+  --text-display: clamp(2.75rem, 1.2rem + 5.6vw, 5.25rem);
+  --text-h1: clamp(2.25rem, 1.3rem + 4vw, 4.5rem);
+  --text-h2: clamp(1.75rem, 1.2rem + 2.2vw, 3rem);
+  --text-title: clamp(1.25rem, 1.1rem + 0.6vw, 1.625rem);
+  --text-lead: clamp(1.1875rem, 1.05rem + 0.6vw, 1.5rem);
+  --text-body: 1.0625rem;
+  --text-callout: 0.9375rem;
+  --text-footnote: 0.8125rem;
+
+  /* Shape: continuous-feeling corners */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-fast: 160ms;
+  --dur-base: 320ms;
+  --dur-slow: 720ms;
+
+  /* Layout */
+  --nav-height: 52px;
+  --credit-height: 40px;
+  --gutter: 20px;
+  --container: 1180px;
+  --container-wide: 1320px;
+
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------ */
+/* Gruvbox Dark Hard (default)                                          */
+/* ------------------------------------------------------------------ */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-window: #1d2021;
+  --bg-secondary: #282828;
+  --bg-tertiary: #32302f;
+  --bg-elevated: #3c3836;
+  --bg-bar: rgba(29, 32, 33, 0.78);
+  --bg-sheet: rgba(40, 40, 40, 0.94);
+  --bg-glass: rgba(60, 56, 54, 0.62);
+
+  --label: #ebdbb2;
+  --label-secondary: #bdae93;
+  --label-tertiary: #a08f7b;
+  --label-quaternary: rgba(168, 153, 132, 0.4);
+
+  --separator: #3c3836;
+  --separator-opaque: #504945;
+
+  --fill: rgba(235, 219, 178, 0.2);
+  --fill-secondary: rgba(235, 219, 178, 0.14);
+  --fill-tertiary: rgba(235, 219, 178, 0.1);
+  --fill-quaternary: rgba(235, 219, 178, 0.06);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(235, 219, 178, 0.06);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(235, 219, 178, 0.08);
+  --shadow-lg: 0 36px 90px rgba(0, 0, 0, 0.65), 0 0 0 0.5px rgba(235, 219, 178, 0.12);
+
+  --system-red: #fb4934;
+  --system-orange: #fe8019;
+  --system-yellow: #fabd2f;
+  --system-green: #b8bb26;
+  --system-teal: #8ec07c;
+  --system-blue: #83a598;
+  --system-indigo: #83a598;
+  --system-purple: #d3869b;
+  --system-pink: #d3869b;
+
+  --accent: #fe8019;
+  --accent-contrast: #1d2021;
+  --accent-text: #fe8019;
+
+  --grad-a: #fabd2f;
+  --grad-b: #fe8019;
+  --grad-c: #fb4934;
+
+  --aurora-a: rgba(254, 128, 25, 0.26);
+  --aurora-b: rgba(250, 189, 47, 0.18);
+  --aurora-c: rgba(251, 73, 52, 0.18);
+  --keycap-top: #504945;
+  --keycap-bottom: #3c3836;
+  --keycap-edge: #141617;
+  --keycap-text: #ebdbb2;
+
+  --tl-red: #fb4934;
+  --tl-yellow: #fabd2f;
+  --tl-green: #b8bb26;
+
+  --cta-grad: linear-gradient(135deg, #d65d0e 0%, #fe8019 48%, #fabd2f 100%);
+  --cta-fg: #1d2021;
+  --cta-fg-soft: rgba(29, 32, 33, 0.8);
+  --cta-btn-bg: #1d2021;
+  --cta-btn-fg: #fabd2f;
+  --cta-btn-ghost: rgba(29, 32, 33, 0.16);
+  --cta-glow-a: rgba(251, 241, 199, 0.4);
+  --cta-glow-b: rgba(251, 73, 52, 0.4);
+}
+
+/* ------------------------------------------------------------------ */
+/* Gruvbox Light Hard                                                   */
+/* ------------------------------------------------------------------ */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-window: #f9f5d7;
+  --bg-secondary: #f2e5bc;
+  --bg-tertiary: #ebdbb2;
+  --bg-elevated: #fbf1c7;
+  --bg-bar: rgba(249, 245, 215, 0.78);
+  --bg-sheet: rgba(251, 241, 199, 0.95);
+  --bg-glass: rgba(251, 241, 199, 0.66);
+
+  --label: #3c3836;
+  --label-secondary: #665c54;
+  --label-tertiary: #7c6f64;
+  --label-quaternary: rgba(124, 111, 100, 0.4);
+
+  --separator: #d5c4a1;
+  --separator-opaque: #d5c4a1;
+
+  --fill: rgba(60, 56, 54, 0.16);
+  --fill-secondary: rgba(60, 56, 54, 0.11);
+  --fill-tertiary: rgba(60, 56, 54, 0.08);
+  --fill-quaternary: rgba(60, 56, 54, 0.045);
+
+  --shadow-sm: 0 1px 2px rgba(60, 56, 54, 0.1), 0 0 0 0.5px rgba(60, 56, 54, 0.08);
+  --shadow-md: 0 8px 24px rgba(60, 56, 54, 0.14), 0 0 0 0.5px rgba(60, 56, 54, 0.1);
+  --shadow-lg: 0 30px 80px rgba(60, 56, 54, 0.26), 0 0 0 0.5px rgba(60, 56, 54, 0.14);
+
+  --system-red: #9d0006;
+  --system-orange: #af3a03;
+  --system-yellow: #b57614;
+  --system-green: #79740e;
+  --system-teal: #427b58;
+  --system-blue: #076678;
+  --system-indigo: #076678;
+  --system-purple: #8f3f71;
+  --system-pink: #8f3f71;
+
+  --accent: #af3a03;
+  --accent-contrast: #fbf1c7;
+  --accent-text: #af3a03;
+
+  --grad-a: #b57614;
+  --grad-b: #af3a03;
+  --grad-c: #9d0006;
+
+  --aurora-a: rgba(175, 58, 3, 0.2);
+  --aurora-b: rgba(181, 118, 20, 0.2);
+  --aurora-c: rgba(157, 0, 6, 0.12);
+  --keycap-top: #fbf1c7;
+  --keycap-bottom: #ebdbb2;
+  --keycap-edge: #bdae93;
+  --keycap-text: #3c3836;
+
+  --tl-red: #9d0006;
+  --tl-yellow: #b57614;
+  --tl-green: #79740e;
+
+  --cta-grad: linear-gradient(135deg, #9d0006 0%, #af3a03 50%, #b57614 100%);
+  --cta-fg: #fbf1c7;
+  --cta-fg-soft: rgba(251, 241, 199, 0.88);
+  --cta-btn-bg: #fbf1c7;
+  --cta-btn-fg: #9d0006;
+  --cta-btn-ghost: rgba(251, 241, 199, 0.2);
+  --cta-glow-a: rgba(251, 241, 199, 0.35);
+  --cta-glow-b: rgba(250, 189, 47, 0.4);
+}
+
+:root {
+  --accent-hover: color-mix(in srgb, var(--accent) 88%, var(--label));
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+@media (min-width: 720px) {
+  :root {
+    --gutter: 32px;
+  }
+}
