@@ -10,6 +10,8 @@ const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5199)
  */
 export default defineConfig({
   testDir: './e2e',
+  // Landing-media capture is on demand only (see playwright.capture.config.ts).
+  testIgnore: ['**/capture/**'],
   fullyParallel: false,
   workers: 1,
   retries: 0,

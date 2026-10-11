@@ -2,8 +2,13 @@
 
 const nav: Navigator | undefined = typeof navigator !== 'undefined' ? navigator : undefined
 
+/** True for Apple platform strings: "MacIntel", "macOS" (userAgentData), "iPhone", "iPad", "iPod". */
+export function detectMac(platform: string | undefined): boolean {
+  return /mac|iphone|ipad|ipod/i.test(platform ?? '')
+}
+
 export const isMac: boolean = nav
-  ? /Mac|iPhone|iPad|iPod/.test(
+  ? detectMac(
       (nav as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
         nav.platform ??
         nav.userAgent,
