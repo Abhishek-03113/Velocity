@@ -458,6 +458,14 @@ kbd.k {
   backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 0.5px solid var(--separator);
 }
+.hero__window .media > video {
+  will-change: opacity;
+}
+.hero__window .mac__bar {
+  /* Sits on the flat window background, never on the video: the blur adds nothing but cost. */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 .mac__lights {
   display: flex;
   gap: 8px;
@@ -647,5 +655,24 @@ kbd.k {
   .js [data-reveal] {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* While the hero (and its playing video) is on screen, the fixed nav and credit strip drop
+   backdrop-filter, which would otherwise re-blur the video on every decoded frame. They use a
+   near-opaque fill of the same tint instead, and the frosted blur returns below the hero. */
+:root[data-hero='on'] .nav,
+:root[data-hero='on'] .credit {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: color-mix(in srgb, var(--bg-bar) 80%, var(--bg-window));
+}
+@media (prefers-reduced-transparency: reduce) {
+  .nav,
+  .credit,
+  .hero__pill {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: color-mix(in srgb, var(--bg-bar) 30%, var(--bg-window));
   }
 }

@@ -64,30 +64,60 @@ export function initReveal() {
 }
 
 /* ---------- hero: tilt flattens as you scroll ---------- */
+/**
+ * Composite-only: the window transform and glow opacity are written straight to those elements
+ * (no custom property on an ancestor, so no subtree style recalc over the playing video), the
+ * stage position is cached (no layout read per frame) and writes stop once the tilt is flat.
+ * Also flags whether the hero is on screen so CSS can pause its loops and drop backdrop blur.
+ */
 export function initParallax() {
+  const hero = document.getElementById('top')
   const stage = document.getElementById('hero-stage')
-  if (!stage) return
-  if (reduceMotion()) {
-    stage.style.setProperty('--p', '1')
-    return
+  const win = document.getElementById('hero-window')
+  const glow = stage?.querySelector('.hero__glow')
+  if (!hero || !stage || !win) return
+
+  const apply = (p) => {
+    win.style.transform = p >= 1 ? 'none' : `rotateX(${((1 - p) * 14).toFixed(2)}deg) scale(${(0.93 + p * 0.07).toFixed(4)})`
+    if (glow) glow.style.opacity = (0.55 + p * 0.45).toFixed(3)
   }
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((es) => {
+      const on = es[es.length - 1].isIntersecting
+      hero.classList.toggle('is-off', !on)
+      document.documentElement.dataset.hero = on ? 'on' : 'off'
+    }).observe(hero)
+  }
+
+  if (reduceMotion()) return apply(1)
+
+  let docTop = 0
+  let last = -1
   let ticking = false
+  const measure = () => {
+    docTop = stage.getBoundingClientRect().top + scrollY
+    last = -1
+    schedule()
+  }
   const update = () => {
     ticking = false
     const vh = innerHeight
-    const top = stage.getBoundingClientRect().top
-    const p = Math.min(1, Math.max(0, 1 - (top - vh * 0.08) / (vh * 0.62)))
-    stage.style.setProperty('--p', p.toFixed(3))
+    const p = Math.min(1, Math.max(0, 1 - (docTop - scrollY - vh * 0.08) / (vh * 0.62)))
+    if (Math.abs(p - last) < 0.001) return
+    last = p
+    apply(p)
   }
-  const onScroll = () => {
+  function schedule() {
     if (!ticking) {
       ticking = true
       requestAnimationFrame(update)
     }
   }
-  addEventListener('scroll', onScroll, { passive: true })
-  addEventListener('resize', onScroll, { passive: true })
-  update()
+  addEventListener('scroll', schedule, { passive: true })
+  if ('ResizeObserver' in window) new ResizeObserver(measure).observe(hero)
+  else addEventListener('resize', measure, { passive: true })
+  measure()
 }
 
 /* ---------- count-up numerals ---------- */
@@ -128,7 +158,11 @@ export function initNav() {
   const nav = document.getElementById('nav')
   const sheet = document.getElementById('nav-sheet')
   const btn = document.getElementById('menu-btn')
-  const onScroll = () => (nav.dataset.scrolled = String(scrollY > 8))
+  let scrolled
+  const onScroll = () => {
+    const v = String(scrollY > 8)
+    if (v !== scrolled) nav.dataset.scrolled = scrolled = v
+  }
   addEventListener('scroll', onScroll, { passive: true })
   onScroll()
 
