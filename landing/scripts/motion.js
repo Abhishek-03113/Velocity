@@ -164,9 +164,9 @@ export function initNav() {
 /* ---------- appearance toggle ---------- */
 export function initThemeToggle() {
   const root = document.documentElement
-  const resolved = () => root.dataset.theme || 'dark'
+  const resolved = () => root.dataset.theme || 'light'
   document.getElementById('theme-toggle').addEventListener('click', () => {
-    const next = resolved() === 'dark' ? 'light' : 'dark'
+    const next = resolved() === 'light' ? 'dark' : 'light'
     root.dataset.theme = next
     const meta = document.querySelector('meta[name=theme-color]')
     if (meta) meta.content = next === 'dark' ? '#1d2021' : '#f9f5d7'

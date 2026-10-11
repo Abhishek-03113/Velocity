@@ -131,7 +131,7 @@ In the notes list, `↑`/`↓` browse, `↩` opens, `⌘↩` or `Alt+↩` opens 
 
 ## Landing page
 
-A self-contained static marketing page lives in `landing/` (plain HTML, CSS and ES modules, no build step, relative paths, so it also works on GitHub Pages). Run it with `npm run landing` (http://localhost:4173). Product clips and stills are listed in `landing/scripts/media.js` and live in `landing/media/`. `npm run test:landing` runs the page checks and writes review screenshots to `docs/screenshots/landing/`.
+A self-contained static marketing page lives in `landing/` (plain HTML, CSS and ES modules, no build step, relative paths, so it also works on GitHub Pages). It defaults to Gruvbox Light Hard regardless of the OS setting; the nav toggle switches to Gruvbox Dark Hard and the choice is remembered in `localStorage`. Run it with `npm run landing` (http://localhost:4173). Product clips and stills are listed in `landing/scripts/media.js` and live in `landing/media/`. `npm run test:landing` runs the page checks and writes review screenshots to `docs/screenshots/landing/`.
 
 ## Quick Start
 
