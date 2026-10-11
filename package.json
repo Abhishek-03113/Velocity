@@ -11,7 +11,8 @@
     "build": "npm run build --prefix client",
     "install:all": "npm install && npm install --prefix client && npm install --prefix server",
     "landing": "cd client && npx vite ../landing --port 4173 --strictPort --host",
-    "test:landing": "cd client && npx playwright test -c playwright.landing.config.ts"
+    "test:landing": "cd client && npx playwright test -c playwright.landing.config.ts",
+    "perf:landing": "cd client && node e2e-landing/perf.mjs"
   },
   "keywords": [],
   "author": "",
