@@ -26,6 +26,7 @@ async function settle(page: Page) {
     }
     window.scrollTo(0, 0)
   })
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
   await page.waitForTimeout(900)
 }
 
@@ -36,7 +37,10 @@ async function shot(page: Page, name: string, selector?: string) {
     const el = page.locator(selector).first()
     await el.scrollIntoViewIfNeeded()
     await page.waitForTimeout(1200)
+    // Hide fixed chrome in the capture only; the real page keeps nav, credit strip and skip link.
+    const hide = await page.addStyleTag({ content: '.nav,.credit,.skip-link,.nav__sheet{visibility:hidden!important}' })
     await el.screenshot({ path: file })
+    await hide.evaluate((n) => n.remove())
   } else {
     await page.screenshot({ path: file })
   }

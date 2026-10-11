@@ -5,7 +5,7 @@
 /* ------------------------------------------------------------------ */
 .hero {
   position: relative;
-  padding-top: clamp(36px, 6vw, 72px);
+  padding-top: clamp(24px, 3vw, 36px);
   padding-bottom: clamp(24px, 4vw, 56px);
   overflow: clip;
   text-align: center;
@@ -58,7 +58,7 @@
   z-index: 2;
   display: grid;
   justify-items: center;
-  gap: 24px;
+  gap: 18px;
 }
 .hero__pill {
   display: inline-flex;
@@ -115,7 +115,7 @@
   }
 }
 .hero__lead {
-  max-width: 40ch;
+  max-width: 54ch;
 }
 .hero__cta {
   justify-content: center;
@@ -128,7 +128,7 @@
 .hero__stage {
   position: relative;
   z-index: 1;
-  margin-top: clamp(32px, 4.5vw, 56px);
+  margin-top: clamp(24px, 2.4vw, 32px);
   perspective: 2000px;
   perspective-origin: 50% 0;
   --p: 0;
@@ -235,18 +235,15 @@
   }
 }
 @media (max-width: 899px) {
-  .fk--3,
-  .fk--4,
-  .fk--5 {
+  .fk--1,
+  .fk--2,
+  .fk--3 {
     display: none;
   }
-  .fk--1 {
-    left: 2%;
-    top: -9%;
-  }
-  .fk--2 {
-    right: 2%;
-    top: -7%;
+  .fk--4 {
+    --kc-h: 28px;
+    right: 6%;
+    bottom: -14px;
   }
 }
 
