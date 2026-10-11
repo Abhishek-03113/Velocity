@@ -417,7 +417,26 @@ export async function finishClip(s: Session, name: string, marks: ClipMarks) {
     `fps=30,fade=t=in:st=0:d=0.3:color=${fade},fade=t=out:st=${(marks.end - marks.start - 0.4).toFixed(2)}:d=0.4:color=${fade}${extra}`
   const base = ['-ss', ss, '-t', dur, '-i', raw]
   ff([...base, '-vf', `${vf()},format=yuv420p`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '26', '-movflags', '+faststart', '-an', path.join(OUT, `${name}.mp4`)])
-  ff([...base, '-vf', vf(), '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '40', '-row-mt', '1', '-an', path.join(OUT, `${name}.webm`)])
+  // yuv420p + profile 0 so every browser and hardware decoder can play it (the fade filter otherwise yields gbrp / profile 1).
+  ff([
+    ...base,
+    '-vf',
+    `${vf()},format=yuv420p`,
+    '-c:v',
+    'libvpx-vp9',
+    '-pix_fmt',
+    'yuv420p',
+    '-profile:v',
+    '0',
+    '-b:v',
+    '0',
+    '-crf',
+    '38',
+    '-row-mt',
+    '1',
+    '-an',
+    path.join(OUT, `${name}.webm`),
+  ])
   ff(['-ss', (marks.start + (marks.poster ?? 0.8)).toFixed(2), '-i', raw, '-frames:v', '1', '-c:v', 'libwebp', '-quality', '82', path.join(OUT, `${name}-poster.webp`)])
 }
 

@@ -61,8 +61,8 @@ function buildVideo(name, img) {
   v.disablePictureInPicture = true
   v.poster = img.currentSrc || img.src
   const sources = [
+    ['mp4', 'video/mp4'], // H.264 plays everywhere, including Safari
     ['webm', 'video/webm'],
-    ['mp4', 'video/mp4'],
   ]
   let failed = 0
   for (const [ext, type] of sources) {
