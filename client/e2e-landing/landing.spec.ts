@@ -89,12 +89,16 @@ test.describe('landing page', () => {
       return { pos: s.position, filter: s.backdropFilter || s.webkitBackdropFilter, size: s.fontSize }
     })
     expect(style.pos).toBe('fixed')
-    expect(style.filter).toContain('blur(20px)')
+    // over the playing hero video the strip is a cheap near-opaque fill; the frosted blur returns below it
+    expect(style.filter).toBe('none')
     expect(style.size).toBe('13px')
     // body reserves the strip's height
     expect(await page.evaluate(() => getComputedStyle(document.body).paddingBottom)).toBe('40px')
     // stays pinned after scrolling
     await page.evaluate(() => window.scrollTo(0, 3000))
+    await expect
+      .poll(() => credit.evaluate((el) => getComputedStyle(el).backdropFilter || getComputedStyle(el).webkitBackdropFilter))
+      .toContain('blur(20px)')
     const again = await credit.boundingBox()
     expect(Math.round((again?.y ?? 0) + (again?.height ?? 0))).toBe(vh)
   })

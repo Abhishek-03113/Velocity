@@ -16,40 +16,44 @@
   height: 80%;
   pointer-events: none;
   z-index: 0;
+  contain: layout paint;
 }
+/* Pre-blurred blobs: a soft radial gradient stands in for filter: blur(90px), so the layer is
+   rasterised once and only its transform animates on the compositor. */
 .hero__aurora i {
+  --blob: min(60vw, 720px);
   position: absolute;
-  width: min(60vw, 720px);
+  width: calc(var(--blob) * 1.4);
   aspect-ratio: 1;
+  margin: calc(var(--blob) * -0.2);
   border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.9;
+  will-change: transform;
   animation: drift 18s ease-in-out infinite alternate;
 }
 .hero__aurora i:nth-child(1) {
   left: -10%;
   top: 0;
-  background: var(--aurora-a);
+  background: radial-gradient(closest-side, var(--aurora-a) 40%, transparent);
 }
 .hero__aurora i:nth-child(2) {
   right: -12%;
   top: 6%;
-  background: var(--aurora-b);
+  background: radial-gradient(closest-side, var(--aurora-b) 40%, transparent);
   animation-delay: -6s;
   animation-duration: 22s;
 }
 .hero__aurora i:nth-child(3) {
   left: 30%;
   top: 30%;
-  background: var(--aurora-c);
+  background: radial-gradient(closest-side, var(--aurora-c) 40%, transparent);
   animation-delay: -11s;
 }
 @keyframes drift {
   from {
-    transform: translate3d(-4%, -3%, 0) scale(1);
+    transform: translate3d(-4%, -3%, 0);
   }
   to {
-    transform: translate3d(6%, 5%, 0) scale(1.12);
+    transform: translate3d(6%, 5%, 0) scale(1.06);
   }
 }
 
@@ -66,9 +70,8 @@
   gap: 8px;
   padding: 6px 14px 6px 8px;
   border-radius: var(--radius-pill);
-  background: var(--bg-glass);
-  -webkit-backdrop-filter: saturate(180%) blur(16px);
-  backdrop-filter: saturate(180%) blur(16px);
+  /* No backdrop-filter: it would re-blur the animated aurora behind it every frame. */
+  background: color-mix(in srgb, var(--bg-glass) 70%, var(--bg-elevated));
   box-shadow: var(--shadow-sm);
   font-size: var(--text-callout);
   font-weight: 600;
@@ -131,15 +134,15 @@
   margin-top: clamp(24px, 2.4vw, 32px);
   perspective: 2000px;
   perspective-origin: 50% 0;
-  --p: 0;
 }
 .hero__window {
   width: min(100%, 1120px);
   margin-inline: auto;
-  transform: rotateX(calc((1 - var(--p)) * 14deg)) scale(calc(0.93 + var(--p) * 0.07));
+  /* Tilt at rest; motion.js writes the scroll-driven transform straight onto this element. */
+  transform: rotateX(14deg) scale(0.93);
   transform-origin: 50% 0;
   will-change: transform;
-  animation: stageIn 1.2s var(--ease-out) 0.5s both;
+  animation: stageIn 1.2s var(--ease-out) 0.5s backwards;
 }
 @keyframes stageIn {
   from {
@@ -151,13 +154,13 @@
 }
 .hero__glow {
   position: absolute;
-  inset: 6% 6% -8%;
+  inset: -4% -4% -20%;
   z-index: -1;
-  border-radius: 50%;
-  background: radial-gradient(55% 55% at 30% 45%, var(--aurora-a), transparent 70%),
-    radial-gradient(50% 55% at 72% 55%, var(--aurora-b), transparent 70%);
-  filter: blur(70px);
-  opacity: calc(0.55 + var(--p) * 0.45);
+  /* Pre-blurred (no live filter); motion.js drives opacity on this own compositor layer. */
+  background: radial-gradient(45% 50% at 30% 45%, var(--aurora-a), transparent 100%),
+    radial-gradient(42% 50% at 72% 55%, var(--aurora-b), transparent 100%);
+  opacity: 0.55;
+  will-change: opacity;
 }
 
 /* Floating keycaps */
@@ -173,7 +176,18 @@
   position: absolute;
   animation: floaty 7s ease-in-out infinite;
   animation-delay: var(--d, 0s);
-  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.12));
+  will-change: transform;
+}
+/* Static box-shadow instead of filter: drop-shadow, which re-rasterised every frame. */
+.fk .keycap {
+  box-shadow: 0 1px 0 1px var(--keycap-edge), 0 4px 0 1px var(--keycap-edge), 0 8px 16px rgba(60, 56, 54, 0.22),
+    0 18px 24px -6px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+/* Off-screen hero: freeze the ambient loops. */
+.hero.is-off .hero__aurora i,
+.hero.is-off .fk,
+.hero.is-off .fk .keycap {
+  animation-play-state: paused;
 }
 .fk .keycap {
   animation: press 5s ease-in-out infinite;
