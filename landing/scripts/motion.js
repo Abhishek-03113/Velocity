@@ -164,10 +164,12 @@ export function initNav() {
 /* ---------- appearance toggle ---------- */
 export function initThemeToggle() {
   const root = document.documentElement
-  const resolved = () => root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  const resolved = () => root.dataset.theme || 'dark'
   document.getElementById('theme-toggle').addEventListener('click', () => {
     const next = resolved() === 'dark' ? 'light' : 'dark'
     root.dataset.theme = next
+    const meta = document.querySelector('meta[name=theme-color]')
+    if (meta) meta.content = next === 'dark' ? '#1d2021' : '#f9f5d7'
     try {
       localStorage.setItem('velocity.landing.theme', next)
     } catch {

@@ -8,8 +8,7 @@
       name="description"
       content="Velocity is the notes app for people who live on the keyboard. A command for everything, a tiling workspace, whiteboards, six colour themes, and a UI that never waits on the network."
     />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#1d2021" />
     <meta name="color-scheme" content="light dark" />
     <meta property="og:title" content="Velocity: think at the speed of your keys" />
     <meta property="og:description" content="Keyboard-first, local-first notes with a tiling workspace." />
@@ -18,11 +17,12 @@
     <link rel="icon" type="image/png" sizes="192x192" href="brand/favicon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="brand/apple-touch-icon.png" />
     <script>
-      // Resolve appearance before first paint (no flash). Stored choice wins; otherwise the CSS media query decides.
+      // Gruvbox Dark Hard is the default regardless of the OS setting; a stored choice wins. No flash.
       document.documentElement.classList.add('js')
       try {
         var t = localStorage.getItem('velocity.landing.theme')
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+        if (t === 'light') document.querySelector('meta[name=theme-color]').content = '#f9f5d7'
       } catch (e) {}
     </script>
     <link rel="stylesheet" href="styles/tokens.css" />

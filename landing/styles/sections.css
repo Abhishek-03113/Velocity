@@ -100,7 +100,7 @@
   animation-delay: calc(var(--i) * 80ms + 120ms);
 }
 .hero__title .w--grad > span {
-  background: linear-gradient(100deg, var(--system-blue), var(--system-purple) 50%, var(--system-pink) 100%);
+  background: linear-gradient(100deg, var(--grad-a), var(--grad-b) 50%, var(--grad-c) 100%);
   background-size: 260% 100%;
   background-position: calc(var(--gi) * 38%) 0;
   -webkit-background-clip: text;
@@ -455,7 +455,7 @@
 .mini-grid li {
   padding: 24px;
   border-radius: var(--radius-lg);
-  background: var(--bg-window);
+  background: var(--bg-elevated);
   box-shadow: var(--shadow-sm);
 }
 .mini-grid h4 {
@@ -596,8 +596,8 @@
 .phone__frame {
   padding: 10px;
   border-radius: 46px;
-  background: #151517;
-  box-shadow: var(--shadow-lg), inset 0 0 0 1.5px #3a3a3e;
+  background: #0d0e0f;
+  box-shadow: var(--shadow-lg), inset 0 0 0 1.5px #504945;
 }
 .phone__frame .media {
   border-radius: 36px;
@@ -632,7 +632,7 @@
   align-content: start;
   padding: clamp(24px, 3vw, 36px);
   border-radius: var(--radius-xl);
-  background: var(--bg-window);
+  background: var(--bg-elevated);
   box-shadow: var(--shadow-sm);
   transition: transform 0.5s var(--ease-spring), box-shadow 0.5s var(--ease-out);
 }
@@ -671,7 +671,7 @@
   line-height: 1;
   color: var(--label);
   font-variant-numeric: tabular-nums;
-  background: linear-gradient(100deg, var(--system-blue), var(--system-purple) 60%, var(--system-pink));
+  background: linear-gradient(100deg, var(--grad-a), var(--grad-b) 60%, var(--grad-c));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -718,47 +718,49 @@
   padding: clamp(48px, 8vw, 112px) var(--gutter);
   border-radius: clamp(28px, 4vw, 44px);
   text-align: center;
-  color: #fff;
-  background: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 52%, #bf5af2 100%);
+  color: var(--cta-fg);
+  background: var(--cta-grad);
   overflow: hidden;
   isolation: isolate;
-  box-shadow: 0 40px 90px color-mix(in srgb, var(--system-indigo) 40%, transparent);
+  box-shadow: 0 40px 90px color-mix(in srgb, var(--system-orange) 30%, transparent);
 }
 .cta__aurora {
   position: absolute;
   inset: -30%;
   z-index: -1;
-  background: radial-gradient(40% 40% at 20% 20%, rgba(255, 255, 255, 0.35), transparent 60%),
-    radial-gradient(40% 40% at 85% 80%, rgba(255, 45, 85, 0.45), transparent 60%);
+  background: radial-gradient(40% 40% at 20% 20%, var(--cta-glow-a), transparent 60%),
+    radial-gradient(40% 40% at 85% 80%, var(--cta-glow-b), transparent 60%);
   animation: drift 16s ease-in-out infinite alternate;
 }
 .cta__logo {
   border-radius: 22px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 16px 40px rgba(29, 32, 33, 0.35);
 }
 .cta__band .lead {
   max-width: 36ch;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--cta-fg-soft);
 }
 .cta__row {
   justify-content: center;
   margin-top: 8px;
 }
 .cta__btn {
-  background: #fff;
-  color: #0b57d0;
+  background: var(--cta-btn-bg);
+  color: var(--cta-btn-fg);
 }
 .cta__btn:hover {
-  background: #f2f6ff;
+  background: var(--cta-btn-bg);
+  filter: brightness(1.15);
 }
 .cta__btn--ghost {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: var(--cta-btn-ghost);
+  color: var(--cta-fg);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 .cta__btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--cta-btn-ghost);
+  filter: brightness(0.9);
 }
 .cta__code {
   display: grid;
@@ -766,13 +768,13 @@
   justify-items: center;
   margin-top: 8px;
   font-size: var(--text-footnote);
-  color: rgba(255, 255, 255, 0.78);
+  color: var(--cta-fg-soft);
 }
 .cta__code code {
   padding: 8px 16px;
   border-radius: var(--radius-pill);
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(29, 32, 33, 0.28);
   font-family: var(--font-mono);
   font-size: 0.875rem;
-  color: #fff;
+  color: var(--cta-fg);
 }

@@ -101,9 +101,7 @@ export function initThemer() {
   const accEl = document.getElementById('th-accents')
   const titleEl = document.getElementById('mock-title')
 
-  const sysDark = matchMedia('(prefers-color-scheme: dark)').matches
-  const pageDark = (document.documentElement.dataset.theme || (sysDark ? 'dark' : 'light')) === 'dark'
-  const state = { family: 'catppuccin', appearance: pageDark ? 'dark' : 'light', variants: {}, accent: 'theme' }
+  const state = { family: 'gruvbox', appearance: 'dark', variants: { 'gruvbox/dark': 'hard' }, accent: 'theme' }
   const fam = () => FAMILIES.find((f) => f.id === state.family)
   const variantsFor = () => fam().variants?.[state.appearance] ?? null
   const variant = () => {

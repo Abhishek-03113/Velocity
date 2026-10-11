@@ -99,6 +99,17 @@ test.describe('landing page', () => {
     expect(Math.round((again?.y ?? 0) + (again?.height ?? 0))).toBe(vh)
   })
 
+  test('defaults to Gruvbox Dark Hard and the toggle switches to Light Hard', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.goto('/')
+    const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    expect(await bg()).toBe('rgb(29, 32, 33)')
+    await page.locator('#theme-toggle').click()
+    expect(await bg()).toBe('rgb(249, 245, 215)')
+    await page.reload()
+    expect(await bg()).toBe('rgb(249, 245, 215)')
+  })
+
   test('keyboard section reacts to real key presses', async ({ page }) => {
     await page.goto('/')
     await page.locator('#try').scrollIntoViewIfNeeded()
@@ -116,6 +127,7 @@ test.describe('landing page', () => {
   test('theme picker recolours the mock window', async ({ page }) => {
     await page.goto('/')
     await page.locator('#themer').scrollIntoViewIfNeeded()
+    await expect(page.locator('#mock-title')).toHaveText('Gruvbox Hard · Dark')
     const bg = () => page.locator('#mockwin').evaluate((el) => getComputedStyle(el).getPropertyValue('--m-bg').trim())
     await page.getByRole('radio', { name: 'Nord' }).click()
     await expect(page.locator('#mock-title')).toContainText('Nord')
@@ -160,8 +172,8 @@ test.describe('reduced motion', () => {
 test.describe('review screenshots', () => {
   for (const scheme of ['light', 'dark'] as const) {
     test(`desktop ${scheme}`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme: scheme })
       await page.goto('/')
+      if (scheme === 'light') await page.locator('#theme-toggle').click()
       await page.waitForTimeout(2200)
       await shot(page, `desktop-${scheme}-hero`)
       await settle(page)
