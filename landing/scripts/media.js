@@ -7,8 +7,6 @@
  */
 
 export const MEDIA_BASE = 'media/'
-/** Untracked local stand-ins, used only when a real file is missing (see landing/.gitignore). */
-export const STANDIN_BASE = 'media/_standin/'
 
 export const MEDIA = {
   // clips
@@ -44,12 +42,6 @@ function buildImage(name, eager) {
   img.decoding = 'async'
   img.loading = eager ? 'eager' : 'lazy'
   if (eager) img.fetchPriority = 'high'
-  let triedFallback = false
-  img.addEventListener('error', () => {
-    if (triedFallback) return
-    triedFallback = true
-    img.src = `${STANDIN_BASE}${stem}.png`
-  })
   img.src = `${MEDIA_BASE}${stem}.webp`
   return img
 }
@@ -69,7 +61,7 @@ function buildVideo(name, img) {
   v.disablePictureInPicture = true
   v.poster = img.currentSrc || img.src
   const sources = [
-    ['webm', 'video/webm; codecs="vp9"'],
+    ['webm', 'video/webm'],
     ['mp4', 'video/mp4'],
   ]
   let failed = 0

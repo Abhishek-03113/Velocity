@@ -36,8 +36,8 @@ export function initSearchDemo() {
   const queries = ['road', 'kyoto', 'design', 'keyboard']
   if (reduceMotion()) return draw(queries[0])
   let qi = 0
-  let ci = 0
-  let dir = 1
+  let ci = queries[0].length
+  let dir = -1
   let timer = 0
   const tick = () => {
     const q = queries[qi]
@@ -54,7 +54,7 @@ export function initSearchDemo() {
     }
     timer = setTimeout(tick, delay)
   }
-  draw('')
+  draw(queries[0])
   whenVisible(qEl, (v) => {
     clearTimeout(timer)
     if (v) timer = setTimeout(tick, 300)

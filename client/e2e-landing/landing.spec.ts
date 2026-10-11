@@ -110,6 +110,17 @@ test.describe('landing page', () => {
     expect(await bg()).toBe('rgb(249, 245, 215)')
   })
 
+  test('hero clip actually plays', async ({ page }) => {
+    await page.goto('/')
+    const v = page.locator('[data-media="hero"] video')
+    await expect(v).toHaveCount(1)
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[data-media="hero"] video') as HTMLVideoElement | null
+      return !!el && el.currentTime > 0.3 && !el.paused
+    })
+    await expect(v).toHaveAttribute('data-live', 'true')
+  })
+
   test('keyboard section reacts to real key presses', async ({ page }) => {
     await page.goto('/')
     await page.locator('#try').scrollIntoViewIfNeeded()
@@ -180,7 +191,7 @@ test.describe('review screenshots', () => {
       await page.evaluate(() => document.querySelectorAll('[data-reveal]').forEach((e) => e.classList.add('in')))
       mkdirSync(SHOTS, { recursive: true })
       await page.screenshot({ path: path.join(SHOTS, `desktop-${scheme}-full.png`), fullPage: true })
-      if (scheme === 'light') {
+      {
         for (const [name, sel] of [
           ['section-keyboard', '#features'],
           ['section-try', '#try'],
@@ -191,7 +202,7 @@ test.describe('review screenshots', () => {
           ['section-technology', '#technology'],
           ['section-cta', '#get'],
         ] as const) {
-          await shot(page, name, sel)
+          await shot(page, scheme === 'light' ? `${name}-light` : name, sel)
         }
       }
     })
