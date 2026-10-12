@@ -32,7 +32,8 @@ export function buildNote(a: Article, savedAt: Date = new Date()): { title: stri
   const line1 = [source, a.byline, formatDate(a.published)].filter(Boolean).join(' · ')
   const line2 = `Saved ${localDay(savedAt)} · ${minutes} min read`
 
-  const content = [`# ${title}`, `> ${line1}\n> ${line2}`, '---', a.markdown.trim()]
+  // Trailing double space: a Markdown hard break, so Read mode keeps the two header lines apart.
+  const content = [`# ${title}`, `> ${line1}  \n> ${line2}`, '---', a.markdown.trim()]
     .filter((part, i) => i < 3 || part)
     .join('\n\n')
   return { title, content: `${content}\n` }

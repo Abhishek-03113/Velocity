@@ -21,7 +21,7 @@ describe('buildNote', () => {
       title: 'Why Local-First Wins',
       content:
         '# Why Local-First Wins\n\n' +
-        '> [Example Engineering](https://eng.example.com/posts/why) · Ada Lovelace · 4 Mar 2026\n' +
+        '> [Example Engineering](https://eng.example.com/posts/why) · Ada Lovelace · 4 Mar 2026  \n' +
         '> Saved 2026-10-12 · 5 min read\n\n' +
         '---\n\n' +
         'Body paragraph.\n\n- item\n',
@@ -30,7 +30,7 @@ describe('buildNote', () => {
 
   it('omits missing parts and rounds read time up to at least 1 minute', () => {
     const { content } = buildNote({ ...article, byline: null, published: null, wordCount: 12 }, saved)
-    expect(content).toContain('> [Example Engineering](https://eng.example.com/posts/why)\n> Saved 2026-10-12 · 1 min read')
+    expect(content).toContain('> [Example Engineering](https://eng.example.com/posts/why)  \n> Saved 2026-10-12 · 1 min read')
   })
 
   it('falls back to a bare URL without a site name and to a safe title', () => {
