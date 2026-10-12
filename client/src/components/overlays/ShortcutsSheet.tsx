@@ -1,5 +1,6 @@
 import { COMMANDS, type CommandSection } from '../../lib/commands'
 import { isMac } from '../../lib/platform'
+import { pluginCommands } from '../../plugins/host'
 import { useUiStore } from '../../store/uiStore'
 import { Kbd } from '../ui/Kbd'
 import { Sheet } from './Sheet'
@@ -23,6 +24,7 @@ const FORMATTING: Array<[string, string[]]> = [
 /** Every shortcut, generated from the command registry so it can never drift. */
 export default function ShortcutsSheet() {
   const close = () => useUiStore.getState().setShortcutsOpen(false)
+  const plugin = pluginCommands().filter((c) => c.keys?.length)
   return (
     <Sheet title="Keyboard Shortcuts" onClose={close} width={860}>
       <p className={styles.sheetLead}>
@@ -66,6 +68,23 @@ export default function ShortcutsSheet() {
             </ul>
           </section>
         ))}
+        {plugin.length > 0 && (
+          <section className={styles.shortcutSection}>
+            <h3 className={styles.shortcutHeading}>Plugins</h3>
+            <ul>
+              {plugin.map((c) => (
+                <li key={c.id} className={styles.shortcutRow}>
+                  <span>{c.title.replace(/…$/, '')}</span>
+                  <span className={styles.shortcutKeys}>
+                    {c.keys!.slice(0, 2).map((k) => (
+                      <Kbd key={k} combo={k} />
+                    ))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <section className={styles.shortcutSection}>
           <h3 className={styles.shortcutHeading}>Formatting</h3>
           <ul>

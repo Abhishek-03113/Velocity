@@ -13,6 +13,7 @@ import {
   type Appearance,
   type ThemeVariantPrefs,
 } from '../lib/themes'
+import type { PromptSpec } from '../plugins/types'
 
 export type ThemePref = 'system' | 'light' | 'dark'
 /** 'theme' follows the active theme family's natural accent. */
@@ -53,7 +54,8 @@ export const DEFAULT_PREFS: Preferences = {
 const PREFS_KEY = 'velocity.prefs.v1'
 const CHROME_KEY = 'velocity.chrome.v1'
 
-export type PaletteMode = 'notes' | 'commands' | 'move'
+export type PaletteMode = 'notes' | 'commands' | 'move' | 'prompt'
+export type SettingsSection = 'plugins'
 
 export interface AlertSpec {
   title: string
@@ -72,9 +74,15 @@ interface UiState {
   paletteMode: PaletteMode
   settingsOpen: boolean
   shortcutsOpen: boolean
+  /** Group Settings should scroll to when it opens (consumed by the sheet). */
+  settingsSection: SettingsSection | null
+  /** Active plugin text prompt, shown by the palette in 'prompt' mode. */
+  prompt: PromptSpec | null
   alert: AlertSpec | null
   /** Brief status message in the status bar ("Saved", "Exported…") — not a toast. */
   flash: string | null
+  /** Longer-lived status-bar activity ("Fetching…"); a flash takes precedence while it shows. */
+  activity: string | null
 
   setPref: <K extends keyof Preferences>(key: K, value: Preferences[K]) => void
   /** Switch colour theme family; the accent resets to the theme's own. */
@@ -86,11 +94,14 @@ interface UiState {
   toggleFolders: () => void
   openPalette: (mode?: PaletteMode) => void
   closePalette: () => void
+  openPrompt: (spec: PromptSpec) => void
+  openSettings: (section?: SettingsSection) => void
   setSettingsOpen: (open: boolean) => void
   setShortcutsOpen: (open: boolean) => void
   confirm: (spec: AlertSpec) => void
   dismissAlert: () => void
   showFlash: (message: string) => void
+  setActivity: (message: string | null) => void
 }
 
 function readJson<T>(key: string): Partial<T> {
@@ -191,8 +202,11 @@ export const useUiStore = create<UiState>((set, get) => ({
   paletteMode: 'notes',
   settingsOpen: false,
   shortcutsOpen: false,
+  settingsSection: null,
+  prompt: null,
   alert: null,
   flash: null,
+  activity: null,
 
   setPref: (key, value) => {
     const prefs = { ...get().prefs, [key]: value }
@@ -230,8 +244,10 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
 
   openPalette: (mode = 'notes') => set({ paletteOpen: true, paletteMode: mode }),
-  closePalette: () => set({ paletteOpen: false }),
-  setSettingsOpen: (open) => set({ settingsOpen: open }),
+  closePalette: () => set({ paletteOpen: false, prompt: null }),
+  openPrompt: (spec) => set({ paletteOpen: true, paletteMode: 'prompt', prompt: spec }),
+  openSettings: (section) => set({ settingsOpen: true, settingsSection: section ?? null }),
+  setSettingsOpen: (open) => set(open ? { settingsOpen: true } : { settingsOpen: false, settingsSection: null }),
   setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
   confirm: (spec) => set({ alert: spec }),
   dismissAlert: () => set({ alert: null }),
@@ -241,6 +257,7 @@ export const useUiStore = create<UiState>((set, get) => ({
     if (flashTimer) clearTimeout(flashTimer)
     flashTimer = setTimeout(() => set({ flash: null }), 2200)
   },
+  setActivity: (message) => set({ activity: message }),
 }))
 
 let flashTimer: ReturnType<typeof setTimeout> | null = null

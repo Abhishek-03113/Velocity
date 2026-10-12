@@ -3,11 +3,13 @@ import { COMMANDS, dynamicCommands, runCommand, type Command } from '../../lib/c
 import { displayTitle, parseTimestamp, relativeTime } from '../../lib/noteMeta'
 import { isMac } from '../../lib/platform'
 import { newNote, openNote } from '../../lib/workspace'
+import { pluginCommands, urlHandlerFor } from '../../plugins/host'
+import type { PromptSpec } from '../../plugins/types'
 import { useEditorStore } from '../../store/editorStore'
 import { useGroupStore } from '../../store/groupStore'
 import { cachedContent, searchNotes } from '../../store/searchStore'
 import { useUiStore } from '../../store/uiStore'
-import { Icon } from '../Icon'
+import { Icon, type IconName } from '../Icon'
 import { Kbd } from '../ui/Kbd'
 import styles from './Overlays.module.css'
 
@@ -15,6 +17,7 @@ type Item =
   | { type: 'note'; id: number; title: string; detail: string; meta: string }
   | { type: 'command'; command: Command }
   | { type: 'create'; title: string }
+  | { type: 'url'; label: string; detail: string; icon: IconName; open: (opts: { split: boolean }) => void }
 
 /** Subsequence fuzzy score — lower is better, null means no match. */
 function fuzzyScore(text: string, query: string): number | null {
@@ -49,11 +52,121 @@ function highlight(text: string, query: string): ReactNode {
   )
 }
 
+function isHttpUrl(text: string): boolean {
+  if (!/^https?:\/\//i.test(text)) return false
+  try {
+    return !!new URL(text).hostname
+  } catch {
+    return false
+  }
+}
+
+const isSplitKey = (e: React.KeyboardEvent) => e.altKey || (isMac ? e.metaKey : e.ctrlKey)
+
+/** Palette in prompt mode: a plugin asks for one line of text (e.g. a URL). */
+function PromptPanel({ spec }: { spec: PromptSpec }) {
+  const close = useUiStore((s) => s.closePalette)
+  const [value, setValue] = useState(spec.initialValue ?? '')
+  const [touched, setTouched] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    // Read focus here, not in render: when launched from the palette, the search palette's own
+    // cleanup has just handed focus back to the editor.
+    const previous = document.activeElement
+    inputRef.current?.focus()
+    inputRef.current?.select()
+    return () => {
+      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus({ preventScroll: true })
+    }
+  }, [])
+
+  const error = spec.validate?.(value) ?? null
+  const showError = touched && error != null
+
+  const submit = (split: boolean) => {
+    if (error) {
+      setTouched(true)
+      return
+    }
+    close()
+    spec.onSubmit(value.trim(), { split })
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      close()
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      submit(isSplitKey(e))
+    }
+  }
+
+  return (
+    <div className={styles.backdrop} onMouseDown={close}>
+      <div
+        className={styles.palette}
+        role="dialog"
+        aria-modal="true"
+        aria-label={spec.title}
+        data-palette-prompt
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+      >
+        <div className={styles.paletteSearch}>
+          <Icon name={spec.icon ?? 'command'} size={18} />
+          <span className={styles.promptChip}>{spec.title}</span>
+          <input
+            ref={inputRef}
+            data-bare
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value)
+              setTouched(true)
+            }}
+            placeholder={spec.placeholder}
+            aria-label={spec.placeholder}
+            aria-invalid={showError}
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </div>
+        {(showError || spec.hint) && (
+          <div className={`${styles.promptMessage} ${showError ? styles.promptError : ''}`} role={showError ? 'alert' : undefined}>
+            {showError ? error : spec.hint}
+          </div>
+        )}
+        <div className={styles.paletteFooter}>
+          <span>
+            <Kbd combo="Enter" subtle /> {spec.submitLabel ?? 'OK'}
+          </span>
+          {spec.splitLabel && (
+            <span>
+              <Kbd combo="Mod+Enter" subtle /> {spec.splitLabel}
+            </span>
+          )}
+          <span>
+            <Kbd combo="Escape" subtle /> Close
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function CommandPalette() {
+  const mode = useUiStore((s) => s.paletteMode)
+  const prompt = useUiStore((s) => s.prompt)
+  if (mode === 'prompt' && prompt) return <PromptPanel spec={prompt} />
+  return <SearchPalette />
+}
+
 /**
  * ⌘P / ⌘⇧P — Spotlight-style quick open. Type to search notes (full text);
  * start with “>” to run any command. ⌘↩ opens the note in a new tile.
  */
-export default function CommandPalette() {
+function SearchPalette() {
   const mode = useUiStore((s) => s.paletteMode)
   const close = useUiStore((s) => s.closePalette)
   // The search index warms in the background after startup and then refreshes `pastes`;
@@ -80,7 +193,7 @@ export default function CommandPalette() {
   const items = useMemo<Item[]>(() => {
     if (isCommand) {
       // "Move Note to Folder…" shows only this note's move targets.
-      const all = (moveOnly ? dynamicCommands() : [...COMMANDS, ...dynamicCommands()]).filter(
+      const all = (moveOnly ? dynamicCommands() : [...COMMANDS, ...pluginCommands(), ...dynamicCommands()]).filter(
         (c) => !c.paletteHidden && (!c.enabled || c.enabled()) && (!moveOnly || c.id.startsWith('note.moveTo.')),
       )
       return all
@@ -127,7 +240,19 @@ export default function CommandPalette() {
         meta: relativeTime(parseTimestamp(p.updated_at), now),
       })
     }
-    return [...notes.slice(0, 30), { type: 'create', title: query }]
+    const urlAction = isHttpUrl(query) ? urlHandlerFor(query) : null
+    const urlItem: Item[] = urlAction
+      ? [
+          {
+            type: 'url',
+            label: urlAction.label,
+            detail: `${urlAction.pluginName} · ${new URL(query).hostname}`,
+            icon: urlAction.pluginIcon,
+            open: urlAction.open,
+          },
+        ]
+      : []
+    return [...urlItem, ...notes.slice(0, 30), { type: 'create', title: query }]
   }, [isCommand, query, moveOnly, pastes])
 
   useEffect(() => setIndex(0), [value])
@@ -141,6 +266,7 @@ export default function CommandPalette() {
     close()
     if (item.type === 'note') openNote(item.id, { split: split ? 'auto' : false })
     else if (item.type === 'command') runCommand(item.command)
+    else if (item.type === 'url') item.open({ split })
     else {
       newNote({ split: split ? 'auto' : false })
       const id = useEditorStore.getState().activeId
@@ -206,7 +332,7 @@ export default function CommandPalette() {
             }
             const active = i === index
             return (
-              <div key={item.type === 'note' ? `n${item.id}` : item.type === 'command' ? item.command.id : 'create'}>
+              <div key={item.type === 'note' ? `n${item.id}` : item.type === 'command' ? item.command.id : item.type}>
                 {sectionHeader}
                 <div
                   id={`palette-item-${i}`}
@@ -234,6 +360,15 @@ export default function CommandPalette() {
                         <div className={styles.paletteTitle}>{highlight(item.command.title, query)}</div>
                       </div>
                       {item.command.keys?.[0] && <Kbd combo={item.command.keys[0]} />}
+                    </>
+                  )}
+                  {item.type === 'url' && (
+                    <>
+                      <Icon name={item.icon} size={17} className={styles.paletteIcon} />
+                      <div className={styles.paletteText}>
+                        <div className={styles.paletteTitle}>{item.label}</div>
+                        <div className={styles.paletteDetail}>{item.detail}</div>
+                      </div>
                     </>
                   )}
                   {item.type === 'create' && (

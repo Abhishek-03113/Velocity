@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useLayoutStore } from '../../store/layoutStore'
 import { ACCENTS, useUiStore, type Accent } from '../../store/uiStore'
@@ -11,7 +12,11 @@ import {
   type ThemeFamily,
 } from '../../lib/themes'
 import { setThemeVariant } from '../../lib/workspace'
+import { PLUGINS } from '../../plugins/registry'
+import type { PluginSetting, VelocityPlugin } from '../../plugins/types'
+import { usePluginStore } from '../../store/pluginStore'
 import { Icon } from '../Icon'
+import { Kbd } from '../ui/Kbd'
 import { Segmented } from '../ui/Segmented'
 import { Sheet } from './Sheet'
 import styles from './Overlays.module.css'
@@ -170,6 +175,69 @@ function VariantRows({ family, appearance, auto }: { family: ThemeFamily; appear
   )
 }
 
+function PluginSettingRow({ pluginId, setting }: { pluginId: string; setting: PluginSetting }) {
+  const value = usePluginStore((s) => {
+    const stored = s.settings[pluginId]?.[setting.key]
+    return typeof stored === typeof setting.default ? stored : undefined
+  })
+  const set = usePluginStore((s) => s.setSetting)
+  const current = value ?? setting.default
+  return (
+    <Row label={setting.label} hint={setting.hint}>
+      {setting.type === 'toggle' ? (
+        <Toggle label={setting.label} checked={current as boolean} onChange={(v) => set(pluginId, setting.key, v)} />
+      ) : setting.type === 'choice' ? (
+        <Segmented
+          label={setting.label}
+          value={current as string}
+          onChange={(v) => set(pluginId, setting.key, v)}
+          options={setting.options}
+          size="small"
+        />
+      ) : (
+        <input
+          type="text"
+          className={styles.textInput}
+          aria-label={setting.label}
+          placeholder={setting.placeholder}
+          value={current as string}
+          spellCheck={false}
+          onChange={(e) => set(pluginId, setting.key, e.target.value)}
+        />
+      )}
+    </Row>
+  )
+}
+
+function PluginRow({ plugin }: { plugin: VelocityPlugin }) {
+  const { id, name, description, icon, version } = plugin.manifest
+  const on = usePluginStore((s) => s.enabled[id] !== false)
+  const setEnabled = usePluginStore((s) => s.setEnabled)
+  return (
+    <div data-plugin-row={id}>
+      <div className={styles.pluginRow}>
+        <span className={`${styles.pluginIcon} ${on ? '' : styles.pluginIconOff}`} aria-hidden="true">
+          <Icon name={icon} size={16} />
+        </span>
+        <div className={styles.pluginText}>
+          <span className={styles.pluginName}>{name}</span>
+          <span className={styles.settingHint}>
+            {description} · v{version}
+          </span>
+        </div>
+        <Toggle label={`Enable ${name}`} checked={on} onChange={(v) => setEnabled(id, v)} />
+      </div>
+      {on && plugin.settings && plugin.settings.length > 0 && (
+        <div className={styles.pluginSettings}>
+          {plugin.settings.map((s) => (
+            <PluginSettingRow key={s.key} pluginId={id} setting={s} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Settings (⌘,) — grouped inset rows in the style of System Settings. */
 export default function SettingsSheet() {
   const { prefs, resolvedTheme, setPref, setThemeFamily, setSettingsOpen } = useUiStore(
@@ -183,6 +251,15 @@ export default function SettingsSheet() {
   )
   const family = getThemeFamily(prefs.themeFamily)
   const close = () => setSettingsOpen(false)
+  const pluginsRef = useRef<HTMLHeadingElement>(null)
+  const section = useUiStore((s) => s.settingsSection)
+
+  // "Plugins…" in the command palette opens Settings scrolled to this group.
+  useEffect(() => {
+    if (section !== 'plugins') return
+    pluginsRef.current?.scrollIntoView({ block: 'start' })
+    useUiStore.setState({ settingsSection: null })
+  }, [section])
 
   return (
     <Sheet title="Settings" onClose={close} width={600}>
@@ -320,6 +397,25 @@ export default function SettingsSheet() {
           />
         </Row>
       </div>
+
+      {PLUGINS.length > 0 && (
+        <>
+          <h3 className={styles.groupHeading} ref={pluginsRef} id="settings-plugins">
+            Plugins
+          </h3>
+          <div className={styles.group}>
+            {PLUGINS.map((plugin, i) => (
+              <div key={plugin.manifest.id} className={i > 0 ? styles.pluginDivider : undefined}>
+                <PluginRow plugin={plugin} />
+              </div>
+            ))}
+          </div>
+          <p className={styles.sheetFoot}>
+            Plugins add commands to the command palette (<Kbd combo="Mod+Shift+KeyP" subtle />). They run in this
+            browser; settings are stored here.
+          </p>
+        </>
+      )}
 
       <p className={styles.sheetFoot}>
         Preferences are stored in this browser. Your notes are saved on your Velocity server and exported as Markdown.

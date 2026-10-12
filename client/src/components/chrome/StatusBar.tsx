@@ -16,6 +16,7 @@ export default function StatusBar() {
   const status = useEditorStore((s) => (noteId == null ? undefined : s.syncStatus[noteId]))
   const anyError = useEditorStore((s) => Object.values(s.syncStatus).includes('error'))
   const flash = useUiStore((s) => s.flash)
+  const activity = useUiStore((s) => s.activity)
   const deferred = useDeferredValue(useThrottledValue(content ?? '', 150))
 
   const stats = useMemo(() => {
@@ -61,6 +62,11 @@ export default function StatusBar() {
       <div className={styles.statusTrailing} aria-live="polite">
         {flash ? (
           <span className={styles.statusFlash}>{flash}</span>
+        ) : activity ? (
+          <span className={`${styles.statusSave} ${styles.statusPending}`} data-status-activity>
+            <Icon name="arrow.triangle.2.circlepath" size={12} />
+            {activity}
+          </span>
         ) : (
           noteId != null && (
             <span className={`${styles.statusSave} ${saveClass}`}>

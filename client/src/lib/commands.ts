@@ -9,6 +9,7 @@
  * Browser-reserved combos (⌘/Ctrl + N, W, T, 1–9) never reach a web page, so
  * every such action also has a working alternative on the ⌃⌥ "window layer".
  */
+import { pluginCommands } from '../plugins/host'
 import { useEditorStore } from '../store/editorStore'
 import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
@@ -19,7 +20,7 @@ import { isMac } from './platform'
 import { findLeaf, leaves } from './tiling'
 import * as ws from './workspace'
 
-export type CommandSection = 'Notes' | 'Navigate' | 'Tiles' | 'View' | 'App'
+export type CommandSection = 'Notes' | 'Navigate' | 'Tiles' | 'View' | 'App' | 'Plugins'
 
 export interface Command {
   id: string
@@ -433,6 +434,13 @@ export const COMMANDS: Command[] = [
     keywords: 'help keys',
     run: () => useUiStore.getState().setShortcutsOpen(true),
   },
+  {
+    id: 'app.plugins',
+    title: 'Plugins…',
+    section: 'App',
+    keywords: 'extensions connectors addons',
+    run: () => useUiStore.getState().openSettings('plugins'),
+  },
 ]
 
 export const COMMAND_BY_ID = new Map(COMMANDS.map((c) => [c.id, c]))
@@ -504,20 +512,41 @@ const keyTable: Array<{ combo: ParsedCombo; command: Command }> = COMMANDS.flatM
   (command.keys ?? []).map((k) => ({ combo: parseCombo(k), command })),
 )
 
+type KeyEntry = { combo: ParsedCombo; command: Command }
+
+/** Plugin keys, rebuilt lazily whenever the host hands out a new command list (plugin toggled). */
+let pluginKeySource: Command[] | null = null
+let pluginKeyTable: KeyEntry[] = []
+
+function pluginKeys(): KeyEntry[] {
+  const source = pluginCommands()
+  if (source !== pluginKeySource) {
+    pluginKeySource = source
+    pluginKeyTable = source.flatMap((command) => (command.keys ?? []).map((k) => ({ combo: parseCombo(k), command })))
+  }
+  return pluginKeyTable
+}
+
+function comboMatches(combo: ParsedCombo, e: KeyboardEvent): boolean {
+  return (
+    combo.code === e.code &&
+    combo.meta === e.metaKey &&
+    combo.ctrl === e.ctrlKey &&
+    combo.alt === e.altKey &&
+    combo.shift === e.shiftKey
+  )
+}
+
 export function matchCommand(e: KeyboardEvent): Command | null {
   if (e.isComposing) return null
   // AltGr (Ctrl+Alt on Windows/Linux international layouts) types characters like @ { [ €.
   if (e.getModifierState?.('AltGraph')) return null
+  // Built-in commands win over plugin keys.
   for (const { combo, command } of keyTable) {
-    if (
-      combo.code === e.code &&
-      combo.meta === e.metaKey &&
-      combo.ctrl === e.ctrlKey &&
-      combo.alt === e.altKey &&
-      combo.shift === e.shiftKey
-    ) {
-      return command
-    }
+    if (comboMatches(combo, e)) return command
+  }
+  for (const { combo, command } of pluginKeys()) {
+    if (comboMatches(combo, e)) return command
   }
   return null
 }
