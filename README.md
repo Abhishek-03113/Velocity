@@ -12,10 +12,10 @@ Create, organize, and search notes with near-zero perceived latency. Every inter
 
 ### Designed like a native Mac app
 
-- Follows the **Apple Human Interface Guidelines**: a system font stack, semantic colours, vibrancy sidebar materials, a unified toolbar, segmented controls, alerts and sheets
-- **Light, Dark and Auto** appearance, plus the eight macOS **accent colours**
-- **Modular colour themes**: Apple (default), Catppuccin (Latte, Frappé, Macchiato, Mocha), Gruvbox and Everforest (Hard, Medium or Soft contrast), Nord and Solarized, each in Light and Dark. Pick a theme and its flavour or contrast in Settings, or from the command palette. Each theme also themes the editor's syntax colours (`--syntax-*`), and "Theme default" uses the theme's own accent
-- Apple Notes-style three-column layout: Folders, a notes list with date sections, previews and folder chips, and the editor
+- A clean, native-feeling interface: a system font stack, semantic colours, a translucent sidebar, a unified toolbar, segmented controls, alerts and sheets
+- **Light, Dark and Auto** appearance, plus eight **accent colours**
+- **Modular colour themes**: the default theme, Catppuccin (Latte, Frappé, Macchiato, Mocha), Gruvbox and Everforest (Hard, Medium or Soft contrast), Nord and Solarized, each in Light and Dark. Pick a theme and its flavour or contrast in Settings, or from the command palette. Each theme also themes the editor's syntax colours (`--syntax-*`), and "Theme default" uses the theme's own accent
+- Three-column layout: Folders, a notes list with date sections, previews and folder chips, and the editor
 - Untitled notes take their **title from the first line**
 - **Folders**: Unfiled is listed last. Move a note with the folder chip on its row, the folder subtitle in the toolbar, or `Ctrl+Alt+M` (palette move mode). Each menu offers "New Folder…". Dragging is forgiving: drop on a folder header, and folders spring open while you hover
 - A fountain-pen logo (`client/public/brand/`) is used as the favicon and in the sidebar
@@ -61,7 +61,7 @@ Create, organize, and search notes with near-zero perceived latency. Every inter
 - **Local-first**: the UI never waits on the network
 - An auto-save worker with per-note revisions and a single in-flight request. It sends partial payloads, debounces for 800 ms with a 5 s max-wait, and **flushes on tab close and page hide**
 - Back-off retries, then a visible "Offline" state. Saving resumes automatically on reconnect. `⌘S` forces a save
-- Destructive actions (delete note, delete folder) use HIG alerts, with Cancel as the default
+- Destructive actions (delete note, delete folder) use confirmation alerts, with Cancel as the default
 - **Markdown export worker** mirrors every note to `~/velocity_docs`. It is event-driven and incremental, follows renames and deletes, and copies images next to the Markdown files
 - **Empty-note cleanup**: untitled, blank notes with no whiteboard are pruned so they do not pile up. The client removes inactive ones (not open, not dirty, older than 30 s) and keeps the 5 most recently used. A server sweep runs on startup and hourly, never touches notes edited in the last 10 minutes, and can be disabled with `EMPTY_NOTE_CLEANUP=off`
 
@@ -121,7 +121,7 @@ In the notes list, `↑`/`↓` browse, `↩` opens, `⌘↩` or `Alt+↩` opens 
 | Whiteboard | Excalidraw | Per-note drawing canvas (lazy-loaded) |
 | State | Zustand | Client-side source of truth |
 | Search | FlexSearch | Sub-10 ms full-text search |
-| Styling | CSS Modules + HIG design tokens | Scoped, zero-runtime styles; light/dark/accent and colour-family theming |
+| Styling | CSS Modules + design tokens | Scoped, zero-runtime styles; light/dark/accent and colour-family theming |
 | Backend | Hono on Node.js | Thin REST API (gzip for note bodies) |
 | Database | SQLite (better-sqlite3) | Embedded persistence |
 | Tests | Vitest, node:test, Playwright | Unit, API/worker, end-to-end |
@@ -205,7 +205,7 @@ Velocity/
 │       │   ├── sidebar/       # Folders + notes list
 │       │   ├── workspace/     # Tiling workspace, tiles, empty-tile launcher
 │       │   ├── overlays/      # Command palette, alerts, settings, shortcuts sheet
-│       │   └── ui/            # HIG controls (segmented, toolbar button, menu, kbd)
+│       │   └── ui/            # Shared controls (segmented, toolbar button, menu, kbd)
 │       ├── lib/               # tiling + sliding engines, sync engine, board sync, themes registry, cleanup, command registry, workspace actions
 │       ├── store/             # Zustand: editor, layout, ui, groups, search
 │       └── styles/            # Design tokens + global base styles

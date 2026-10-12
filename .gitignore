@@ -10,3 +10,4 @@ data/*.db-wal
 data/assets/
 .gitnexus/ 
 .claude/ 
+docs/screenshots/ci/
