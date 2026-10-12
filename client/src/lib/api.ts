@@ -1,16 +1,12 @@
 import type { ApiResponse, Asset } from '../types'
+import { BROWSER_ONLY } from './runtime'
+import { apiBaseUrl, apiFetch } from './transport'
+import { localMediaUrl } from './local/media'
 
-/** Configured API origin from env (no trailing slash). Empty ⇒ same-origin / proxy. */
-export function apiBaseUrl(): string {
-  const raw = import.meta.env.VITE_API_URL
-  if (typeof raw !== 'string' || !raw.trim()) return ''
-  return raw.trim().replace(/\/$/, '')
-}
-
-const BASE_URL = apiBaseUrl()
+export { apiBaseUrl }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await apiFetch(path, {
     headers: { 'Content-Type': 'application/json', ...(options.headers ?? {}) },
     ...options,
   })
@@ -51,6 +47,8 @@ export function resolveMediaUrl(href: string): string {
     return trimmed
   }
   const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  // Browser-only: images live in localStorage; hand <img> a cached blob: URL (unknown ids pass through).
+  if (BROWSER_ONLY && path.startsWith('/api/assets/')) return localMediaUrl(path)
   // Browser: prefer same-origin /api so docker client (:37801) and vite proxy work.
   if (typeof window !== 'undefined' && path.startsWith('/api/')) {
     return path

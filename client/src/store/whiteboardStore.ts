@@ -6,7 +6,7 @@
  * boards of not-yet-created notes (temp ids) wait in memory until the note has a
  * server id. Board *visibility* is owned by the tiling layout.
  */
-import { apiBaseUrl } from '../lib/api'
+import { apiFetch } from '../lib/transport'
 import { createBoardSync, type SyncedScene } from '../lib/boardSync'
 import { migrateLegacyBoards, type LegacyNote } from '../lib/boardMigration'
 
@@ -20,11 +20,11 @@ class BoardHttpError extends Error {
   }
 }
 
-const boardUrl = (id: number) => `${apiBaseUrl()}/api/pastes/${id}/whiteboard`
+const boardUrl = (id: number) => `/api/pastes/${id}/whiteboard`
 
 export async function putScene(id: number, scene: BoardScene, opts: { keepalive?: boolean } = {}): Promise<void> {
   const body = JSON.stringify({ scene })
-  const res = await fetch(boardUrl(id), {
+  const res = await apiFetch(boardUrl(id), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body,
@@ -35,7 +35,7 @@ export async function putScene(id: number, scene: BoardScene, opts: { keepalive?
 }
 
 async function fetchScene(id: number): Promise<BoardScene | null> {
-  const res = await fetch(boardUrl(id))
+  const res = await apiFetch(boardUrl(id))
   if (res.status === 404) return null
   if (!res.ok) throw new BoardHttpError(res.status, `HTTP ${res.status}`)
   const json = (await res.json()) as { data?: { scene?: BoardScene } }
