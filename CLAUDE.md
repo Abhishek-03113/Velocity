@@ -40,8 +40,14 @@ npm run test:landing           # Playwright checks + screenshots → docs/screen
 # Tests
 cd client && npm test          # Vitest unit tests
 cd server && npm test          # node:test API + export worker tests
-cd client && npm run test:e2e  # Playwright E2E (headless Chromium); screenshots → docs/screenshots/after
+cd client && npm run test:e2e  # Playwright E2E — CI only, see below
 ```
+
+**Testing in agent sessions.** The full suites are slow, so they run in CI (`.github/workflows/ci.yml`), not in local agent sessions:
+
+- **Never run Playwright E2E locally** (`npm run test:e2e`, `npx playwright test`, `npm run test:landing`). CI runs the whole E2E suite on every PR. Write or update the spec, and let CI run it. If the user explicitly asks for screenshots, run only the single spec that produces them.
+- **Never run the full unit/API suites.** Run only the test files your change touches, e.g. `cd client && npx vitest run src/lib/foo.test.ts` or `cd server && node --import tsx --test tests/foo.test.ts`.
+- Lint and typecheck are cheap: `cd client && npm run lint && npx tsc --noEmit`.
 
 Server runs on `http://localhost:3000`, client on `http://localhost:5173`.
 
