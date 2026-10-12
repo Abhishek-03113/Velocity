@@ -81,17 +81,43 @@ const plugin: VelocityPlugin = {
       noteModule = m
     })
 
-    const remembered = () => ctx.storage.get<Record<string, number>>(URLS_KEY) ?? {}
+    const remembered = () => {
+      const map = ctx.storage.get<Record<string, number>>(URLS_KEY) ?? {}
+      // A note created this session starts with a temp id (< 0); its `cid` survives the
+      // server remap, so swap in the real id once the POST has landed.
+      let changed = false
+      for (const [url, id] of Object.entries(map)) {
+        if (id >= 0) continue
+        const real = useEditorStore.getState().pastes.find((p) => p.cid === `t${id}`)?.id
+        if (real != null && real >= 0) {
+          map[url] = real
+          changed = true
+        }
+      }
+      if (changed) ctx.storage.set(URLS_KEY, map)
+      return map
+    }
     const remember = (url: string, id: number) => {
       const map = remembered()
       delete map[url]
       map[url] = id
+      if (id < 0) pendingTemp.add(id)
       const keys = Object.keys(map)
       for (const k of keys.slice(0, Math.max(0, keys.length - MAX_REMEMBERED))) delete map[k]
       ctx.storage.set(URLS_KEY, map)
     }
 
     /** Existing note for this URL: the remembered id, else any note whose content names it as source. */
+    // Persist real ids promptly so dedupe still works after a reload (contents load lazily).
+    const pendingTemp = new Set<number>()
+    const stopRemap = useEditorStore.subscribe((state, prev) => {
+      if (pendingTemp.size === 0 || state.pastes === prev.pastes) return
+      remembered()
+      for (const id of pendingTemp) {
+        if (!state.pastes.some((p) => p.cid === `t${id}` && p.id === id)) pendingTemp.delete(id)
+      }
+    })
+
     const findNote = (url: string): number | null => {
       const key = normalizeUrl(url)
       const id = remembered()[key]
@@ -209,6 +235,7 @@ const plugin: VelocityPlugin = {
       },
       dispose: () => {
         disposed = true
+        stopRemap()
       },
     }
   },
