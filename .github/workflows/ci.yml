@@ -5,7 +5,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, 'deploy/**']
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -61,5 +61,30 @@ jobs:
           path: |
             docs/screenshots/ci/
             client/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  e2e-browser-only:
+    name: E2E (Playwright, browser-only build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci --prefix client
+      - run: npx playwright install --with-deps chromium
+        working-directory: client
+      - run: npx playwright test -c playwright.local.config.ts
+        working-directory: client
+      - name: Upload traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-browser-only-results
+          path: client/test-results/
           if-no-files-found: ignore
           retention-days: 14

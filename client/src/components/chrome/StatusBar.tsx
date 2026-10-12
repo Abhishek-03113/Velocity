@@ -1,8 +1,10 @@
 import { useDeferredValue, useMemo } from 'react'
 import { useThrottledValue } from '../../hooks/useThrottledValue'
 import { countWords, formatBytes } from '../../lib/noteMeta'
+import { BROWSER_ONLY } from '../../lib/runtime'
 import { useEditorStore } from '../../store/editorStore'
 import { focusedNoteId, useLayoutStore } from '../../store/layoutStore'
+import { useStorageStore } from '../../store/storageStore'
 import { useUiStore } from '../../store/uiStore'
 import { Icon } from '../Icon'
 import styles from './Chrome.module.css'
@@ -15,6 +17,7 @@ export default function StatusBar() {
   const content = useEditorStore((s) => s.pastes.find((p) => p.id === noteId)?.content)
   const status = useEditorStore((s) => (noteId == null ? undefined : s.syncStatus[noteId]))
   const anyError = useEditorStore((s) => Object.values(s.syncStatus).includes('error'))
+  const storageFull = useStorageStore((s) => s.full)
   const flash = useUiStore((s) => s.flash)
   const activity = useUiStore((s) => s.activity)
   const deferred = useDeferredValue(useThrottledValue(content ?? '', 150))
@@ -28,7 +31,7 @@ export default function StatusBar() {
   const overCap = stats.bytes > SOFT_CAP_BYTES
 
   let saveLabel = 'Saved'
-  let saveIcon: 'checkmark.circle' | 'arrow.triangle.2.circlepath' | 'wifi.slash' = 'checkmark.circle'
+  let saveIcon: 'checkmark.circle' | 'arrow.triangle.2.circlepath' | 'wifi.slash' | 'exclamationmark.triangle' = 'checkmark.circle'
   let saveClass = styles.statusOk
   if (status === 'saving' || status === 'pending') {
     saveLabel = status === 'saving' ? 'Saving…' : 'Edited'
@@ -36,8 +39,13 @@ export default function StatusBar() {
     saveClass = styles.statusPending
   }
   if (status === 'error' || anyError) {
-    saveLabel = 'Offline. Changes kept, retrying'
+    saveLabel = BROWSER_ONLY ? 'Couldn’t save' : 'Offline. Changes kept, retrying'
     saveIcon = 'wifi.slash'
+    saveClass = styles.statusError
+  }
+  if (BROWSER_ONLY && storageFull) {
+    saveLabel = 'Browser storage full. Export a backup and delete notes or images'
+    saveIcon = 'exclamationmark.triangle'
     saveClass = styles.statusError
   }
 
@@ -68,7 +76,7 @@ export default function StatusBar() {
             {activity}
           </span>
         ) : (
-          noteId != null && (
+          (noteId != null || (BROWSER_ONLY && storageFull)) && (
             <span className={`${styles.statusSave} ${saveClass}`}>
               <Icon name={saveIcon} size={12} />
               {saveLabel}

@@ -87,6 +87,7 @@ Velocity/
 - **Whiteboards** — scenes live in SQLite, not `localStorage`. `lib/boardSync.ts` is the save queue; `lib/boardMigration.ts` uploads legacy `localStorage` boards once. Excalidraw is pre-bundled via `optimizeDeps.include` in `vite.config.ts`
 - **Empty-note cleanup** — `lib/emptyNoteCleanup.ts` holds the policy and runner. Empty = untitled, blank content, no whiteboard. Inactive = not in a tab or tile, not dirty, older than 30 s. The 5 most recently used are kept. Deletes use the guarded `DELETE ?only_if_empty=1`
 - **Plugins** — `plugins/registry.ts` is the one additive list; `plugins/host.ts` activates enabled plugins and feeds their commands (palette section "Plugins", global keys, shortcuts sheet), palette prompts and quick-open URL handlers to the core. Settings → Plugins toggles them (`store/pluginStore.ts`, `velocity.plugins.v1`). Core files never import a specific plugin. First plugin: **Blog Reader** (`plugins/blogReader/`, Readability + DOM→Markdown, lazy-loaded). Authoring guide: `docs/plugins.md`
+- **Browser-only mode** — `VITE_APP_ENV=production` (build time, `lib/runtime.ts` `BROWSER_ONLY`) removes the server: `lib/transport.ts` routes every `/api` call to the in-browser backend in `lib/local/` (a `localStorage` database, one key per note, lz-string compressed; Settings → Storage has usage and JSON backup/restore). Server-only plugins (`requiresServer`, e.g. Blog Reader) never activate, and the search index is not persisted (rebuilt from the local DB on idle). Deployed via `vercel.json` from the `deploy/vercel` branch. Without the variable behaviour is unchanged (Docker builds are production builds too, so never key off `import.meta.env.PROD`). E2E: `client/e2e-local`, CI only.
 - **Command registry** — `lib/commands.ts` is the single source of truth for shortcuts, the command palette, the shortcuts sheet and tooltips. One capture-phase key handler lives in `hooks/useGlobalShortcuts.ts`
 
 The entire UX interaction loop is client-side. Writes to the backend are **async and debounced** by the auto-save worker (`lib/syncEngine.ts`). It tracks a revision per note and keeps a single request in flight. It debounces for 800 ms with a 5 s max-wait and sends only the changed fields. It flushes on tab close and on `pagehide`, and retries with exponential back-off up to 3 attempts. After that the note is parked as "offline" and retried when the browser comes back online, the window regains focus, or the user presses ⌘S.
@@ -133,7 +134,7 @@ CREATE TABLE whiteboards (
 
 ## Key Design Constraints
 
-- **No IndexedDB** — SQLite on the filesystem is the sole durability guarantee.
+- **No IndexedDB** — SQLite on the filesystem is the sole durability guarantee. (The browser-only build also avoids IndexedDB: `localStorage` only.)
 - **No toast notifications.** Backend write failures are logged server-side only. The status-bar save state ("Edited" / "Saving…" / "Offline") and the per-note dirty dots are the only user-facing signals.
 - **1 MB soft cap per paste** — warn in the editor status bar; no hard enforcement.
 - **Sub-50ms interaction latency** — never block the UI on a network call.
@@ -246,6 +247,7 @@ Track feature development status here. Update each item as work is completed.
 - [x] Fountain-pen logo and favicon
 - [x] Empty-note cleanup (client LRU policy + server sweep + guarded delete)
 - [x] Command palette + single command registry
+- [x] Browser-only mode (`VITE_APP_ENV=production`): localStorage backend, Settings → Storage backup/restore, Vercel deploy config, `e2e-local` CI job
 - [x] Plugin system (commands, settings, palette prompts, URL handlers; server plugin routes)
 - [x] Blog Reader plugin (fetch → Readability → Markdown note in Blogs folder, side-by-side Read mode, dedupe, refresh)
 - [x] Layout and tab restore across reloads

@@ -6,6 +6,8 @@ export interface PluginManifest {
   description: string
   icon: IconName
   version: string
+  /** Needs the Velocity server (e.g. fetches pages); never activates in the browser-only build. */
+  requiresServer?: boolean
 }
 
 export type PluginSetting =

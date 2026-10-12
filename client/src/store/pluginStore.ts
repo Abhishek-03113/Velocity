@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { BROWSER_ONLY } from '../lib/runtime'
 import { PLUGINS } from '../plugins/registry'
 
 const KEY = 'velocity.plugins.v1'
@@ -47,6 +48,11 @@ function write(state: Pick<PluginState, 'enabled' | 'settings'>): void {
   }
 }
 
+/** False for server-backed plugins in the browser-only build (they can never run there). */
+export function pluginUnavailable(id: string): boolean {
+  return BROWSER_ONLY && PLUGINS.find((p) => p.manifest.id === id)?.manifest.requiresServer === true
+}
+
 export function settingDefault(id: string, key: string): SettingValue | undefined {
   return PLUGINS.find((p) => p.manifest.id === id)?.settings?.find((s) => s.key === key)?.default
 }
@@ -54,7 +60,7 @@ export function settingDefault(id: string, key: string): SettingValue | undefine
 export const usePluginStore = create<PluginState>((set, get) => ({
   ...read(),
 
-  isEnabled: (id) => get().enabled[id] !== false,
+  isEnabled: (id) => !pluginUnavailable(id) && get().enabled[id] !== false,
   setEnabled: (id, on) => {
     const enabled = { ...get().enabled, [id]: on }
     write({ enabled, settings: get().settings })

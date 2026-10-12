@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Document } from 'flexsearch'
+import { BROWSER_ONLY } from '../lib/runtime'
 import type { Paste } from '../types'
 
 const STORAGE_KEY = 'velocity:search-index'
@@ -53,15 +54,32 @@ export function cachedContent(id: number): string | undefined {
 }
 
 const PERSIST_DEBOUNCE_MS = 2000
+const IDLE_TIMEOUT_MS = 2000
 let persistTimer: ReturnType<typeof setTimeout> | null = null
+let idleHandle: number | null = null
+/** True when the in-memory index differs from what was last written to localStorage. */
+let dirty = false
 
-// Serialized index cache in localStorage — export/stringify/write is expensive,
-// so this must never run synchronously on a hot path (e.g. every keystroke).
-function persistIndexNow(): void {
+function clearScheduled(): void {
   if (persistTimer !== null) {
     clearTimeout(persistTimer)
     persistTimer = null
   }
+  if (idleHandle !== null) {
+    if (typeof cancelIdleCallback === 'function') cancelIdleCallback(idleHandle)
+    idleHandle = null
+  }
+}
+
+// Serialized index cache in localStorage — export/stringify/write is expensive,
+// so this must never run synchronously on a hot path (e.g. every keystroke).
+// Browser-only build: the notes already live in localStorage and the forward-tokenized export is
+// several times their size, so nothing is persisted; the index is rebuilt from the local DB instead.
+function persistIndexNow(): void {
+  clearScheduled()
+  if (!dirty) return
+  dirty = false
+  if (BROWSER_ONLY) return
   try {
     const exported: Record<string, unknown> = {}
     index.export((key, data) => {
@@ -76,19 +94,36 @@ function persistIndexNow(): void {
 
 // Debounced persist for hot paths (e.g. indexPaste on every keystroke) — the
 // in-memory index is still updated synchronously, only the expensive
-// export/stringify/write to localStorage is batched.
+// export/stringify/write to localStorage is batched, and runs when the browser is idle.
 function schedulePersistIndex(): void {
-  if (persistTimer !== null) clearTimeout(persistTimer)
+  dirty = true
+  if (BROWSER_ONLY) {
+    dirty = false
+    return
+  }
+  clearScheduled()
   persistTimer = setTimeout(() => {
     persistTimer = null
-    persistIndexNow()
+    if (typeof requestIdleCallback === 'function') {
+      idleHandle = requestIdleCallback(
+        () => {
+          idleHandle = null
+          persistIndexNow()
+        },
+        { timeout: IDLE_TIMEOUT_MS },
+      )
+    } else {
+      persistIndexNow()
+    }
   }, PERSIST_DEBOUNCE_MS)
 }
 
+// One module-level listener set (never added per call). pagehide covers mobile/bfcache where
+// beforeunload doesn't fire; both write synchronously.
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    if (persistTimer !== null) persistIndexNow()
-  })
+  const flush = () => persistIndexNow()
+  window.addEventListener('beforeunload', flush)
+  window.addEventListener('pagehide', flush)
 }
 
 function addOrReplace(doc: SearchDoc): void {
@@ -101,6 +136,16 @@ function addOrReplace(doc: SearchDoc): void {
 }
 
 async function loadIndex(): Promise<void> {
+  if (BROWSER_ONLY) {
+    // Stale caches from an earlier build would just waste the ~5 MB budget.
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(DOCS_KEY)
+    } catch {
+      // Storage unavailable.
+    }
+    return
+  }
   try {
     const rawDocs = localStorage.getItem(DOCS_KEY)
     if (rawDocs) {
@@ -209,6 +254,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     } catch {
       // Already absent from the hydrated index.
     }
+    dirty = true
     persistIndexNow()
   },
 
@@ -227,7 +273,10 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       documents.set(p.id, doc)
       addOrReplace(doc)
     }
-    if (changed) persistIndexNow()
+    if (changed) {
+      dirty = true
+      persistIndexNow()
+    }
   },
 
   ensureReady: () => indexReady,

@@ -1,6 +1,8 @@
 import { create } from 'zustand'
-import { api, apiBaseUrl } from '../lib/api'
+import { api } from '../lib/api'
+import { apiFetch } from '../lib/transport'
 import { focusEditor, remapEditor } from '../lib/editorRegistry'
+import { BROWSER_ONLY } from '../lib/runtime'
 import { createSyncEngine, type SyncField, type SyncStatus } from '../lib/syncEngine'
 import { UNTITLED } from '../lib/noteMeta'
 import { welcomeNote } from '../lib/welcome'
@@ -127,7 +129,7 @@ async function sendUpdate(
   if (keepalive) {
     const body = JSON.stringify(payload)
     // keepalive requests are capped (~64 KB) by browsers; larger bodies use a normal fetch.
-    await fetch(`${apiBaseUrl()}/api/pastes/${id}`, {
+    await apiFetch(`/api/pastes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body,
@@ -271,11 +273,48 @@ function createPasteOnServer(tempId: number, get: () => EditorState, set: Editor
     .finally(() => creating.delete(tempId))
 }
 
+const WARM_SLICE = 50
+
+function whenIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout: 1000 })
+    else setTimeout(resolve, 16)
+  })
+}
+
+async function warmFromLocalDb(queue: number[]): Promise<void> {
+  const searchStore = useSearchStore.getState()
+  for (let i = 0; i < queue.length; i += WARM_SLICE) {
+    await whenIdle()
+    for (const id of queue.slice(i, i + WARM_SLICE)) {
+      // Opened/edited notes were indexed with fresh text already — don't overwrite it.
+      if (cachedContent(id)) continue
+      try {
+        const detail = await api.get<Paste>(`/api/pastes/${id}`)
+        if (detail.data && !cachedContent(id)) {
+          searchStore.indexPaste({ id, title: detail.data.title, content: detail.data.content ?? '' })
+        }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'unknown error'
+        console.error(`[search:warm] paste ${id}:`, message)
+      }
+    }
+  }
+}
+
 async function warmSearchIndex(ids: number[]): Promise<void> {
   const searchStore = useSearchStore.getState()
   // Only fetch notes whose text isn't cached yet (first run, or created on another device).
   const queue = ids.filter((id) => !cachedContent(id))
   if (queue.length === 0) return
+
+  if (BROWSER_ONLY) {
+    // The search cache isn't persisted in the browser-only build, so every start re-reads the local
+    // DB: one pass, ~50 notes per idle slice, so a big library never blocks typing.
+    await warmFromLocalDb(queue)
+    useEditorStore.setState((s) => ({ pastes: [...s.pastes] }))
+    return
+  }
 
   // Small concurrency pool — fast warmup without flooding the server.
   const worker = async () => {

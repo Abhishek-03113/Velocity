@@ -55,6 +55,7 @@ const plugin: VelocityPlugin = {
     description: 'Open a blog post as a note, filed in your Blogs folder.',
     icon: 'book',
     version: '1.0.0',
+    requiresServer: true,
   },
   settings: [
     { key: 'folder', type: 'text', label: 'Folder', hint: 'Where saved posts are filed', default: 'Blogs', placeholder: 'Blogs' },

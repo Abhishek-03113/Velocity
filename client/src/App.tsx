@@ -8,6 +8,7 @@ import Alert from './components/overlays/Alert'
 import CommandPalette from './components/overlays/CommandPalette'
 import Sidebar from './components/sidebar/Sidebar'
 import Workspace from './components/workspace/Workspace'
+import { BROWSER_ONLY } from './lib/runtime'
 import { startPlugins } from './plugins/host'
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts'
 import { useEditorStore } from './store/editorStore'
@@ -40,6 +41,18 @@ function LaunchState() {
   )
 }
 
+let persistRequested = false
+/** Ask the browser not to evict our localStorage under storage pressure (once; result ignored). */
+function requestPersistentStorage(): void {
+  if (persistRequested) return
+  persistRequested = true
+  try {
+    void navigator.storage?.persist?.()
+  } catch {
+    // Unsupported — nothing to do.
+  }
+}
+
 export default function App() {
   const loaded = useEditorStore((s) => s.loaded)
   const { paletteOpen, settingsOpen, shortcutsOpen } = useUiStore(
@@ -51,6 +64,7 @@ export default function App() {
   )
 
   useEffect(() => {
+    if (BROWSER_ONLY) requestPersistentStorage()
     void useEditorStore.getState().initialize()
     void useGroupStore.getState().initialize()
     prefetchOnIdle()

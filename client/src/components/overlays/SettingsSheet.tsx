@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useLayoutStore } from '../../store/layoutStore'
 import { ACCENTS, useUiStore, type Accent } from '../../store/uiStore'
@@ -11,10 +11,13 @@ import {
   type Appearance,
   type ThemeFamily,
 } from '../../lib/themes'
+import { BROWSER_ONLY } from '../../lib/runtime'
 import { setThemeVariant } from '../../lib/workspace'
 import { PLUGINS } from '../../plugins/registry'
 import type { PluginSetting, VelocityPlugin } from '../../plugins/types'
-import { usePluginStore } from '../../store/pluginStore'
+import { pluginUnavailable, usePluginStore } from '../../store/pluginStore'
+import { usage } from '../../lib/local/kv'
+import { reportUsage, useStorageStore } from '../../store/storageStore'
 import { Icon } from '../Icon'
 import { Kbd } from '../ui/Kbd'
 import { Segmented } from '../ui/Segmented'
@@ -45,13 +48,24 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  disabled?: boolean
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       className={`${styles.switch} ${checked ? styles.switchOn : ''}`}
       onClick={() => onChange(!checked)}
     >
@@ -211,7 +225,8 @@ function PluginSettingRow({ pluginId, setting }: { pluginId: string; setting: Pl
 
 function PluginRow({ plugin }: { plugin: VelocityPlugin }) {
   const { id, name, description, icon, version } = plugin.manifest
-  const on = usePluginStore((s) => s.enabled[id] !== false)
+  const unavailable = pluginUnavailable(id)
+  const on = usePluginStore((s) => !unavailable && s.enabled[id] !== false)
   const setEnabled = usePluginStore((s) => s.setEnabled)
   return (
     <div data-plugin-row={id}>
@@ -222,10 +237,10 @@ function PluginRow({ plugin }: { plugin: VelocityPlugin }) {
         <div className={styles.pluginText}>
           <span className={styles.pluginName}>{name}</span>
           <span className={styles.settingHint}>
-            {description} · v{version}
+            {unavailable ? 'Needs the Velocity server (self-hosted)' : `${description} · v${version}`}
           </span>
         </div>
-        <Toggle label={`Enable ${name}`} checked={on} onChange={(v) => setEnabled(id, v)} />
+        <Toggle label={`Enable ${name}`} checked={on} disabled={unavailable} onChange={(v) => setEnabled(id, v)} />
       </div>
       {on && plugin.settings && plugin.settings.length > 0 && (
         <div className={styles.pluginSettings}>
@@ -235,6 +250,128 @@ function PluginRow({ plugin }: { plugin: VelocityPlugin }) {
         </div>
       )}
     </div>
+  )
+}
+
+function formatMb(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)
+}
+
+/** Browser-only build: usage meter plus whole-library backup / restore. */
+function StorageGroup() {
+  const bytes = useStorageStore((s) => s.bytes)
+  const quota = useStorageStore((s) => s.quota)
+  const full = useStorageStore((s) => s.full)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  // The store only learns usage after a write; seed it with the real figure when the group opens.
+  useEffect(() => {
+    const u = usage()
+    reportUsage(u.bytes, u.quota)
+  }, [])
+  const ratio = quota > 0 ? Math.min(1, bytes / quota) : 0
+
+  const exportFile = async () => {
+    setError(null)
+    try {
+      const { exportBackup } = await import('../../lib/local/backup')
+      const blob = new Blob([exportBackup()], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `velocity-backup-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      // Released right after the click; the download has already captured the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    } catch {
+      setError('Couldn’t create the backup.')
+    }
+  }
+
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setError(null)
+    try {
+      const text = await file.text()
+      const { validateBackup, importBackup } = await import('../../lib/local/backup')
+      const count = validateBackup(text)
+      useUiStore.getState().confirm({
+        title: 'Replace all notes with this backup?',
+        message: `This replaces every note, folder and image in this browser with the ${count} ${count === 1 ? 'note' : 'notes'} from the backup. This can’t be undone.`,
+        confirmLabel: 'Replace',
+        destructive: true,
+        onConfirm: () => {
+          try {
+            importBackup(text)
+            window.location.reload()
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Couldn’t import the backup.')
+          }
+        },
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Couldn’t read the backup.')
+    }
+  }
+
+  return (
+    <>
+      <h3 className={styles.groupHeading}>Storage</h3>
+      <div className={styles.group} data-storage-group>
+        <div className={styles.storageBlock}>
+          <div className={styles.settingLabel}>
+            <span data-storage-usage>
+              {formatMb(bytes)} MB of ~{formatMb(quota)} MB used in this browser
+            </span>
+          </div>
+          <div
+            className={styles.storageMeter}
+            role="progressbar"
+            aria-label="Browser storage used"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(ratio * 100)}
+          >
+            <div
+              className={`${styles.storageMeterFill} ${full || ratio > 0.9 ? styles.storageMeterFull : ''}`}
+              style={{ width: `${ratio * 100}%` }}
+            />
+          </div>
+        </div>
+        <Row label="Backup" hint="Every note, folder, whiteboard and image as one JSON file">
+          <div className={styles.storageActions}>
+            <button type="button" className={styles.button} onClick={() => void exportFile()}>
+              Export backup
+            </button>
+            <button type="button" className={styles.button} onClick={() => fileRef.current?.click()}>
+              Import backup…
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              aria-label="Import backup file"
+              onChange={(e) => void onPick(e)}
+            />
+          </div>
+        </Row>
+        {error && (
+          <div className={styles.storageBlock}>
+            <span className={styles.storageError} role="alert">
+              {error}
+            </span>
+          </div>
+        )}
+      </div>
+      <p className={styles.sheetFoot}>
+        Notes are stored only in this browser. Clearing site data deletes them — export a backup regularly.
+      </p>
+    </>
   )
 }
 
@@ -398,6 +535,8 @@ export default function SettingsSheet() {
         </Row>
       </div>
 
+      {BROWSER_ONLY && <StorageGroup />}
+
       {PLUGINS.length > 0 && (
         <>
           <h3 className={styles.groupHeading} ref={pluginsRef} id="settings-plugins">
@@ -418,7 +557,9 @@ export default function SettingsSheet() {
       )}
 
       <p className={styles.sheetFoot}>
-        Preferences are stored in this browser. Your notes are saved on your Velocity server and exported as Markdown.
+        {BROWSER_ONLY
+          ? 'Preferences are stored in this browser.'
+          : 'Preferences are stored in this browser. Your notes are saved on your Velocity server and exported as Markdown.'}
       </p>
     </Sheet>
   )

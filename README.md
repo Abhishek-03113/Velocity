@@ -193,6 +193,26 @@ The E2E suite starts its own API server on a throwaway database. It writes revie
 
 ---
 
+## Deploy (browser-only, Vercel)
+
+Setting `VITE_APP_ENV=production` at build time produces a **browser-only** build: there is no server and no request ever goes to `/api`. Notes, folders, whiteboards and pasted images live in the browser's `localStorage` (compressed, one key per note), much like Excalidraw. Without the variable you get the normal client–server app, byte for byte.
+
+Limits of this mode:
+
+- About 5 MB per browser (the `localStorage` quota). Settings → Storage shows usage; the status bar warns when it is full.
+- Data is per browser and per origin. There is no sync, and clearing site data deletes everything. Use Settings → Storage → **Export backup** regularly (**Import backup…** restores one).
+- Plugins that need the server (Blog Reader) are listed as unavailable.
+
+To deploy: import the repo in Vercel, set the Production Branch to `deploy/vercel`, and leave everything else alone. [`vercel.json`](vercel.json) holds the install and build commands, output directory, SPA rewrite and cache headers.
+
+Local preview:
+
+```bash
+cd client && VITE_APP_ENV=production npm run build && npx vite preview
+```
+
+---
+
 ## Project Structure
 
 ```
