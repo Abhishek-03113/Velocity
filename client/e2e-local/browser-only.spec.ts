@@ -61,8 +61,10 @@ test('folders: create one and move a note into it', async ({ page }) => {
   await page.keyboard.press('Enter')
   await page.reload()
   const nav = page.getByRole('navigation', { name: 'Folders' })
-  await expect(nav.getByRole('button', { name: /New Folder/ })).toBeVisible()
-  await nav.getByRole('button', { name: /New Folder/ }).click()
+  // The toolbar's "New Folder" button also matches /New Folder/ — target the folder row ("New Folder 1").
+  const folder = nav.getByRole('button', { name: /^New Folder \d+$/ })
+  await expect(folder).toBeVisible()
+  await folder.click()
   await expect(noteRows(page).filter({ hasText: 'Filed note' })).toHaveCount(1)
 })
 
@@ -120,7 +122,11 @@ test('pasted images are stored locally and render after a reload', async ({ page
       new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }),
     )
   }, PNG_BASE64)
-  await expect(editor(page)).toContainText('/api/assets/', { timeout: 10_000 })
+  // The editor swaps a Markdown image line for an inline image widget, so the `/api/assets/…`
+  // URL never shows as text — assert the widget and the stored asset instead.
+  const widget = focusedTile(page).locator('img.cm-md-image-remote')
+  await expect(widget).toBeVisible({ timeout: 10_000 })
+  await expect.poll(() => widget.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
   await expect(page.locator('footer').getByText('Saved', { exact: true })).toBeVisible({ timeout: 10_000 })
   expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith('velocity.db.v1.a.')))).toBe(true)
 
