@@ -27,7 +27,9 @@ interface GroupState {
   setActiveGroupId: (id: GroupFilter) => void
   setEditingGroupId: (id: number | null) => void
   /** Creates a folder optimistically and returns its temporary id. */
-  addGroup: (opts?: { edit?: boolean }) => number
+  addGroup: (opts?: { edit?: boolean; name?: string }) => number
+  /** Id of the folder with this name (case-insensitive), creating it when missing. */
+  ensureGroup: (name: string) => number
   setGroupName: (id: number, name: string) => void
   deleteGroup: (id: number) => void
 }
@@ -56,7 +58,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   addGroup: (opts) => {
     const tempId = localGroupId()
-    const name = nextGroupName(get().groups)
+    const name = opts?.name?.trim() || nextGroupName(get().groups)
     const group: Group = { id: tempId, name }
 
     set((state) => ({
@@ -105,6 +107,13 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         console.error('[groups:add] server sync failed:', message)
       })
     return tempId
+  },
+
+  ensureGroup: (name) => {
+    const wanted = name.trim().toLowerCase()
+    const existing = get().groups.find((g) => g.name.trim().toLowerCase() === wanted)
+    if (existing) return existing.id
+    return get().addGroup({ edit: false, name: name.trim() })
   },
 
   setGroupName: (id, name) => {

@@ -80,6 +80,7 @@ Velocity/
 - **Themes** — `lib/themes.ts` is the registry of theme families: Apple, Catppuccin, Gruvbox, Everforest, Nord and Solarized, each Light and Dark. A family can also have per-appearance **variants**: Catppuccin has Latte (light) and Frappé / Macchiato / Mocha (dark, Mocha default); Gruvbox and Everforest have Hard / Medium / Soft in both appearances. The chosen variant is stored per family and appearance in the preferences and applied as `<html data-theme-variant>`, which is only present when the family has variants for the current appearance. Settings shows a chip row for it ("Flavour" or "Contrast"), the command palette gets one "Theme: <Family> <Variant>" command per variant, and the retired `catppuccin-macchiato` family migrates to `catppuccin` + `macchiato`. Each non-Apple family is one file in `styles/themes/` that overrides semantic tokens and the per-theme `--syntax-*` variables (variant families write one block per appearance and variant). A "Theme default" accent uses the family's own accent. To add a theme: one CSS file, an `@import` in `themes/index.css`, a registry entry (plus `variants` and `defaultVariants` if it has any), and the pre-paint `var THEMES = ...` line in `client/index.html`, regenerated from `themeIndex()` (`themes.test.ts` fails until it matches)
 - **Whiteboards** — scenes live in SQLite, not `localStorage`. `lib/boardSync.ts` is the save queue; `lib/boardMigration.ts` uploads legacy `localStorage` boards once. Excalidraw is pre-bundled via `optimizeDeps.include` in `vite.config.ts`
 - **Empty-note cleanup** — `lib/emptyNoteCleanup.ts` holds the policy and runner. Empty = untitled, blank content, no whiteboard. Inactive = not in a tab or tile, not dirty, older than 30 s. The 5 most recently used are kept. Deletes use the guarded `DELETE ?only_if_empty=1`
+- **Plugins** — `plugins/registry.ts` is the one additive list; `plugins/host.ts` activates enabled plugins and feeds their commands (palette section "Plugins", global keys, shortcuts sheet), palette prompts and quick-open URL handlers to the core. Settings → Plugins toggles them (`store/pluginStore.ts`, `velocity.plugins.v1`). Core files never import a specific plugin. First plugin: **Blog Reader** (`plugins/blogReader/`, Readability + DOM→Markdown, lazy-loaded). Authoring guide: `docs/plugins.md`
 - **Command registry** — `lib/commands.ts` is the single source of truth for shortcuts, the command palette, the shortcuts sheet and tooltips. One capture-phase key handler lives in `hooks/useGlobalShortcuts.ts`
 
 The entire UX interaction loop is client-side. Writes to the backend are **async and debounced** by the auto-save worker (`lib/syncEngine.ts`). It tracks a revision per note and keeps a single request in flight. It debounces for 800 ms with a 5 s max-wait and sends only the changed fields. It flushes on tab close and on `pagehide`, and retries with exponential back-off up to 3 attempts. After that the note is parked as "offline" and retried when the browser comes back online, the window regains focus, or the user presses ⌘S.
@@ -90,6 +91,7 @@ The entire UX interaction loop is client-side. Writes to the backend are **async
 - **better-sqlite3** — synchronous SQLite driver
 - The server is a **persistence layer only** — no business logic in the critical path
 - **Whiteboard routes** — `GET/PUT/DELETE /api/pastes/:id/whiteboard`, 10 MB cap (413). `GET /api/pastes` rows include `has_whiteboard`, `is_empty` and `content_length`
+- **Plugins** — `server/plugins/index.ts` mounts each `ServerPlugin` at `/api/plugins/<id>` (`GET /api/plugins` lists them). `shared/fetchPage.ts` is the SSRF-guarded fetch (http(s) only, private hosts blocked unless `PLUGIN_FETCH_ALLOW_PRIVATE=on`, redirects re-checked, 15 s / 5 MB caps). Blog Reader: `GET /api/plugins/blog-reader/fetch?url=`
 - **Empty-note sweep** — `workers/emptyNoteCleanup.ts` runs at startup and hourly, never touches notes edited in the last 10 minutes, and is disabled with `EMPTY_NOTE_CLEANUP=off`. `DELETE /api/pastes/:id?only_if_empty=1` returns 409 if the note gained content
 
 ### Database Schema
@@ -150,6 +152,7 @@ Defined in `client/src/lib/commands.ts`. `Mod` is ⌘ on macOS and Ctrl elsewher
 | Split tile / right / down | `Mod+\` / `Ctrl+Alt+\` / `Ctrl+Alt+-` |
 | Focus / swap tiles | `Ctrl+Alt+Arrows` / `Ctrl+Alt+Shift+Arrows` |
 | Zoom / close tile | `Ctrl+Alt+Enter` / `Ctrl+Alt+Q` |
+| Blog Reader: open a blog post (plugin) | `Ctrl+Alt+B` |
 | Multi-cursor | `Alt + Click` (CodeMirror 6 native) |
 
 ---
@@ -237,6 +240,8 @@ Track feature development status here. Update each item as work is completed.
 - [x] Fountain-pen logo and favicon
 - [x] Empty-note cleanup (client LRU policy + server sweep + guarded delete)
 - [x] Command palette + single command registry
+- [x] Plugin system (commands, settings, palette prompts, URL handlers; server plugin routes)
+- [x] Blog Reader plugin (fetch → Readability → Markdown note in Blogs folder, side-by-side Read mode, dedupe, refresh)
 - [x] Layout and tab restore across reloads
 - [x] Sidebar toggle animation
 - [x] CSS Modules applied to all components (global CSS limited to tokens + app reset/base styles)

@@ -176,6 +176,29 @@
   margin-left: auto;
 }
 
+/* ---- Prompt mode (plugin text prompts) -------------------------------- */
+.promptChip {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.promptMessage {
+  flex-shrink: 0;
+  padding: 8px 18px 10px;
+  color: var(--label-secondary);
+  font-size: var(--text-subheadline);
+}
+
+.promptError {
+  color: var(--system-red);
+}
+
 /* ====================================================================== */
 /* Alert                                                                   */
 /* ====================================================================== */
@@ -318,6 +341,84 @@
   color: var(--label-secondary);
   font-size: var(--text-callout);
   line-height: 1.5;
+}
+
+/* ---- Settings: plugins ------------------------------------------------- */
+.pluginRow {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.pluginIcon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.pluginIconOff {
+  background: var(--fill-tertiary);
+  color: var(--label-tertiary);
+}
+
+.pluginText {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.pluginName {
+  font-size: var(--text-body);
+  font-weight: 500;
+}
+
+.pluginSettings {
+  margin: 0 14px 10px 54px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--fill-quaternary);
+}
+
+.pluginSettings .settingRow {
+  min-height: 40px;
+}
+
+.pluginSettings .settingRow + .settingRow {
+  border-top: 1px solid var(--separator);
+}
+
+.textInput {
+  width: 180px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-content);
+  box-shadow: 0 0 0 0.5px var(--separator-opaque);
+  color: var(--label);
+  font-size: var(--text-callout);
+}
+
+.textInput::placeholder {
+  color: var(--label-tertiary);
+}
+
+.textInput:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.pluginDivider {
+  border-top: 1px solid var(--separator);
 }
 
 .sheetFoot {

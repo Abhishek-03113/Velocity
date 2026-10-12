@@ -15,6 +15,7 @@ const child = spawn('npx', ['tsx', 'index.ts'], {
     DB_PATH: path.join(root, 'velocity.db'),
     ASSETS_DIR: path.join(root, 'assets'),
     DOCS_DIR: path.join(root, 'docs'),
+    PLUGIN_FETCH_ALLOW_PRIVATE: 'on', // E2E serves fixtures on localhost
   },
 })
 const stop = () => child.kill('SIGTERM')

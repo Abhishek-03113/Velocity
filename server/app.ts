@@ -6,6 +6,7 @@ import { pastesRouter } from './routes/pastes.ts'
 import { whiteboardRouter } from './routes/whiteboards.ts'
 import { groupsRouter } from './routes/groups.ts'
 import { assetsRouter } from './routes/assets.ts'
+import { mountPlugins } from './plugins/index.ts'
 import { errorHandler } from './middleware/error.ts'
 
 /** HTTP app, separate from `serve()` so tests can call `app.request()` directly. */
@@ -23,5 +24,6 @@ export function createApp(opts: { log?: boolean } = {}) {
   app.route('/api/pastes', pastesRouter)
   app.route('/api/groups', groupsRouter)
   app.route('/api/assets', assetsRouter)
+  mountPlugins(app)
   return app
 }

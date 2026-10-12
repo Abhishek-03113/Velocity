@@ -8,6 +8,7 @@ import Alert from './components/overlays/Alert'
 import CommandPalette from './components/overlays/CommandPalette'
 import Sidebar from './components/sidebar/Sidebar'
 import Workspace from './components/workspace/Workspace'
+import { startPlugins } from './plugins/host'
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts'
 import { useEditorStore } from './store/editorStore'
 import { useGroupStore } from './store/groupStore'
@@ -59,6 +60,12 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return
     return startEmptyNoteCleanup()
+  }, [loaded])
+
+  // Activate enabled plugins once the library is loaded; follow later toggles.
+  useEffect(() => {
+    if (!loaded) return
+    return startPlugins()
   }, [loaded])
 
   useGlobalShortcuts()
