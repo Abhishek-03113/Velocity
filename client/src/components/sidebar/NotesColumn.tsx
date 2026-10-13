@@ -5,6 +5,7 @@ import {
   useDeferredValue,
   useMemo,
   useRef,
+  type CSSProperties,
   type DragEvent,
   type KeyboardEvent,
   type MouseEvent,
@@ -23,6 +24,8 @@ import {
   requestDelete,
   startRename,
 } from '../../lib/workspace'
+import { noteBadgeFor, useBadgeVersion } from '../../plugins/host'
+import type { NoteBadge } from '../../plugins/types'
 import { useEditorStore } from '../../store/editorStore'
 import { useGroupStore } from '../../store/groupStore'
 import { cachedContent } from '../../store/searchStore'
@@ -42,6 +45,8 @@ interface RowModel {
   folder?: string
   folderColor?: string
   dirty: boolean
+  /** Plugin-provided marker (e.g. Blog Reader's read / unread). */
+  badge: NoteBadge | null
 }
 
 interface NoteRowProps {
@@ -53,6 +58,7 @@ interface NoteRowProps {
 }
 
 const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }: NoteRowProps) {
+  const { badge } = row
   const onDragStart = (e: DragEvent) => {
     e.dataTransfer.effectAllowed = 'copyMove'
     e.dataTransfer.setData(NOTE_DRAG_TYPE, String(row.id))
@@ -67,7 +73,9 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }:
         data-note-row={row.id}
         draggable
         onDragStart={onDragStart}
-        className={`${styles.noteRow} ${selected ? styles.noteRowSelected : ''}`}
+        data-badge={badge?.label}
+        className={`${styles.noteRow} ${selected ? styles.noteRowSelected : ''} ${badge ? styles.noteRowBadged : ''}`}
+        style={badge ? ({ '--badge-color': `var(--system-${badge.tone})` } as CSSProperties) : undefined}
         onClick={(e) => onOpen(row.id, e)}
         onContextMenu={(e) => onMenu(row.id, e)}
       >
@@ -94,6 +102,28 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }:
         <div className={styles.noteMetaLine}>
           <span className={styles.noteDate}>{row.date}</span>
           <span className={styles.notePreview}>{row.preview || 'No additional text'}</span>
+          {badge &&
+            (badge.onClick ? (
+              <button
+                type="button"
+                tabIndex={-1}
+                draggable={false}
+                className={styles.noteBadge}
+                title={badge.title}
+                aria-label={badge.title ?? badge.label}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  badge.onClick?.()
+                }}
+                onDoubleClick={(e) => e.stopPropagation()}
+              >
+                {badge.label}
+              </button>
+            ) : (
+              <span className={styles.noteBadge} title={badge.title}>
+                {badge.label}
+              </span>
+            ))}
         </div>
         {row.folder && (
           <div className={styles.noteFolder}>
@@ -117,7 +147,10 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }:
   prev.row.preview === next.row.preview &&
   prev.row.folder === next.row.folder &&
   prev.row.folderColor === next.row.folderColor &&
-  prev.row.dirty === next.row.dirty,
+  prev.row.dirty === next.row.dirty &&
+  prev.row.badge?.label === next.row.badge?.label &&
+  prev.row.badge?.tone === next.row.badge?.tone &&
+  prev.row.badge?.title === next.row.badge?.title,
 )
 
 /** Per-paste cache: unchanged notes keep their object identity across keystrokes. */
@@ -180,6 +213,7 @@ export function NotesColumn({
       toggleFolders: s.toggleFolders,
     })),
   )
+  const badgeVersion = useBadgeVersion((s) => s.version)
   const listRef = useRef<HTMLUListElement>(null)
 
   // Typing updates `pastes` on every keystroke; the list catches up a few times a
@@ -209,9 +243,12 @@ export function NotesColumn({
         folder: groupName,
         folderColor: groupColorFor(groups, p.group_id),
         dirty: p.dirty,
+        badge: noteBadgeFor(p.id),
       }
     })
-  }, [deferredPastes, activeGroupId, groups, sort])
+    // badgeVersion: re-read plugin badges when a plugin reports a change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deferredPastes, activeGroupId, groups, sort, badgeVersion])
 
   const openRow = useCallback((id: number, e: MouseEvent | KeyboardEvent) => {
     const split = e.altKey || (isMac ? e.metaKey : e.ctrlKey)
@@ -221,6 +258,7 @@ export function NotesColumn({
   const rowMenu = useCallback(
     (id: number, e: MouseEvent) => {
       e.preventDefault()
+      const badge = noteBadgeFor(id)
       onMenu({
         x: e.clientX,
         y: e.clientY,
@@ -237,6 +275,7 @@ export function NotesColumn({
             },
           },
           { label: 'Export as Markdown', icon: 'square.and.arrow.down', onSelect: () => exportMarkdown(id) },
+          ...(badge?.onClick && badge.title ? [{ label: badge.title, icon: 'checkmark.circle' as const, onSelect: badge.onClick }] : []),
           { heading: 'Move to' },
           ...moveMenuItems(id),
           { separator: true },
