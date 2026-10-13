@@ -294,22 +294,41 @@ function route(method: string, path: string, body: string): Reply | Promise<Repl
   return fail(404, 'Not found')
 }
 
-/** Run a request against the local database and wrap the result in a real `Response`. */
-async function handle(method: string, path: string, body = ''): Promise<Response> {
-  let reply: Reply
-  try {
-    // No `await` before this call: the synchronous part (storage writes) must run immediately.
-    reply = await route(method.toUpperCase(), path, body)
-  } catch (err) {
-    reply =
-      err instanceof StorageFullError
-        ? fail(507, 'Browser storage is full')
-        : fail(500, err instanceof Error ? err.message : 'Local storage error')
-  }
-  return new Response(JSON.stringify(reply.body), {
+/**
+ * Minimal `Response` stand-in whose body reads resolve immediately. A real `Response` reads its body
+ * through a stream that takes extra event-loop tasks; during that gap a reload could fire `pagehide`
+ * before the client has swapped a temp id for the real one (e.g. a note moved into a new folder),
+ * and that change would be lost. With this, the whole create → remap chain finishes in microtasks of
+ * the task that made the request.
+ */
+function localResponse(reply: Reply): Response {
+  const text = JSON.stringify(reply.body)
+  return {
+    ok: reply.status >= 200 && reply.status < 300,
     status: reply.status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: () => Promise.resolve(JSON.parse(text) as unknown),
+    text: () => Promise.resolve(text),
+  } as unknown as Response
+}
+
+function failureFor(err: unknown): Reply {
+  return err instanceof StorageFullError
+    ? fail(507, 'Browser storage is full')
+    : fail(500, err instanceof Error ? err.message : 'Local storage error')
+}
+
+/** Run a request against the local database. Storage writes happen synchronously inside this call. */
+function handle(method: string, path: string, body = ''): Promise<Response> {
+  let result: Reply | Promise<Reply>
+  try {
+    result = route(method.toUpperCase(), path, body)
+  } catch (err) {
+    return Promise.resolve(localResponse(failureFor(err)))
+  }
+  // Only asset uploads are async (hashing); everything else resolves without an extra hop.
+  if (result instanceof Promise) return result.then(localResponse, (err: unknown) => localResponse(failureFor(err)))
+  return Promise.resolve(localResponse(result))
 }
 
 const backend = { handle }
