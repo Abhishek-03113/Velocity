@@ -1,7 +1,10 @@
 import { useEditorStore } from '../../store/editorStore'
-import type { PluginContext, VelocityPlugin } from '../types'
+import { cachedContent } from '../../store/searchStore'
+import type { NoteBadge, PluginContext, VelocityPlugin } from '../types'
 
 const URLS_KEY = 'urls'
+/** Note id → when it was marked read (ms). Absent = unread. */
+const READ_KEY = 'read'
 const MAX_REMEMBERED = 500
 
 type NoteModule = typeof import('./note')
@@ -70,6 +73,13 @@ const plugin: VelocityPlugin = {
     },
     { key: 'readMode', type: 'toggle', label: 'Open in Read mode', default: true },
     { key: 'images', type: 'toggle', label: 'Include images', default: true },
+    {
+      key: 'readStatus',
+      type: 'toggle',
+      label: 'Colour-code read status',
+      hint: 'Blue for unread posts, green for read ones, in the notes list',
+      default: true,
+    },
   ],
 
   activate(ctx: PluginContext) {
@@ -79,6 +89,7 @@ const plugin: VelocityPlugin = {
     // Warm the small note helpers so `enabled()` and lookups can stay synchronous.
     void import('./note').then((m) => {
       noteModule = m
+      if (!disposed) ctx.refreshBadges()
     })
 
     const remembered = () => {
@@ -94,7 +105,10 @@ const plugin: VelocityPlugin = {
           changed = true
         }
       }
-      if (changed) ctx.storage.set(URLS_KEY, map)
+      if (changed) {
+        ctx.storage.set(URLS_KEY, map)
+        rememberedIds = null
+      }
       return map
     }
     const remember = (url: string, id: number) => {
@@ -105,6 +119,7 @@ const plugin: VelocityPlugin = {
       const keys = Object.keys(map)
       for (const k of keys.slice(0, Math.max(0, keys.length - MAX_REMEMBERED))) delete map[k]
       ctx.storage.set(URLS_KEY, map)
+      rememberedIds = null
     }
 
     /** Existing note for this URL: the remembered id, else any note whose content names it as source. */
@@ -113,10 +128,86 @@ const plugin: VelocityPlugin = {
     const stopRemap = useEditorStore.subscribe((state, prev) => {
       if (pendingTemp.size === 0 || state.pastes === prev.pastes) return
       remembered()
+      readMap()
       for (const id of pendingTemp) {
         if (!state.pastes.some((p) => p.cid === `t${id}` && p.id === id)) pendingTemp.delete(id)
       }
     })
+
+    /** Ids of remembered notes (cached; reset whenever the URL map is written). */
+    let rememberedIds: Set<number> | null = null
+    /** Per-note memo of the source URL parsed from its content. */
+    const sourceCache = new Map<number, { content: string; url: string | null }>()
+
+    /** Whether a note is a Blog Reader post: remembered here, or its header names a source URL. */
+    let indexed: { pastes: unknown; byId: Map<number, string | undefined> } | null = null
+    const contentOf = (id: number): string | undefined => {
+      const pastes = useEditorStore.getState().pastes
+      if (indexed?.pastes !== pastes) indexed = { pastes, byId: new Map(pastes.map((p) => [p.id, p.content])) }
+      return indexed.byId.get(id) ?? cachedContent(id)
+    }
+    const isBlogNote = (id: number): boolean => {
+      const content = contentOf(id)
+      if (content && noteModule) {
+        const hit = sourceCache.get(id)
+        if (hit?.content === content) return hit.url != null
+        const url = noteModule.sourceUrlOf(content)
+        sourceCache.set(id, { content, url })
+        if (url) return true
+      }
+      rememberedIds ??= new Set(Object.values(remembered()))
+      return rememberedIds.has(id)
+    }
+
+    // Read state, keyed by note id. A temp id (< 0) is re-keyed once the note has its server id.
+    let readCache: Record<string, number> | null = null
+    const readMap = (): Record<string, number> => {
+      if (!readCache) {
+        // Temp ids from an earlier session never got their server id; drop them.
+        const stored = ctx.storage.get<Record<string, number>>(READ_KEY) ?? {}
+        readCache = Object.fromEntries(Object.entries(stored).filter(([k]) => Number(k) >= 0))
+      }
+      const map = readCache
+      if (pendingTemp.size === 0) return map
+      let changed = false
+      for (const [key, at] of Object.entries(map)) {
+        const id = Number(key)
+        if (id >= 0) continue
+        const real = useEditorStore.getState().pastes.find((p) => p.cid === `t${id}`)?.id
+        if (real != null && real >= 0) {
+          delete map[key]
+          map[real] = at
+          changed = true
+        }
+      }
+      if (changed) ctx.storage.set(READ_KEY, map)
+      return map
+    }
+    const isRead = (id: number) => readMap()[id] != null
+    const setRead = (id: number, read: boolean) => {
+      const map = readMap()
+      delete map[id]
+      if (read) {
+        map[id] = Date.now()
+        if (id < 0) pendingTemp.add(id)
+      }
+      const keys = Object.keys(map)
+      for (const k of keys.slice(0, Math.max(0, keys.length - MAX_REMEMBERED))) delete map[k]
+      ctx.storage.set(READ_KEY, map)
+      ctx.refreshBadges()
+    }
+    const toggleRead = (id: number) => {
+      const read = !isRead(id)
+      setRead(id, read)
+      ctx.flash(read ? 'Marked as read' : 'Marked as unread')
+    }
+
+    const noteBadge = (id: number): NoteBadge | null => {
+      if (!ctx.setting<boolean>('readStatus') || !isBlogNote(id)) return null
+      return isRead(id)
+        ? { label: 'Read', tone: 'green', title: 'Mark as Unread', onClick: () => toggleRead(id) }
+        : { label: 'Unread', tone: 'blue', title: 'Mark as Read', onClick: () => toggleRead(id) }
+    }
 
     const findNote = (url: string): number | null => {
       const key = normalizeUrl(url)
@@ -227,12 +318,27 @@ const plugin: VelocityPlugin = {
           run: () => void refresh(),
           enabled: () => sourceOfCurrent() != null,
         },
+        {
+          id: 'toggleRead',
+          title: 'Mark as Read / Unread',
+          keys: ['Ctrl+Alt+Shift+KeyB'],
+          keywords: 'read unread done finished seen toggle status colour color',
+          run: () => {
+            const id = ctx.notes.current()
+            if (id != null) toggleRead(id)
+          },
+          enabled: () => {
+            const id = ctx.notes.current()
+            return id != null && isBlogNote(id)
+          },
+        },
       ],
       urlHandler: {
         label: 'Open in Blog Reader',
         match: (url) => url.protocol === 'http:' || url.protocol === 'https:',
         open: (url, opts) => void open(url, opts.split),
       },
+      noteBadge,
       dispose: () => {
         disposed = true
         stopRemap()

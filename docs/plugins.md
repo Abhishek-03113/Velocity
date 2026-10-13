@@ -2,8 +2,9 @@
 
 Velocity plugins are small, additive modules in the spirit of Obsidian community plugins.
 A plugin can add **commands** (with keyboard shortcuts) to the command palette, **settings**
-to Settings → Plugins, a **text prompt** in the palette, and a **URL handler** that turns a URL
-pasted into quick open (`Mod+P`) into an action. Core code never knows about a specific plugin.
+to Settings → Plugins, a **text prompt** in the palette, a **URL handler** that turns a URL
+pasted into quick open (`Mod+P`) into an action, and **note badges** that colour-code its notes
+in the notes list. Core code never knows about a specific plugin.
 
 Blog Reader is the first plugin and the reference implementation.
 
@@ -72,6 +73,15 @@ the settings rows. Built-in shortcuts always win over plugin shortcuts.
 | `api.get(path)` | `GET /api/plugins/<id><path>`, unwraps the `{ success, data, error }` envelope |
 | `notes.create / open / exists / current` | Create a note (in a folder, optionally in a new tile and in Read mode), open one, and so on |
 | `folders.ensure(name)` | Existing folder (case-insensitive) or a new one |
+| `refreshBadges()` | Re-read this plugin's note badges after their state changes |
+
+### Note badges
+
+Return `noteBadge(noteId)` from `activate` to mark your notes in the sidebar list: a tinted edge
+on the row and a small pill (`{ label, tone, title?, onClick? }`, where `tone` is a system colour
+such as `blue` or `green`). With `onClick` the pill is a button, and its `title` also appears in the
+row's context menu. Return `null` for notes the plugin doesn't own. It runs for every visible row,
+so keep it cheap, and call `ctx.refreshBadges()` whenever the answer changes.
 
 Enabled state and settings are stored per browser in `velocity.plugins.v1`, like other preferences.
 
@@ -103,4 +113,8 @@ redirect, and caps time (15 s) and size (5 MB).
   quotes and images (remote URLs, rendered inline).
 - Opening the same URL again opens the existing note. **Blog Reader: Refresh Article** fetches
   the current article again and replaces its content.
-- Settings: folder name, open in new or current tile, Read mode, include images.
+- **Read status:** every Blog Reader note is colour-coded in the notes list: a blue **Unread**
+  pill and edge, or a green **Read** one. Click the pill, use the row's context menu, or press
+  `Ctrl+Alt+Shift+B` (**Blog Reader: Mark as Read / Unread**) on the open post to flip it. The
+  state is kept per browser in the plugin's storage, and survives **Refresh Article**.
+- Settings: folder name, open in new or current tile, Read mode, include images, colour-code read status.

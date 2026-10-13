@@ -49,6 +49,19 @@ export interface PromptSpec {
   splitLabel?: string
 }
 
+/** System colour a badge is tinted with (`--system-<tone>`), so it follows the theme. */
+export type BadgeTone = 'blue' | 'green' | 'orange' | 'red' | 'purple' | 'teal' | 'gray'
+
+/** A coloured marker a plugin puts on one of its notes in the sidebar list. */
+export interface NoteBadge {
+  label: string
+  tone: BadgeTone
+  /** Tooltip / accessible name of the badge button. */
+  title?: string
+  /** Makes the badge a button (e.g. to toggle a state). */
+  onClick?: () => void
+}
+
 export interface PluginContext {
   id: string
   setting<T extends string | boolean>(key: string): T
@@ -69,11 +82,15 @@ export interface PluginContext {
   }
   /** Existing (case-insensitive) or newly created folder id. */
   folders: { ensure(name: string): number }
+  /** Ask the UI to re-read this plugin's note badges (call after their state changes). */
+  refreshBadges(): void
 }
 
 export interface PluginInstance {
   commands?: PluginCommand[]
   urlHandler?: UrlHandler
+  /** Badge for a note in the sidebar, or null for notes this plugin doesn't decorate. Keep it cheap. */
+  noteBadge?: (noteId: number) => NoteBadge | null
   dispose?: () => void
 }
 

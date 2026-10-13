@@ -3,6 +3,7 @@
  * commands / URL handlers to the rest of the app. Deliberately free of lib/commands imports
  * (commands.ts reads from here), so only `import type` crosses that boundary.
  */
+import { create } from 'zustand'
 import { api } from '../lib/api'
 import type { Command } from '../lib/commands'
 import { currentNoteId, focusTile, openNote } from '../lib/workspace'
@@ -13,7 +14,7 @@ import { useLayoutStore } from '../store/layoutStore'
 import { usePluginStore } from '../store/pluginStore'
 import { useUiStore } from '../store/uiStore'
 import { PLUGINS } from './registry'
-import type { PluginContext, PluginInstance, VelocityPlugin } from './types'
+import type { NoteBadge, PluginContext, PluginInstance, VelocityPlugin } from './types'
 
 interface Active {
   plugin: VelocityPlugin
@@ -22,6 +23,13 @@ interface Active {
 
 const active = new Map<string, Active>()
 let commandCache: Command[] = []
+
+/** Bumped whenever note badges may have changed; components subscribe to re-render. */
+export const useBadgeVersion = create<{ version: number }>(() => ({ version: 0 }))
+
+function bumpBadges() {
+  useBadgeVersion.setState((s) => ({ version: s.version + 1 }))
+}
 
 function storageKey(id: string) {
   return `velocity.plugin.${id}.v1`
@@ -91,6 +99,7 @@ export function createContext(id: string): PluginContext {
       current: () => currentNoteId(),
     },
     folders,
+    refreshBadges: bumpBadges,
   }
 }
 
@@ -135,7 +144,10 @@ export function syncPlugins(): void {
       changed = true
     }
   }
-  if (changed) rebuildCommands()
+  if (changed) {
+    rebuildCommands()
+    bumpBadges()
+  }
 }
 
 /** Activate enabled plugins and follow later toggles. Returns a stop function. */
@@ -143,6 +155,7 @@ export function startPlugins(): () => void {
   syncPlugins()
   const unsubscribe = usePluginStore.subscribe((state, prev) => {
     if (state.enabled !== prev.enabled) syncPlugins()
+    else if (state.settings !== prev.settings) bumpBadges()
   })
   return () => {
     unsubscribe()
@@ -155,7 +168,22 @@ export function startPlugins(): () => void {
     }
     active.clear()
     rebuildCommands()
+    bumpBadges()
   }
+}
+
+/** The first enabled plugin's badge for a note, or null. */
+export function noteBadgeFor(noteId: number): NoteBadge | null {
+  for (const [id, { instance }] of active) {
+    if (!instance.noteBadge) continue
+    try {
+      const badge = instance.noteBadge(noteId)
+      if (badge) return badge
+    } catch (err) {
+      console.error(`[plugins] ${id} noteBadge failed:`, err)
+    }
+  }
+  return null
 }
 
 /** Commands of enabled plugins. The array identity changes only when the set changes. */

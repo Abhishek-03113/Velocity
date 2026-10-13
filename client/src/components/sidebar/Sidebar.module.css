@@ -558,3 +558,32 @@ li:has(+ li > .noteRowSelected) > .noteRow::after,
     opacity: 1;
   }
 }
+
+/* Plugin badge (e.g. Blog Reader read / unread): a tinted edge and a pill on the meta line. */
+.noteRowBadged::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 10px;
+  left: 3px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--badge-color);
+}
+
+.noteBadge {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--badge-color) 16%, transparent);
+  color: color-mix(in srgb, var(--badge-color) 78%, var(--label));
+  font-size: var(--text-caption);
+  font-weight: 600;
+  line-height: 18px;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+button.noteBadge:hover {
+  background: color-mix(in srgb, var(--badge-color) 28%, transparent);
+}
