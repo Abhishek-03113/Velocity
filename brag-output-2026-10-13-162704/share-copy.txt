@@ -1,0 +1,1 @@
+Introducing Velocity: a self-hosted notes app you can drive entirely from the keyboard. Tiling and sliding workspaces, whiteboards, search that answers before you finish typing, six theme families, and now plugins, starting with Blog Reader. Think at the speed of your keys.
