@@ -1,0 +1,1 @@
+Most notes apps make you wait. So we built one that doesn't. Velocity is a self-hosted notes app: write in plain text, put notes side by side with one keystroke, find any note in under 10 ms, make it yours with six themes, and now plugins, starting with Blog Reader.

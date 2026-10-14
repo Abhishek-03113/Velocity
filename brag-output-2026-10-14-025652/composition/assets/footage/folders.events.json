@@ -1,0 +1,28 @@
+{
+  "duration": 3.681,
+  "clockSkew": 0.05,
+  "events": [
+    {
+      "t": 0.451,
+      "keys": [
+        "⌃",
+        "⌥",
+        "M"
+      ]
+    },
+    {
+      "t": 0.979,
+      "keys": [
+        "type"
+      ],
+      "label": "type-start"
+    },
+    {
+      "t": 2.049,
+      "keys": [
+        "↩"
+      ],
+      "label": "enter"
+    }
+  ]
+}
