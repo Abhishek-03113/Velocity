@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Velocity Launch Film</title>
+    <script src="assets/vendor/gsap.min.js"></script>
+    <script src="assets/audio-env.js"></script>
+    <style>
+      @font-face { font-family: "Instrument Serif"; src: url("assets/fonts/InstrumentSerif-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; }
+      @font-face { font-family: "Instrument Serif"; src: url("assets/fonts/InstrumentSerif-Italic.ttf") format("truetype"); font-weight: 400; font-style: italic; }
+      @font-face { font-family: "Instrument Sans"; src: url("assets/fonts/InstrumentSans-Regular.ttf") format("truetype"); font-weight: 400; }
+      @font-face { font-family: "Instrument Sans"; src: url("assets/fonts/InstrumentSans-Bold.ttf") format("truetype"); font-weight: 700; }
+      /* Keycap voice: Geist Mono, with JetBrains Mono supplying the ⌘ ⌃ ⌥ glyphs Geist lacks. */
+      @font-face { font-family: "VMono"; src: url("assets/fonts/JetBrainsMono-Regular.ttf") format("truetype"); font-weight: 400; unicode-range: U+2318, U+2303, U+2325; }
+      @font-face { font-family: "VMono"; src: url("assets/fonts/JetBrainsMono-Bold.ttf") format("truetype"); font-weight: 700; unicode-range: U+2318, U+2303, U+2325; }
+      @font-face { font-family: "VMono"; src: url("assets/fonts/GeistMono-Regular.ttf") format("truetype"); font-weight: 400; }
+      @font-face { font-family: "VMono"; src: url("assets/fonts/GeistMono-Bold.ttf") format("truetype"); font-weight: 700; }
+
+      :root {
+        --bg: #1d2021; --bg1: #282828; --bg2: #32302f; --bg3: #3c3836;
+        --fg: #fbf1c7; --fg1: #ebdbb2; --fg2: #d5c4a1; --muted: #a89984;
+        --orange: #fe8019; --yellow: #fabd2f; --green: #b8bb26; --blue: #83a598; --red: #fb4934;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+      #root {
+        --e: 0; --ga: #fe8019;
+        position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg);
+        font-family: "Instrument Sans", sans-serif; color: var(--fg);
+      }
+      .serif { font-family: "Instrument Serif", serif; font-weight: 400; }
+      .mono { font-family: "VMono", monospace; }
+      em, i { font-style: italic; }
+
+      /* ── background layers ── */
+      #bg { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 70% at 50% 45%, #232627 0%, var(--bg) 60%); }
+      #glowWrap { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+      .glow { position: absolute; border-radius: 50%; }
+      #glowCore {
+        width: 1500px; height: 1060px; left: -750px; top: -530px;
+        background: radial-gradient(closest-side, color-mix(in srgb, var(--ga) 30%, transparent), color-mix(in srgb, var(--ga) 9%, transparent) 55%, transparent 100%);
+        opacity: calc(0.5 + var(--e) * 0.5);
+        transform: scale(calc(0.95 + var(--e) * 0.1));
+      }
+      #glowWarm {
+        width: 900px; height: 640px; left: -450px; top: -180px;
+        background: radial-gradient(closest-side, rgba(250, 189, 47, 0.16), transparent);
+      }
+      #dots {
+        position: absolute; inset: 0;
+        background-image: radial-gradient(rgba(235, 219, 178, 0.16) 1.5px, transparent 1.9px);
+        background-size: 36px 36px;
+        -webkit-mask-image: radial-gradient(ellipse 75% 70% at 50% 50%, #000 30%, transparent 85%);
+        mask-image: radial-gradient(ellipse 75% 70% at 50% 50%, #000 30%, transparent 85%);
+      }
+      #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 75% at 50% 50%, transparent 62%, rgba(0, 0, 0, 0.38) 100%); }
+      #grain {
+        position: absolute; inset: -40px; pointer-events: none; opacity: 0.075; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+        background-size: 220px 220px;
+      }
+
+      /* ── hook ── */
+      #hookBox { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #hook { position: relative; width: 1040px; }
+      .hline { font-family: "Instrument Serif", serif; font-size: 164px; line-height: 1.04; letter-spacing: -0.015em; white-space: pre; color: var(--fg); }
+      .hline em { color: var(--orange); }
+      .ch { opacity: 0; }
+      #hook2Box { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #hook2 { width: 1040px; }
+      #hook2 .ln { display: block; overflow: hidden; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+      #hook2 .ln > span { display: block; }
+      #omt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #omt-t { font-family: "Instrument Serif", serif; font-size: 150px; line-height: 1.04; letter-spacing: -0.015em; color: var(--fg); padding-bottom: 0.06em; }
+      #caret { position: absolute; left: 0; top: 0; width: 7px; height: 132px; border-radius: 4px; background: var(--orange); box-shadow: 0 0 22px rgba(254, 128, 25, 0.7); }
+
+      /* ── reveal + outro lockups ── */
+      .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .lockup { display: flex; align-items: center; gap: 40px; }
+      .icon { width: 168px; height: 168px; border-radius: 40px; overflow: hidden; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(251, 241, 199, 0.12), 0 0 90px rgba(250, 189, 47, 0.28); }
+      .icon img { width: 100%; height: 100%; display: block; }
+      .icon-bg { background: url("assets/img/logo.png") center / cover; }
+      .wordmark { font-family: "Instrument Serif", serif; font-size: 200px; line-height: 1.0; letter-spacing: -0.02em; color: var(--fg); padding: 0 0.04em 0.08em 0; }
+      #rv-sub { margin-top: 30px; font-family: "VMono", monospace; font-size: 28px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--fg2); }
+
+      /* ── app window ── */
+      #stage { position: absolute; inset: 0; }
+      #win { position: absolute; left: 320px; top: 123px; width: 1280px; height: 834px; }
+      .frame {
+        position: absolute; inset: 0; border-radius: 18px; overflow: hidden; background: var(--bg);
+        box-shadow: 0 60px 140px rgba(0, 0, 0, 0.62), 0 0 0 2px color-mix(in srgb, var(--ga) 30%, rgba(251, 241, 199, 0.1)),
+          0 0 calc(30px + var(--e) * 90px) color-mix(in srgb, var(--ga) 26%, transparent);
+      }
+      .strip { position: absolute; left: 0; right: 0; top: 0; height: 34px; background: #2b2a29; border-bottom: 1px solid rgba(0, 0, 0, 0.45); display: flex; align-items: center; }
+      .lights { display: flex; gap: 8px; margin-left: 16px; }
+      .lights span { width: 12px; height: 12px; border-radius: 50%; display: block; }
+      .strip .wt { position: absolute; left: 0; right: 0; text-align: center; font-size: 15px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+      .screen { position: absolute; left: 0; top: 34px; width: 1280px; height: 800px; overflow: hidden; background: var(--bg); }
+      #cam { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; }
+      #cam video { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; object-fit: cover; }
+      #sheen { position: absolute; top: -20%; left: 0; width: 34%; height: 140%; pointer-events: none;
+        background: linear-gradient(100deg, transparent 0%, rgba(251, 241, 199, 0.0) 30%, rgba(251, 241, 199, 0.13) 50%, rgba(251, 241, 199, 0.0) 70%, transparent 100%); }
+
+      /* ── title columns ── */
+      .tcol { display: flex; flex-direction: column; justify-content: center; }
+      .tcol .inner { position: absolute; top: 0; height: 100%; width: 620px; display: flex; flex-direction: column; justify-content: center; }
+      .tcol.l .inner { left: 110px; }
+      .tcol.r .inner { left: 1222px; }
+      .kicker { display: flex; align-items: center; gap: 18px; margin-bottom: 30px; font-family: "VMono", monospace; font-size: 22px; letter-spacing: 0.18em; color: var(--orange); text-transform: uppercase; }
+      .kicker .rule { width: 46px; height: 3px; background: var(--orange); transform-origin: 0 50%; display: block; }
+      .kicker .kt { display: block; }
+      .h { font-family: "Instrument Serif", serif; font-size: 98px; line-height: 1.02; letter-spacing: -0.012em; color: var(--fg); }
+      .h .ln { display: block; overflow: hidden; padding-bottom: 0.1em; margin-bottom: -0.1em; }
+      .h .ln > span { display: block; white-space: nowrap; }
+      .h i { color: var(--orange); }
+
+      /* ── keycap HUD ── */
+      #hud { position: absolute; inset: 0; pointer-events: none; }
+      .cluster { position: absolute; height: 92px; display: flex; gap: 12px; opacity: 0; }
+      .key { position: relative; width: 84px; height: 92px; }
+      .key .base { position: absolute; left: 0; right: 0; top: 10px; bottom: 0; border-radius: 16px; background: #121415; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55); }
+      .key .cap { position: absolute; left: 0; right: 0; top: 0; height: 82px; border-radius: 16px;
+        background: linear-gradient(180deg, #4a4542 0%, #36332f 100%);
+        box-shadow: inset 0 2px 0 rgba(251, 241, 199, 0.14), inset 0 -3px 0 rgba(0, 0, 0, 0.3), 0 0 0 1.5px rgba(0, 0, 0, 0.5);
+        display: flex; align-items: center; justify-content: center;
+        font-family: "VMono", monospace; font-weight: 700; font-size: 38px; color: var(--fg); }
+      .key .flash { position: absolute; left: -5px; right: -5px; top: -5px; height: 92px; border-radius: 20px; opacity: 0;
+        box-shadow: 0 0 0 3px var(--orange), 0 0 34px rgba(254, 128, 25, 0.75); }
+
+      /* ── blog reader intro ── */
+      #bi { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      #plug { width: 460px; height: 130px; overflow: visible; margin-bottom: 26px; }
+      #bi-pill { font-family: "VMono", monospace; font-size: 22px; letter-spacing: 0.2em; color: var(--orange); padding: 12px 22px; border-radius: 999px; border: 2px solid rgba(254, 128, 25, 0.6); background: rgba(254, 128, 25, 0.08); }
+      #bi-title { font-family: "Instrument Serif", serif; font-size: 210px; line-height: 1.02; letter-spacing: -0.02em; margin-top: 14px; padding-bottom: 0.06em; }
+      #bi-sub { font-family: "Instrument Serif", serif; font-style: italic; font-size: 52px; color: var(--fg1); margin-top: 6px; }
+
+      /* blog column extras */
+      .sub { font-size: 32px; line-height: 1.35; color: var(--fg2); margin-top: 26px; }
+      .sub .sl { display: block; white-space: nowrap; }
+      .note-card { margin-top: 44px; width: 500px; border-radius: 20px; background: var(--bg1); padding: 24px 26px; box-shadow: 0 0 0 2px rgba(251, 241, 199, 0.08), 0 24px 60px rgba(0, 0, 0, 0.45); }
+      .nc-title { font-size: 25px; font-weight: 700; color: var(--fg); white-space: nowrap; }
+      .nc-meta { font-size: 21px; color: var(--muted); margin-top: 6px; white-space: nowrap; }
+      .nc-row { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+      .chip-folder { font-family: "VMono", monospace; font-size: 19px; color: var(--fg2); padding: 6px 12px; border-radius: 8px; background: var(--bg2); }
+      .badge { position: relative; width: 150px; height: 40px; }
+      .badge .bf { position: absolute; left: 0; top: 0; height: 40px; display: flex; align-items: center; gap: 9px; padding: 0 16px; border-radius: 999px; font-size: 21px; font-weight: 700; }
+      .bf.unread { color: #a9c6bb; background: rgba(131, 165, 152, 0.2); box-shadow: inset 0 0 0 2px rgba(131, 165, 152, 0.55); }
+      .bf.read { color: #d3d65a; background: rgba(184, 187, 38, 0.18); box-shadow: inset 0 0 0 2px rgba(184, 187, 38, 0.55); opacity: 0; }
+      .bf .d { width: 10px; height: 10px; border-radius: 50%; background: currentColor; display: block; }
+
+      /* themes list */
+      .tlist { margin-top: 40px; display: flex; flex-direction: column; gap: 10px; }
+      .trow { display: flex; align-items: center; gap: 22px; height: 52px; }
+      .trow .sw { width: 22px; height: 22px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.3); display: block; }
+      .trow .nm { font-size: 38px; color: var(--muted); }
+      .trow .md { font-family: "VMono", monospace; font-size: 18px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+      /* wall */
+      #wall { position: absolute; inset: 0; opacity: 0; }
+      .tile { position: absolute; border-radius: 18px; overflow: hidden; background: var(--bg1); box-shadow: 0 0 0 2px rgba(251, 241, 199, 0.08); }
+      .thead { position: absolute; left: 0; right: 0; top: 0; height: 52px; background: var(--bg2); display: flex; align-items: center; gap: 16px; padding: 0 22px; border-bottom: 1px solid rgba(0, 0, 0, 0.4); z-index: 2; }
+      .thead .td { width: 12px; height: 12px; border-radius: 3px; background: var(--orange); display: block; }
+      .thead .tl { font-size: 25px; font-weight: 700; color: var(--fg1); white-space: nowrap; }
+      .thead .tk { font-family: "VMono", monospace; font-size: 20px; color: var(--orange); letter-spacing: 0.06em; white-space: nowrap; }
+      .tbody { position: absolute; left: 0; right: 0; top: 52px; bottom: 0; overflow: hidden; background: var(--bg); }
+      .ring { position: absolute; left: 0; top: 0; border-radius: 18px; box-shadow: inset 0 0 0 3px var(--orange); opacity: 0; z-index: 3; }
+      #T1v { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; }
+      #T1v video { width: 1280px; height: 800px; display: block; }
+      #T2i { position: absolute; left: 0; top: 0; width: 1472px; height: 920px; }
+      #T2i img { width: 1472px; height: 920px; display: block; }
+      #T3b { background: radial-gradient(ellipse 70% 90% at 50% 100%, rgba(181, 196, 147, 0.28), transparent 70%), var(--bg); }
+      .phone { position: absolute; left: 238px; top: 46px; width: 300px; height: 649px; border-radius: 46px; overflow: hidden; box-shadow: 0 0 0 9px #0d0f10, 0 0 0 11px rgba(251, 241, 199, 0.14), 0 30px 70px rgba(0, 0, 0, 0.6); }
+      .phone img { width: 100%; height: 100%; display: block; }
+      #wall-k { position: absolute; left: 80px; top: 70px; margin: 0; }
+
+      /* reliability */
+      #rel-left { position: absolute; left: 140px; top: 0; height: 100%; width: 860px; display: flex; flex-direction: column; justify-content: center; }
+      #rel-left .h { font-size: 132px; }
+      #rel-right { position: absolute; left: 1090px; top: 0; height: 100%; width: 700px; display: flex; flex-direction: column; justify-content: center; gap: 30px; }
+      .statusbar { height: 92px; border-radius: 20px; background: var(--bg1); box-shadow: 0 0 0 2px rgba(251, 241, 199, 0.09), 0 24px 60px rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+      .statusbar .cnt { font-family: "VMono", monospace; font-size: 22px; color: var(--muted); }
+      .state { position: relative; width: 190px; height: 44px; }
+      .st { position: absolute; right: 0; top: 0; height: 44px; display: flex; align-items: center; gap: 12px; font-size: 27px; font-weight: 700; color: var(--fg1); opacity: 0; }
+      .st .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--yellow); display: block; }
+      .st .spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(131, 165, 152, 0.3); border-top-color: var(--blue); display: block; }
+      .st .ok { width: 26px; height: 26px; border-radius: 50%; background: var(--green); color: var(--bg); font-size: 18px; display: flex; align-items: center; justify-content: center; }
+      .chips { display: flex; flex-wrap: wrap; gap: 16px; }
+      .chip { font-family: "VMono", monospace; font-size: 25px; color: var(--fg); padding: 14px 24px; border-radius: 999px; background: var(--bg2); box-shadow: inset 0 0 0 2px rgba(254, 128, 25, 0.55); white-space: nowrap; }
+
+      /* outro */
+      #outro-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      #outro-inner .icon { width: 150px; height: 150px; border-radius: 36px; }
+      #outro-inner .wordmark { font-size: 190px; }
+      .tagline { font-family: "Instrument Serif", serif; font-style: italic; font-size: 66px; color: var(--fg1); margin-top: 18px; }
+      .cta { display: flex; align-items: center; gap: 30px; margin-top: 54px; }
+      .cta .btn { font-size: 34px; font-weight: 700; color: var(--bg); background: var(--orange); padding: 18px 40px; border-radius: 999px; box-shadow: 0 18px 50px rgba(254, 128, 25, 0.35); }
+      .cta .meta { font-family: "VMono", monospace; font-size: 24px; letter-spacing: 0.04em; color: var(--fg2); }
+
+      /* ── "Make it yours." lineup ── */
+      #lu-cyc { position: absolute; inset: 0; background: radial-gradient(ellipse 62% 48% at 50% 70%, rgba(251, 241, 199, 0.075) 0%, rgba(251, 241, 199, 0.02) 45%, transparent 75%); }
+      .lu-beam { position: absolute; top: -60px; width: 760px; height: 940px; opacity: 0.4;
+        background: linear-gradient(180deg, rgba(251, 241, 199, 0.11) 0%, rgba(251, 241, 199, 0.035) 55%, transparent 90%); }
+      #lu-beamL { left: 140px; clip-path: polygon(30% 0%, 52% 0%, 100% 100%, 46% 100%); }
+      #lu-beamR { left: 1020px; clip-path: polygon(48% 0%, 70% 0%, 54% 100%, 0% 100%); }
+      #lu-floor { position: absolute; left: 0; right: 0; top: 760px; bottom: 0;
+        background: linear-gradient(180deg, rgba(251, 241, 199, 0.07) 0%, rgba(251, 241, 199, 0.02) 22%, transparent 60%);
+        -webkit-mask-image: radial-gradient(ellipse 60% 120% at 50% 0%, #000 35%, transparent 80%);
+        mask-image: radial-gradient(ellipse 60% 120% at 50% 0%, #000 35%, transparent 80%); }
+      #lu-horizon { position: absolute; left: 260px; width: 1400px; top: 759px; height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(251, 241, 199, 0.22) 30%, rgba(251, 241, 199, 0.3) 50%, rgba(251, 241, 199, 0.22) 70%, transparent); }
+      #lu-row { position: absolute; inset: 0; transform-origin: 960px 760px; }
+      .lu { position: absolute; left: 320px; top: -74px; width: 1280px; height: 834px; transform-origin: 50% 100%; }
+      .lu-win { position: absolute; inset: 0; border-radius: 22px; overflow: hidden; background: #111;
+        box-shadow: 0 0 0 3px rgba(251, 241, 199, 0.16), 0 90px 160px rgba(0, 0, 0, 0.7), 0 0 260px color-mix(in srgb, var(--acc) 48%, transparent); }
+      .lu-win .strip { height: 34px; }
+      .lu-img { position: absolute; left: 0; top: 34px; width: 1280px; height: 800px; display: block; }
+      .lu-rim { position: absolute; left: 0; right: 0; top: 0; height: 6px;
+        background: linear-gradient(90deg, transparent 4%, rgba(255, 255, 255, 0.5) 30%, rgba(255, 255, 255, 0.75) 50%, rgba(255, 255, 255, 0.5) 70%, transparent 96%); opacity: 0.55; }
+      .lu-sheen { position: absolute; top: -20%; left: 0; width: 36%; height: 140%; opacity: 0.9;
+        background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0) 28%, rgba(255, 255, 255, 0.22) 50%, rgba(255, 255, 255, 0) 72%, transparent 100%); }
+      .lu-refl { position: absolute; left: 0; top: 852px; width: 1280px; height: 800px; border-radius: 22px; background-size: 1280px 800px; transform: scaleY(-1); opacity: 0.42;
+        -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.18) 22%, transparent 48%);
+        mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.18) 22%, transparent 48%); }
+      .lu-spill { position: absolute; top: 700px; width: 720px; height: 150px; --on: 0;
+        background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 78%, transparent), color-mix(in srgb, var(--acc) 22%, transparent) 55%, transparent 100%);
+        opacity: calc(var(--on) * (0.6 + var(--e) * 0.4)); }
+      .lu-lab { position: absolute; top: 856px; width: 240px; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: 0; }
+      .lu-lab .nm { font-size: 24px; font-weight: 700; color: var(--fg1); white-space: nowrap; }
+      .lu-lab .md { font-family: "VMono", monospace; font-size: 16px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+      #lu-head { position: absolute; left: 0; right: 0; top: 130px; display: flex; justify-content: center; }
+      #lu-head .h { font-size: 132px; text-align: center; }
+
+      /* hit flash */
+      #flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+        background: radial-gradient(ellipse 62% 58% at 50% 50%, rgba(255, 236, 200, 0.5), rgba(254, 128, 25, 0.14) 58%, transparent 86%); }
+
+      /* persistent chrome */
+      #bug { position: absolute; left: 56px; top: 42px; display: flex; align-items: center; gap: 14px; opacity: 0; }
+      #bug .bug-ic { width: 42px; height: 42px; border-radius: 11px; background: url("assets/img/logo.png") center / cover; }
+      #bug span { font-size: 25px; font-weight: 700; color: var(--fg1); letter-spacing: 0.01em; }
+      #progress { position: absolute; left: 0; bottom: 0; width: 1920px; height: 4px; background: var(--orange); transform-origin: 0 50%; opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="%%DUR%%" data-width="1920" data-height="1080">
+      <div id="bg"></div>
+      <div id="glowWrap"><div id="glowCore" class="glow"></div><div id="glowWarm" class="glow"></div></div>
+      <div id="dots"></div>
+
+      <!-- 1 · typed hook -->
+      <section id="s-hook" class="clip" data-start="0" data-duration="3.62" data-track-index="3">
+        <div id="hookBox"><div id="hook"><div class="hline" id="hl1"></div><div class="hline" id="hl2"></div><div id="caret"></div></div></div>
+        <div id="hook2Box"><div id="hook2" class="hline">So stop <em>clicking.</em></div></div>
+      </section>
+
+      <!-- 2 · reveal -->
+      <section id="s-reveal" class="clip" data-start="3.45" data-duration="2.35" data-track-index="4">
+        <div class="center" id="rv-inner">
+          <div class="lockup"><div class="icon" id="rv-icon"><img src="assets/img/logo.png" alt="Velocity icon" /></div><div class="wordmark" id="rv-word">Velocity</div></div>
+          <div class="tagline" id="rv-tag">Every note, one keystroke away.</div>
+        </div>
+      </section>
+
+      <!-- the app window (persistent) -->
+      <div id="stage">
+        <div id="win">
+          <div class="frame">
+            <div class="strip"><div class="lights"><span style="background:#fb4934"></span><span style="background:#fabd2f"></span><span style="background:#b8bb26"></span></div><div class="wt">Velocity</div></div>
+            <div class="screen">
+              <div id="cam" data-layout-allow-overflow>
+%%VIDEOS%%
+              </div>
+            </div>
+            <div id="sheen" data-layout-allow-overflow></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3-7 · feature titles -->
+      <section id="t-editor" class="clip tcol l" data-start="6.6" data-duration="3.45" data-track-index="5">
+        <div class="inner"><div class="kicker"><span class="rule"></span><span class="kt">Writing</span></div>
+          <div class="h"><span class="ln"><span>Write plain text.</span></span><span class="ln"><span>Read it <i>typeset.</i></span></span></div></div>
+      </section>
+      <section id="t-search" class="clip tcol r" data-start="10.2" data-duration="4.2" data-track-index="5">
+        <div class="inner"><div class="kicker"><span class="rule"></span><span class="kt">Search</span></div>
+          <div class="h"><span class="ln"><span>Find any note</span></span><span class="ln"><span>in under <i>10 ms.</i></span></span></div></div>
+      </section>
+      <section id="t-tiling" class="clip tcol l" data-start="14.56" data-duration="4.2" data-track-index="5">
+        <div class="inner"><div class="kicker"><span class="rule"></span><span class="kt">Tiling</span></div>
+          <div class="h"><span class="ln"><span>Side by side.</span></span><span class="ln"><span><i>One keystroke.</i></span></span></div></div>
+      </section>
+      <section id="t-sliding" class="clip tcol r" data-start="18.92" data-duration="4.2" data-track-index="5">
+        <div class="inner"><div class="kicker"><span class="rule"></span><span class="kt">Sliding</span></div>
+          <div class="h"><span class="ln"><span>Need more room?</span></span><span class="ln"><span><i>Scroll sideways.</i></span></span></div></div>
+      </section>
+      <section id="t-board" class="clip tcol l" data-start="23.29" data-duration="4.2" data-track-index="5">
+        <div class="inner"><div class="kicker"><span class="rule"></span><span class="kt">Whiteboards</span></div>
+          <div class="h"><span class="ln"><span>Some ideas</span></span><span class="ln"><span>need a <i>drawing.</i></span></span></div></div>
+      </section>
+
+      <!-- 8 · Blog Reader plugin -->
+      <section id="s-bi" class="clip" data-start="27.45" data-duration="2.5" data-track-index="6">
+        <div id="omt"><div id="omt-t">One more thing.</div></div>
+        <div id="bi">
+          <svg id="plug" viewBox="0 0 460 130" aria-hidden="true">
+            <path id="cable" d="M0 65 C 70 65, 90 100, 150 92 S 190 65, 214 65" fill="none" stroke="#d5c4a1" stroke-width="5" stroke-linecap="round" />
+            <g id="plugBody">
+              <rect x="210" y="40" width="70" height="50" rx="12" fill="#3c3836" stroke="#ebdbb2" stroke-width="4" />
+              <rect x="280" y="50" width="34" height="9" rx="3" fill="#ebdbb2" />
+              <rect x="280" y="71" width="34" height="9" rx="3" fill="#ebdbb2" />
+            </g>
+            <g id="socket">
+              <rect id="socketBox" x="326" y="18" width="104" height="94" rx="22" fill="rgba(254,128,25,0.08)" stroke="#fe8019" stroke-width="5" />
+              <rect x="326" y="50" width="20" height="9" rx="3" fill="#fe8019" />
+              <rect x="326" y="71" width="20" height="9" rx="3" fill="#fe8019" />
+            </g>
+            <circle id="spark" cx="322" cy="65" r="30" fill="none" stroke="#fabd2f" stroke-width="4" />
+          </svg>
+          <div id="bi-title">Blog Reader</div>
+          <div id="bi-sub">Our first plugin.</div>
+        </div>
+      </section>
+      <!-- 8b · "Make it yours." theme lineup -->
+      <section id="s-lineup" class="clip" data-start="40.25" data-duration="7.2" data-track-index="8">
+        <div id="lu-cyc"></div>
+        <div class="lu-beam" id="lu-beamL"></div>
+        <div class="lu-beam" id="lu-beamR"></div>
+        <div id="lu-floor"></div>
+        <div id="lu-horizon"></div>
+        <div id="lu-row" data-layout-allow-overflow data-layout-allow-overlap>
+%%LINEUP%%
+        </div>
+        <div id="lu-head"><div class="h"><span class="ln"><span>Make it <i>yours.</i></span></span></div></div>
+      </section>
+
+      <section id="t-blog" class="clip tcol l" data-start="29.8" data-duration="6.42" data-track-index="5">
+        <div class="inner" style="width: 520px">
+          <div class="kicker"><span class="rule"></span><span class="kt">Plugins</span></div>
+          <div class="h"><span class="ln"><span>Blog <i>Reader</i></span></span></div>
+          <div class="sub"><span class="sl">Paste a link.</span><span class="sl">Read it next to your notes.</span></div>
+          <div class="note-card" id="blog-card">
+            <div class="nc-title">Reading and Note-Taking, Side by…</div>
+            <div class="nc-meta">The Field Notes · Mira Okafor</div>
+            <div class="nc-row"><span class="chip-folder">▱ Blogs</span>
+              <div class="badge"><div class="bf unread" id="b-unread"><span class="d"></span>Unread</div><div class="bf read" id="b-read"><span class="d"></span>Read</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9 · themes -->
+      <section id="t-themes" class="clip tcol r" data-start="36.37" data-duration="4.2" data-track-index="5">
+        <div class="inner">
+          <div class="kicker"><span class="rule"></span><span class="kt">Themes</span></div>
+          <div class="h"><span class="ln"><span>Six themes.</span></span><span class="ln"><span><i>Light and dark.</i></span></span></div>
+          <div class="tlist">
+            <div class="trow" id="tr-catppuccin"><span class="sw" style="--c:#cba6f7"></span><span class="nm">Catppuccin</span><span class="md">Mocha</span></div>
+            <div class="trow" id="tr-everforest"><span class="sw" style="--c:#a7c080"></span><span class="nm">Everforest</span><span class="md">Light</span></div>
+            <div class="trow" id="tr-nord"><span class="sw" style="--c:#88c0d0"></span><span class="nm">Nord</span><span class="md">Dark</span></div>
+            <div class="trow" id="tr-solarized"><span class="sw" style="--c:#268bd2"></span><span class="nm">Solarized</span><span class="md">Light</span></div>
+            <div class="trow" id="tr-apple"><span class="sw" style="--c:#0a84ff"></span><span class="nm">Apple</span><span class="md">Dark</span></div>
+            <div class="trow" id="tr-gruvbox"><span class="sw" style="--c:#fe8019"></span><span class="nm">Gruvbox</span><span class="md">Hard</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10 · the workspace tiles itself -->
+      <div id="wall">
+        <div class="tile" id="T1" style="left:80px;top:150px;width:1760px;height:850px">
+          <div class="tbody"><div id="T1v">%%FOLDERS_VIDEO%%</div></div>
+          <div class="thead"><span class="td"></span><span class="tl">Folders, from the keyboard.</span><span class="tk">⌃⌥M</span></div>
+          <div class="ring" id="T1ringA" style="width:1760px;height:850px"></div>
+          <div class="ring" id="T1ringB" style="width:960px;height:850px"></div>
+        </div>
+        <div class="tile" id="T2" style="left:1064px;top:150px;width:776px;height:850px">
+          <div class="tbody"><div id="T2i"><img src="assets/img/shortcuts.jpg" alt="Velocity keyboard shortcuts sheet" /></div></div>
+          <div class="thead"><span class="td"></span><span class="tl">Forgot a shortcut?</span><span class="tk">⌘ /</span></div>
+          <div class="ring" id="T2ring" style="width:776px;height:850px"></div>
+        </div>
+        <div class="tile" id="T3" style="left:1064px;top:587px;width:776px;height:413px">
+          <div class="tbody" id="T3b"><div class="phone" id="phone"><img src="assets/img/phone.jpg" alt="Velocity on a phone" /></div></div>
+          <div class="thead"><span class="td"></span><span class="tl">And on your phone.</span></div>
+          <div class="ring" id="T3ring" style="width:776px;height:413px"></div>
+        </div>
+      </div>
+      <section id="t-wall" class="clip" data-start="40.72" data-duration="4.25" data-track-index="5">
+        <div class="kicker" id="wall-k"><span class="rule"></span><span class="kt">The little things</span></div>
+      </section>
+
+      <!-- 11 · reliability -->
+      <section id="s-rel" class="clip" data-start="45.0" data-duration="4.32" data-track-index="6">
+        <div id="rel-left">
+          <div class="kicker"><span class="rule"></span><span class="kt">Local-first</span></div>
+          <div class="h"><span class="ln"><span>Your notes.</span></span><span class="ln"><span>Your <i>machine.</i></span></span></div>
+          <div class="sub" id="rel-p"><span class="sl">Saved as you type. Even offline.</span></div>
+        </div>
+        <div id="rel-right">
+          <div class="statusbar" id="statusbar"><span class="cnt">100 words · 536 characters</span>
+            <div class="state">
+              <div class="st" id="st-edited"><span class="dot"></span>Edited</div>
+              <div class="st" id="st-saving"><span class="spin" id="spin"></span>Saving…</div>
+              <div class="st" id="st-saved"><span class="ok">✓</span>Saved</div>
+            </div>
+          </div>
+          <div class="chips"><span class="chip" id="chip1">self-hosted</span><span class="chip" id="chip2">works offline</span><span class="chip" id="chip3">plain .md files</span></div>
+        </div>
+      </section>
+
+      <!-- 12 · outro -->
+      <section id="s-outro" class="clip" data-start="49.3" data-duration="5.7" data-track-index="7">
+        <div id="outro-inner">
+          <div class="lockup"><div class="icon icon-bg" id="o-icon"></div><div class="wordmark" id="o-word">Velocity</div></div>
+          <div class="tagline" id="o-tag">Every note, one keystroke away.</div>
+          <div class="cta" id="o-cta"><span class="btn">Get Velocity</span><span class="meta">github.com/Abhishek-03113/Velocity</span></div>
+        </div>
+      </section>
+
+      <div id="hud" data-layout-allow-overlap></div>
+      <div id="bug"><div class="bug-ic"></div><span>Velocity</span></div>
+      <div id="progress"></div>
+      <div id="flash"></div>
+      <div id="vignette"></div>
+      <div id="grain"></div>
+
+%%AUDIO%%
+    </div>
+
+    <script>
+      const D = %%DATA%%;
+      const $ = (s) => document.querySelector(s);
+      // v3 keeps v1's choreography: every position passed to `tl` is v1 time and goes through T().
+      // Beats added since v1 (hook statement, "One more thing.", plugin title, theme lineup) use
+      // `master` in v3 time.
+      const master = gsap.timeline({ paused: true });
+      const BAR = D.bar;
+      const T = (t) => {
+        if (t < 3.3) return t;
+        if (t < 27.5) return t + BAR;
+        if (t >= 29.5 && t < 35.95) return t + 2 * BAR;
+        if (t >= 35.95) return t + 5 * BAR;
+        throw new Error("v1 time " + t + " falls in the replaced plugin intro");
+      };
+      const M = (p) => (typeof p === "number" ? T(p) : p);
+      const tl = {
+        to: (t, v, p) => master.to(t, v, M(p)),
+        set: (t, v, p) => master.set(t, v, M(p)),
+        fromTo: (t, a, b, p) => master.fromTo(t, a, b, M(p)),
+      };
+      const P = D.poses;
+
+      // ───────── setup: DOM that is generated once, before the timeline is built ─────────
+      function buildHook() {
+        const out = [];
+        const add = (parent, text) => {
+          for (const ch of text) {
+            const s = document.createElement("span");
+            s.className = "ch";
+            s.textContent = ch;
+            parent.appendChild(s);
+            out.push(s);
+          }
+        };
+        add($("#hl1"), D.hook.l1);
+        add($("#hl2"), D.hook.l2);
+        const em = document.createElement("em");
+        $("#hl2").appendChild(em);
+        add(em, D.hook.em);
+        return out;
+      }
+
+      function buildHud() {
+        D.hud.forEach((h, i) => {
+          const el = document.createElement("div");
+          el.className = "cluster";
+          el.id = "hud-" + i;
+          const w = h.keys.length * 84 + (h.keys.length - 1) * 12;
+          el.style.left = h.x - w / 2 + "px";
+          el.style.top = h.y - 46 + "px";
+          el.style.width = w + "px";
+          for (const k of h.keys) {
+            const key = document.createElement("div");
+            key.className = "key";
+            key.innerHTML = '<div class="base"></div><div class="flash"></div><div class="cap"></div>';
+            key.querySelector(".cap").textContent = k;
+            el.appendChild(key);
+          }
+          $("#hud").appendChild(el);
+        });
+      }
+
+      // ───────── helpers ─────────
+      function glowTo(x, y, t, dur, ease) {
+        tl.to("#glowWrap", { x, y, duration: dur, ease: ease || "power3.inOut" }, t);
+      }
+      function poseVars(name) {
+        const p = P[name];
+        return { x: p.x, y: p.y, scale: p.s, rotationY: p.ry };
+      }
+      function sheen(t) {
+        tl.fromTo("#sheen", { xPercent: -160 }, { xPercent: 420, duration: 0.6, ease: "power2.inOut", immediateRender: false }, t);
+      }
+      function swing(b, to) {
+        const p = P[to];
+        tl.to("#win", { x: p.x, y: p.y, rotationY: p.ry, duration: 0.78, ease: "power3.inOut" }, b - 0.36);
+        tl.to("#win", { keyframes: [{ scale: p.s * 0.9, duration: 0.39, ease: "power2.in" }, { scale: p.s, duration: 0.39, ease: "power2.out" }] }, b - 0.36);
+        sheen(b - 0.24);
+        glowTo(960 + p.x, 540 + p.y, b - 0.36, 0.78);
+      }
+      function cam(t, fx, fy, s, dur, ease) {
+        const W = 1280, H = 800;
+        let x = W / 2 - fx * W * s, y = H / 2 - fy * H * s;
+        x = Math.min(0, Math.max(W - W * s, x));
+        y = Math.min(0, Math.max(H - H * s, y));
+        tl.to("#cam", { x, y, scale: s, duration: dur, ease: ease || "power3.inOut" }, t);
+      }
+      function camReset(t) {
+        tl.set("#cam", { x: 0, y: 0, scale: 1 }, t);
+      }
+      function titleIn(id, t) {
+        tl.fromTo("#" + id + " .kicker .rule", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power3.out" }, t);
+        tl.fromTo("#" + id + " .kicker .kt", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, t + 0.08);
+        if (document.querySelector("#" + id + " .h")) {
+          tl.fromTo("#" + id + " .h .ln > span", { yPercent: 118 }, { yPercent: 0, duration: 0.82, ease: "power4.out", stagger: 0.085 }, t + 0.12);
+        }
+      }
+      function titleOut(id, t) {
+        tl.to("#" + id + " .h .ln > span", { yPercent: -118, duration: 0.34, ease: "power3.in", stagger: 0.035 }, t);
+        tl.to("#" + id + " .kicker", { opacity: 0, duration: 0.26, ease: "power1.in" }, t);
+      }
+
+      // "Make it yours.": seven real windows glide in from different directions, staggered on the
+      // half-beat, and settle into one overlapping lineup under studio light. The Gruvbox window then
+      // flies into the app window's "left" pose and hands over to the live theme footage.
+      function buildLineup() {
+        const L = D.lineup, FY = L.fy;
+        const T0 = 40.654;          // bar: first arrival
+        const STEP = D.beat / 2;    // beat-grid: arrivals on consecutive half-beats (40.654, 40.927 … 42.292)
+        const order = [-3, 3, -2, 2, -1, 1, 0];
+        const from = {
+          "-3": { dx: -1350, dy: -30, dr: 46, ds: 1 },
+          "3": { dx: 1350, dy: -30, dr: -46, ds: 1 },
+          "-2": { dx: -140, dy: -940, dr: 12, ds: 1 },
+          "2": { dx: 140, dy: 940, dr: -12, ds: 1 },
+          "-1": { dx: -60, dy: 960, dr: 8, ds: 1 },
+          "1": { dx: 60, dy: -980, dr: -8, ds: 1 },
+          "0": { dx: 0, dy: 820, dr: 0, ds: 0.86 },
+        };
+        const card = (k) => L.cards.find((c) => c.k === k);
+        const id = (k) => "#lu" + (k + 3);
+
+        // the blog window leaves; the studio lights come up
+        master.to("#win", { scale: 0.7, y: 150, rotationX: 14, autoAlpha: 0, duration: 0.42, ease: "power2.in" }, 40.27);
+        master.to("#glowWrap", { x: 960, y: 640, opacity: 0.7, duration: 0.9, ease: "power2.inOut" }, 40.3);
+        master.fromTo(["#lu-cyc", "#lu-floor", "#lu-horizon"], { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "sine.out" }, 40.4);
+        master.fromTo(".lu-beam", { opacity: 0 }, { opacity: 0.4, duration: 1.2, ease: "sine.out" }, 40.5);
+        master.set("#lu-row", { scale: 1, y: 0 }, 0);
+
+        order.forEach((k, j) => {
+          const c = card(k), f = from[k], t = T0 + j * STEP;
+          master.set(id(k), { transformPerspective: 2200 }, 0);
+          master.fromTo(id(k),
+            { x: c.x + f.dx, y: f.dy, rotationY: c.r + f.dr, scale: c.s * f.ds },
+            { x: c.x, y: 0, rotationY: c.r, scale: c.s, duration: 1.35, ease: "expo.out" }, t);
+          // floor light in the window's own colour comes up as it lands
+          master.to("#lus" + (k + 3), { "--on": 1, duration: 0.7, ease: "sine.out" }, t + 0.45);
+          // the ambient glow takes each colour as it arrives, ending on Gruvbox orange
+          master.to("#root", { "--ga": c.acc, duration: 0.25, ease: "none" }, t + 0.2);
+        });
+
+        // studio light sweeps across the settled lineup, left to right
+        [-3, -2, -1, 0, 1, 2, 3].forEach((k, i) => {
+          master.fromTo(id(k) + " .lu-sheen", { xPercent: -160 }, { xPercent: 420, duration: 0.85, ease: "power2.inOut" }, 43.2 + i * 0.07);
+          master.fromTo(id(k) + " .lu-rim", { opacity: 0.55 }, { opacity: 1, duration: 0.3, yoyo: true, repeat: 1, ease: "sine.inOut" }, 43.3 + i * 0.07);
+        });
+
+        // headline, then the names (centre outward); slow push-in while it holds
+        master.fromTo("#lu-head .ln > span", { yPercent: 118 }, { yPercent: 0, duration: 0.9, ease: "power4.out" }, 43.5);
+        [0, -1, 1, -2, 2, -3, 3].forEach((k, i) => {
+          master.fromTo("#lul" + (k + 3), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, 43.85 + i * 0.06);
+        });
+        master.to("#lu-row", { scale: 1.045, y: -6, duration: 3.5, ease: "sine.inOut" }, 42.95);
+
+        // hand-off: names and headline out, the lineup parts, Gruvbox becomes the app window
+        master.to("#lu-head .ln > span", { yPercent: -118, duration: 0.36, ease: "power3.in" }, 46.3);
+        master.to(".lu-lab", { opacity: 0, y: -10, duration: 0.25, ease: "power2.in" }, 46.3);
+        master.to(".lu-spill", { "--on": 0, duration: 0.4 }, 46.35);
+        master.to([".lu-beam", "#lu-cyc", "#lu-floor", "#lu-horizon"], { opacity: 0, duration: 0.6, ease: "sine.in" }, 46.45);
+        [-1, 1, -2, 2, -3, 3].forEach((k) => {
+          const c = card(k), sgn = Math.sign(k);
+          master.to(id(k), { x: c.x + sgn * (620 + 160 * Math.abs(k)), y: 60, rotationY: c.r - sgn * 18, opacity: 0, duration: 0.6, ease: "power3.in" }, 46.4 + (Math.abs(k) - 1) * 0.07);
+        });
+        master.to("#lu-row", { scale: 1, y: 0, duration: 0.75, ease: "power3.inOut" }, 46.45);
+        // #win "left" pose: centre (960 + P.left.x, 540 + P.left.y), scale P.left.s, rotationY P.left.ry
+        const pl = P.left;
+        master.to(id(0), { x: pl.x, y: 540 + pl.y + (834 * pl.s) / 2 - FY, scale: pl.s, rotationY: pl.ry, duration: 0.75, ease: "power3.inOut" }, 46.45);
+        master.to(id(0) + " .lu-refl", { opacity: 0, duration: 0.3 }, 46.45);
+        master.to(id(0) + " .lu-win", { boxShadow: "0 0 0 2px rgba(254,128,25,0.3), 0 60px 140px rgba(0,0,0,0.62), 0 0 60px rgba(254,128,25,0.2)", duration: 0.75, ease: "power2.inOut" }, 46.45);
+        master.to("#glowWrap", { x: 960 + pl.x, y: 540 + pl.y, duration: 0.75, ease: "power3.inOut" }, 46.45);
+        // the real window takes over on the bar, under the card, then the card steps away
+        master.set("#win", { transformPerspective: 2200, x: pl.x, y: pl.y, scale: pl.s, rotationX: 0, rotationY: pl.ry, autoAlpha: 1 }, 47.18);
+        master.set(id(0), { autoAlpha: 0 }, 47.24);
+        sheen(36.4);
+      }
+
+      function build() {
+        const chars = buildHook();
+        buildHud();
+
+        // ── ambient: dot drift, audio-reactive glow, grain ──
+        tl.fromTo("#dots", { backgroundPosition: "0px 0px" }, { backgroundPosition: "0px -432px", duration: D.dur, ease: "none" }, 0);
+        tl.set("#glowWrap", { x: 960, y: 560, opacity: 0.35 }, 0);
+        const env = window.AUDIO_ENV || [];
+        for (let f = 0; f < env.length && f / 30 < D.dur; f++) {
+          master.set("#root", { "--e": env[f] / 99 }, f / 30);
+        }
+        let seed = 7;
+        const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        for (let f = 0; f / 30 < D.dur; f += 2) {
+          master.set("#grain", { x: Math.round(rnd() * 40 - 20), y: Math.round(rnd() * 40 - 20) }, f / 30);
+        }
+
+        // ── 1 · typed hook ──
+        const hook = $("#hook");
+        const caretAt = (i) => {
+          const s = chars[i];
+          return { x: s.offsetLeft + s.offsetWidth + 6, y: s.offsetTop + (s.offsetHeight - 132) / 2 + 6 };
+        };
+        const first = chars[0];
+        tl.set("#caret", { x: first.offsetLeft - 2, y: first.offsetTop + (first.offsetHeight - 132) / 2 + 6, opacity: 1 }, 0);
+        tl.set("#caret", { opacity: 0 }, 0.18);
+        tl.set("#caret", { opacity: 1 }, 0.3);
+        D.hook.times.forEach((t, i) => {
+          tl.set(chars[i], { opacity: 1 }, t);
+          tl.set("#caret", caretAt(i), t);
+        });
+        [2.55, 2.85, 3.15].forEach((t, i) => tl.set("#caret", { opacity: i % 2 ? 1 : 0 }, t));
+        tl.to("#glowWrap", { opacity: 0.6, duration: 2.4, ease: "sine.inOut" }, 0.4);
+        tl.to("#hook", { y: -46, opacity: 0, filter: "blur(10px)", duration: 0.34, ease: "power2.in" }, 3.05);
+        // "So stop clicking." slams in on the hit (impact + flash + shake at 3.45)
+        master.fromTo("#hook2", { opacity: 0, scale: 1.3, filter: "blur(16px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.38, ease: "expo.out" }, 3.42);
+        master.to("#hook2", { y: -40, opacity: 0, filter: "blur(10px)", duration: 0.36, ease: "power2.in" }, 5.3);
+
+        // ── 2 · reveal ──
+        tl.fromTo("#rv-icon", { scale: 0.4, opacity: 0, rotation: -14 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.75, ease: "back.out(1.8)" }, 3.56);
+        tl.fromTo("#rv-word", { clipPath: "inset(0% 100% 0% 0%)", x: -40 }, { clipPath: "inset(0% 0% 0% 0%)", x: 0, duration: 0.8, ease: "power4.out" }, 3.74);
+        master.fromTo("#rv-tag", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 6.08);
+        tl.to("#glowWrap", { y: 540, opacity: 0.85, duration: 1.2, ease: "power2.out" }, 3.56);
+        tl.to("#rv-inner", { y: -150, scale: 0.86, opacity: 0, duration: 0.5, ease: "power3.in" }, 5.18);
+
+        // ── window rises on the drop ── beat-locked: 5.742s (expo.out is ~95% landed by the cue)
+        tl.set("#win", { transformPerspective: 2200, x: 0, y: 1150, scale: 0.92, rotationX: 40, rotationY: 0, autoAlpha: 0 }, 0);
+        tl.set("#win", { autoAlpha: 1 }, 5.3);
+        tl.to("#win", { y: P.hero.y, scale: P.hero.s, rotationX: 0, duration: 1.0, ease: "expo.out" }, 5.3);
+        glowTo(960, 570, 5.3, 1.0, "expo.out");
+        tl.to("#glowWrap", { opacity: 1, duration: 0.6 }, 5.5);
+        sheen(5.62);
+        // hero → right; title enters left
+        tl.to("#win", { ...poseVars("right"), duration: 0.9, ease: "power3.inOut" }, 6.42);
+        glowTo(960 + P.right.x, 540 + P.right.y, 6.42, 0.9);
+        titleIn("t-editor", 6.86);
+        tl.fromTo("#bug", { opacity: 0, y: -12 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 6.9);
+        tl.fromTo("#progress", { scaleX: 0 }, { scaleX: 1, duration: T(49.384) - T(5.742), ease: "none" }, 5.742);
+        cam(6.55, 0.62, 0.42, 1.16, 1.5, "sine.inOut");
+        cam(D.ev.editorReadMode - 0.35, 0.5, 0.5, 1, 0.5);
+        titleOut("t-editor", 9.72);
+
+        // ── 4 · search ── (cut at the bar, mid-swing)
+        swing(10.108, "left");
+        camReset(10.108);
+        titleIn("t-search", 10.38);
+        cam(D.ev.paletteOpen + 0.18, 0.5, 0.27, 1.5, 0.55);
+        cam(D.ev.paletteEnter - 0.05, 0.5, 0.5, 1, 0.5);
+        titleOut("t-search", 14.1);
+
+        // ── 5 · tiling ──
+        swing(14.473, "right");
+        camReset(14.473);
+        titleIn("t-tiling", 14.75);
+        titleOut("t-tiling", 18.47);
+
+        // ── 6 · sliding ──
+        swing(18.838, "left");
+        camReset(18.838);
+        titleIn("t-sliding", 19.12);
+        titleOut("t-sliding", 22.84);
+
+        // ── 7 · whiteboard ──
+        swing(23.204, "right");
+        camReset(23.204);
+        titleIn("t-board", 23.48);
+        cam(D.ev.boardOpen + 0.45, 0.66, 0.5, 1.22, 1.6, "sine.inOut");
+        titleOut("t-board", 27.2);
+        tl.to("#win", { scale: 0.68, y: 110, rotationX: 16, autoAlpha: 0, duration: 0.46, ease: "power2.in" }, 27.38);
+        tl.to("#glowWrap", { x: 960, y: 520, duration: 0.9, ease: "power2.inOut" }, 27.4);
+
+        // ── 8 · "One more thing." (v2 time; the bed dips underneath) ──
+        master.fromTo("#omt-t", { opacity: 0, y: 24, filter: "blur(12px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.9, ease: "power3.out" }, 29.95);
+        master.to("#omt-t", { opacity: 0, y: -24, filter: "blur(10px)", duration: 0.32, ease: "power2.in" }, 31.12);
+        master.to("#glowWrap", { opacity: 0.45, duration: 0.8, ease: "sine.inOut" }, 29.8);
+
+        // ── Blog Reader, our first plugin ── beat-locked: 31.936s (track 32.74, strongest cue)
+        master.fromTo("#socket", { opacity: 0, x: 24 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, 31.3);
+        master.fromTo("#cable", { strokeDasharray: 320, strokeDashoffset: 320 }, { strokeDashoffset: 0, duration: 0.5, ease: "power2.inOut" }, 31.28);
+        master.fromTo("#plugBody", { x: -150, opacity: 0 }, { x: -40, opacity: 1, duration: 0.3, ease: "power2.out" }, 31.33);
+        master.to("#plugBody", { x: 0, duration: 0.12, ease: "power3.in" }, 31.64);
+        master.set("#spark", { opacity: 0 }, 0);
+        master.fromTo("#spark", { scale: 0.2, opacity: 1, transformOrigin: "50% 50%" }, { scale: 1.9, opacity: 0, duration: 0.45, ease: "power2.out", immediateRender: false }, 31.72);
+        master.to("#socketBox", { fill: "rgba(254,128,25,0.35)", duration: 0.2 }, 31.72);
+        master.fromTo("#bi-title", { opacity: 0, yPercent: 30, scale: 1.08, filter: "blur(14px)" }, { opacity: 1, yPercent: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" }, 31.936);
+        master.fromTo("#bi-sub", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" }, 32.42);
+        master.to("#glowWrap", { opacity: 1, duration: 0.3 }, 31.93);
+        master.to("#bi", { x: -140, opacity: 0, duration: 0.36, ease: "power2.in" }, 33.6);
+
+        // ── Blog Reader: window returns wide ── beat-locked: 29.74s
+        tl.set("#win", { x: 1500, y: P.wide.y, scale: P.wide.s, rotationX: 0, rotationY: -30, autoAlpha: 1 }, 29.56);
+        tl.to("#win", { x: P.wide.x, rotationY: P.wide.ry, duration: 0.7, ease: "expo.out" }, 29.6);
+        glowTo(960 + P.wide.x, 540 + P.wide.y, 29.6, 0.7, "expo.out");
+        sheen(29.66);
+        camReset(29.74);
+        titleIn("t-blog", 29.95);
+        tl.fromTo("#t-blog .sub .sl", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.1 }, 30.4);
+        cam(D.ev.blogPrompt + 0.12, 0.5, 0.15, 1.5, 0.5);
+        cam(D.ev.blogArticle - 0.15, 0.5, 0.5, 1, 0.5);
+        cam(D.ev.blogArticle + 0.55, 0.74, 0.58, 1.2, 1.9, "sine.inOut");
+        cam(D.ev.blogRead - 0.75, 0.5, 0.5, 1, 0.6);
+        // the note card appears when the article lands as a note
+        tl.fromTo("#blog-card", { opacity: 0, y: 30, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "back.out(1.6)" }, D.ev.blogArticle + 0.12);
+        // Unread → Read, in sync with the click in the footage
+        tl.to("#b-unread", { rotationX: 90, opacity: 0, duration: 0.14, ease: "power2.in" }, D.ev.blogRead);
+        tl.fromTo("#b-read", { rotationX: -90, opacity: 0 }, { rotationX: 0, opacity: 1, duration: 0.32, ease: "back.out(2.4)" }, D.ev.blogRead + 0.12);
+        tl.fromTo("#blog-card", { boxShadow: "0 0 0 2px rgba(184,187,38,0.0), 0 24px 60px rgba(0,0,0,0.45)" }, { boxShadow: "0 0 0 3px rgba(184,187,38,0.7), 0 24px 60px rgba(0,0,0,0.45)", duration: 0.3, immediateRender: false }, D.ev.blogRead + 0.12);
+        titleOut("t-blog", 35.92);
+        tl.to("#blog-card", { opacity: 0, y: -16, duration: 0.3, ease: "power2.in" }, 35.92);
+        tl.to("#t-blog .sub", { opacity: 0, duration: 0.25 }, 35.92);
+
+        // ── 8b · "Make it yours." lineup (v3 time) ──
+        buildLineup();
+
+        // ── 9 · themes ── beat-grid: theme switches land on consecutive beats (36.82 → 39.56)
+        camReset(36.288);
+        titleIn("t-themes", 36.55);
+        tl.fromTo("#t-themes .trow", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", stagger: 0.03 }, 36.5);
+        const TH = [["catppuccin", "#cba6f7"], ["everforest", "#a7c080"], ["nord", "#88c0d0"], ["solarized", "#268bd2"], ["apple", "#0a84ff"], ["gruvbox", "#fe8019"]];
+        TH.forEach(([id, c], i) => {
+          const t = D.ev.themes[i];
+          tl.to("#tr-" + id + " .nm", { color: "#fbf1c7", duration: 0.12 }, t);
+          tl.to("#tr-" + id + " .md", { color: "#ebdbb2", duration: 0.12 }, t);
+          tl.to("#tr-" + id + " .sw", { scale: 1.5, boxShadow: "0 0 0 3px rgba(0,0,0,0.3), 0 0 22px " + c, duration: 0.3, ease: "back.out(3)" }, t);
+          tl.to("#tr-" + id, { x: 16, duration: 0.3, ease: "power3.out" }, t);
+          tl.to("#root", { "--ga": c, duration: 0.22, ease: "none" }, t);
+          if (i > 0) {
+            const prev = "#tr-" + TH[i - 1][0];
+            tl.to(prev + " .nm", { color: "#a89984", duration: 0.2 }, t);
+            tl.to(prev + " .md", { color: "#a89984", duration: 0.2 }, t);
+            tl.to(prev + " .sw", { scale: 1, boxShadow: "0 0 0 3px rgba(0,0,0,0.3), 0 0 0px " + TH[i - 1][1], duration: 0.2 }, t);
+            tl.to(prev, { x: 0, duration: 0.25, ease: "power2.out" }, t);
+          }
+        });
+        titleOut("t-themes", 40.27);
+        tl.to("#t-themes .tlist", { opacity: 0, duration: 0.25 }, 40.27);
+        tl.to("#bug", { opacity: 0, duration: 0.3 }, 40.3);
+
+        // ── 10 · the frame tiles itself (dwindle) ──
+        tl.set("#wall", { opacity: 1 }, 40.6);
+        tl.set("#T1", { clipPath: "inset(58px 678px 92px 8px round 14px)" }, 0);
+        tl.set("#T2", { clipPath: "inset(0px 0px 0px 776px round 18px)" }, 0);
+        tl.set("#T3", { clipPath: "inset(413px 0px 0px 0px round 18px)" }, 0);
+        tl.set("#T1v", { scale: 1.375 }, 0);
+        tl.set("#T2i", { x: -240, y: -40 }, 0);
+        tl.to("#win", { autoAlpha: 0, duration: 0.12 }, 40.6);
+        tl.to("#T1", { clipPath: "inset(0px 0px 0px 0px round 18px)", duration: 0.5, ease: "power3.inOut" }, 40.66);
+        tl.fromTo("#T1ringA", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 40.7);
+        glowTo(960, 575, 40.6, 0.6);
+        titleIn("t-wall", 40.75);
+        // split right
+        tl.to("#T1", { clipPath: "inset(0px 800px 0px 0px round 18px)", duration: 0.48, ease: "power3.inOut" }, 41.2);
+        tl.to("#T1v", { scale: 1, duration: 0.48, ease: "power3.inOut" }, 41.2);
+        tl.to("#T2", { clipPath: "inset(0px 0px 0px 0px round 18px)", duration: 0.48, ease: "power3.inOut" }, 41.2);
+        tl.to("#T1ringA", { opacity: 0, duration: 0.15 }, 41.2);
+        tl.fromTo("#T2ring", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 41.32);
+        // split down
+        tl.to("#T2", { clipPath: "inset(0px 0px 437px 0px round 18px)", duration: 0.48, ease: "power3.inOut" }, 41.75);
+        tl.to("#T3", { clipPath: "inset(0px 0px 0px 0px round 18px)", duration: 0.48, ease: "power3.inOut" }, 41.75);
+        tl.to("#T2ring", { opacity: 0, duration: 0.15 }, 41.75);
+        tl.fromTo("#T3ring", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 41.87);
+        tl.fromTo("#phone", { y: 260, rotation: -2 }, { y: 0, rotation: -5, duration: 0.8, ease: "power3.out" }, 41.85);
+        tl.to("#T2i", { x: -460, y: -540, duration: 2.6, ease: "sine.inOut" }, 41.85);
+        // focus returns to the folders tile for the move
+        tl.to("#T3ring", { opacity: 0, duration: 0.15 }, D.ev.foldersEnter - 0.25);
+        tl.fromTo("#T1ringB", { opacity: 0 }, { opacity: 1, duration: 0.2 }, D.ev.foldersEnter - 0.2);
+        tl.to(["#T1", "#T2", "#T3"], { scale: 0.95, opacity: 0, duration: 0.32, ease: "power2.in", stagger: 0.06 }, 44.72);
+        tl.to("#wall-k", { opacity: 0, duration: 0.25 }, 44.72);
+
+        // ── 11 · never lose a keystroke ──
+        glowTo(700, 540, 44.9, 0.8);
+        tl.to("#bug", { opacity: 1, duration: 0.4 }, 45.3);
+        titleIn("s-rel", 45.2);
+        tl.fromTo("#rel-p", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 45.85);
+        tl.fromTo("#statusbar", { opacity: 0, x: 50 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, 45.35);
+        tl.fromTo("#st-edited", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.25 }, 45.55);
+        tl.to("#st-edited", { opacity: 0, y: -10, duration: 0.18 }, 46.1);
+        tl.fromTo("#st-saving", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.2 }, 46.12);
+        tl.fromTo("#spin", { rotation: 0 }, { rotation: 400, duration: 0.6, ease: "none" }, 46.1);
+        tl.to("#st-saving", { opacity: 0, y: -10, duration: 0.15 }, 46.58);
+        // beat: 46.644 Saved
+        tl.fromTo("#st-saved", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2.6)" }, 46.644);
+        // beat-grid: chips on 47.202, 47.736, 48.293 (each holds ≥ 0.8s)
+        [["#chip1", 47.202], ["#chip2", 47.736], ["#chip3", 48.293]].forEach(([s, t]) => {
+          tl.fromTo(s, { opacity: 0, y: 18, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.35, ease: "back.out(2)" }, t);
+        });
+        tl.to("#s-rel > div", { opacity: 0, y: -20, duration: 0.3, ease: "power2.in" }, 49.06);
+        tl.to("#bug", { opacity: 0, duration: 0.3 }, 49.0);
+        tl.to("#progress", { opacity: 0, duration: 0.3 }, 49.2);
+
+        // ── 12 · outro ── beat-locked: 49.384s
+        glowTo(960, 470, 49.2, 0.8);
+        tl.fromTo("#o-icon", { scale: 0.4, opacity: 0, rotation: -14 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.75, ease: "back.out(1.8)" }, 49.384);
+        tl.fromTo("#o-word", { clipPath: "inset(0% 100% 0% 0%)", x: -40 }, { clipPath: "inset(0% 0% 0% 0%)", x: 0, duration: 0.8, ease: "power4.out" }, 49.52);
+        tl.fromTo("#o-tag", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 50.12);
+        tl.fromTo("#o-cta", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 50.8);
+        tl.fromTo("#outro-inner", { scale: 1 }, { scale: 1.035, duration: 5.5, ease: "none" }, 49.5);
+
+        // ── keycap HUD ── presses synced to the key events logged during capture
+        D.hud.forEach((h, i) => {
+          const id = "#hud-" + i;
+          const firstP = h.presses[0], lastP = h.presses[h.presses.length - 1];
+          const next = D.hud[i + 1] ? D.hud[i + 1].presses[0] : 1e9;
+          const tOut = Math.min(lastP + 0.72, next - 0.2);
+          tl.fromTo(id, { opacity: 0, y: 26, scale: 0.8 }, { opacity: 1, y: 0, scale: 1, duration: 0.2, ease: "back.out(2)" }, firstP - 0.2);
+          h.presses.forEach((p) => {
+            tl.to(id + " .cap", { y: 8, duration: 0.05, ease: "power2.in" }, p - 0.03);
+            tl.to(id + " .cap", { y: 0, duration: 0.18, ease: "power2.out" }, p + 0.07);
+            tl.fromTo(id + " .flash", { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "power2.out", immediateRender: false }, p);
+          });
+          tl.to(id, { opacity: 0, y: -14, duration: 0.14, ease: "power2.in" }, tOut);
+        });
+
+        // ── hits: a warm flash and a short decaying shake on the six biggest impacts (v4 time) ──
+        const SHAKE = [[1, -0.6], [-0.8, 0.9], [0.6, -0.45], [-0.4, 0.5], [0.25, -0.3], [-0.15, 0.15], [0.05, -0.05], [0, 0]];
+        const shakeOn = { 0: ["#hook2Box", 10, true], 1: ["#rv-inner", 8, true], 2: ["#stage", 16, true], 3: ["#bi", 10, true], 4: ["#lu-row", 9, false], 5: ["#outro-inner", 10, true] };
+        D.hits.forEach((h, i) => {
+          master.fromTo("#flash", { opacity: 0 }, { opacity: i === 2 || i === 5 ? 0.95 : 0.7, duration: 0.04, ease: "none", immediateRender: false }, h - 0.01);
+          master.to("#flash", { opacity: 0, duration: 0.42, ease: "power2.out" }, h + 0.03);
+          const [sel, amp, withY] = shakeOn[i];
+          master.to(sel, { keyframes: SHAKE.map(([x, y]) => (withY ? { x: x * amp, y: y * amp, duration: 0.035 } : { x: x * amp, duration: 0.035 })), ease: "none" }, h);
+        });
+
+        window.__timelines["main"] = master;
+      }
+
+      Promise.all([
+        document.fonts.load('400 164px "Instrument Serif"'),
+        document.fonts.load('italic 400 164px "Instrument Serif"'),
+        document.fonts.load('400 32px "Instrument Sans"'),
+        document.fonts.load('700 32px "Instrument Sans"'),
+        document.fonts.load('700 38px "VMono"', "⌘⌃⌥⇧↩←\\"),
+        document.fonts.load('400 22px "VMono"', "ABC"),
+      ]).then(build, build);
+    </script>
+  </body>
+</html>

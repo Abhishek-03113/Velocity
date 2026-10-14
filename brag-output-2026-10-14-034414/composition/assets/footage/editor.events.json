@@ -1,0 +1,48 @@
+{
+  "duration": 6.797,
+  "clockSkew": 0.038,
+  "events": [
+    {
+      "t": 1.045,
+      "keys": [
+        "click"
+      ],
+      "label": "click-line"
+    },
+    {
+      "t": 1.101,
+      "keys": [
+        "type"
+      ],
+      "label": "type-start"
+    },
+    {
+      "t": 2.838,
+      "keys": [
+        "type"
+      ],
+      "label": "type-end"
+    },
+    {
+      "t": 3.896,
+      "keys": [
+        "click"
+      ],
+      "label": "tick"
+    },
+    {
+      "t": 4.506,
+      "keys": [
+        "⌘",
+        "E"
+      ]
+    },
+    {
+      "t": 6.226,
+      "keys": [
+        "⌘",
+        "E"
+      ]
+    }
+  ]
+}

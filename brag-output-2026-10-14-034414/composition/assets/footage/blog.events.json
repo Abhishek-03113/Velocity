@@ -1,0 +1,49 @@
+{
+  "duration": 7.835,
+  "clockSkew": 0.025,
+  "events": [
+    {
+      "t": 0.377,
+      "keys": [
+        "⌃",
+        "⌥",
+        "B"
+      ]
+    },
+    {
+      "t": 0.806,
+      "keys": [
+        "type"
+      ],
+      "label": "url-start"
+    },
+    {
+      "t": 2.113,
+      "keys": [
+        "type"
+      ],
+      "label": "url-end"
+    },
+    {
+      "t": 2.464,
+      "keys": [
+        "↩"
+      ],
+      "label": "enter"
+    },
+    {
+      "t": 2.859,
+      "keys": [
+        "article"
+      ],
+      "label": "article"
+    },
+    {
+      "t": 6.412,
+      "keys": [
+        "click"
+      ],
+      "label": "mark-read"
+    }
+  ]
+}

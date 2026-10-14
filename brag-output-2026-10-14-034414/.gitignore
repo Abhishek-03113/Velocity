@@ -1,0 +1,6 @@
+# HyperFrames local preview/render state
+.hyperframes/
+# render scratch directories
+work-*/
+.brag.hf-transaction-*/
+__pycache__/
