@@ -1,0 +1,48 @@
+{
+  "duration": 4.371,
+  "clockSkew": 0.021,
+  "events": [
+    {
+      "t": 0.523,
+      "keys": [
+        "theme"
+      ],
+      "label": "catppuccin"
+    },
+    {
+      "t": 1.074,
+      "keys": [
+        "theme"
+      ],
+      "label": "everforest"
+    },
+    {
+      "t": 1.626,
+      "keys": [
+        "theme"
+      ],
+      "label": "nord"
+    },
+    {
+      "t": 2.175,
+      "keys": [
+        "theme"
+      ],
+      "label": "solarized"
+    },
+    {
+      "t": 2.725,
+      "keys": [
+        "theme"
+      ],
+      "label": "apple"
+    },
+    {
+      "t": 3.274,
+      "keys": [
+        "theme"
+      ],
+      "label": "gruvbox"
+    }
+  ]
+}

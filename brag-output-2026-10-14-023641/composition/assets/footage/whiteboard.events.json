@@ -1,0 +1,42 @@
+{
+  "duration": 7.451,
+  "clockSkew": 0.05,
+  "events": [
+    {
+      "t": 0.351,
+      "keys": [
+        "⌘",
+        "⇧",
+        "D"
+      ]
+    },
+    {
+      "t": 1.394,
+      "keys": [
+        "draw"
+      ],
+      "label": "rect"
+    },
+    {
+      "t": 2.632,
+      "keys": [
+        "draw"
+      ],
+      "label": "ellipse"
+    },
+    {
+      "t": 4.108,
+      "keys": [
+        "draw"
+      ],
+      "label": "arrow"
+    },
+    {
+      "t": 5.492,
+      "keys": [
+        "draw"
+      ],
+      "label": "pen"
+    }
+  ]
+}
