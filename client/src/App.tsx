@@ -6,6 +6,7 @@ import TabBar from './components/chrome/TabBar'
 import Toolbar from './components/chrome/Toolbar'
 import Alert from './components/overlays/Alert'
 import CommandPalette from './components/overlays/CommandPalette'
+import PluginPanel from './components/overlays/PluginPanel'
 import Sidebar from './components/sidebar/Sidebar'
 import Workspace from './components/workspace/Workspace'
 import { startPlugins } from './plugins/host'
@@ -42,11 +43,12 @@ function LaunchState() {
 
 export default function App() {
   const loaded = useEditorStore((s) => s.loaded)
-  const { paletteOpen, settingsOpen, shortcutsOpen } = useUiStore(
+  const { paletteOpen, settingsOpen, shortcutsOpen, pluginPanelOpen } = useUiStore(
     useShallow((s) => ({
       paletteOpen: s.paletteOpen,
       settingsOpen: s.settingsOpen,
       shortcutsOpen: s.shortcutsOpen,
+      pluginPanelOpen: s.pluginPanel !== null,
     })),
   )
 
@@ -80,6 +82,7 @@ export default function App() {
         <StatusBar />
       </main>
       <Suspense fallback={null}>
+        {pluginPanelOpen && <PluginPanel />}
         {paletteOpen && <CommandPalette />}
         {settingsOpen && <SettingsSheet />}
         {shortcutsOpen && <ShortcutsSheet />}

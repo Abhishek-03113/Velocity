@@ -795,3 +795,67 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ====================================================================== */
+/* Palette pick mode (plugin lists, e.g. herdr agents)                    */
+/* ====================================================================== */
+.pickItem {
+  width: 100%;
+  text-align: left;
+}
+
+.paletteItemDisabled {
+  color: var(--label-secondary);
+}
+
+.paletteItemDisabled .paletteTitle {
+  color: var(--label-secondary);
+}
+
+.pickBadge {
+  flex-shrink: 0;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--badge-color) 16%, transparent);
+  color: color-mix(in srgb, var(--badge-color) 78%, var(--label));
+  font-size: var(--text-caption);
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.paletteItemActive .pickBadge {
+  background: rgba(255, 255, 255, 0.24);
+  color: inherit;
+}
+
+/* ====================================================================== */
+/* Plugin panel: a large plugin-rendered surface over the workspace       */
+/* ====================================================================== */
+.pluginPanel {
+  display: flex;
+  width: min(1280px, calc(100vw - 32px));
+  height: min(860px, calc(100vh - 48px));
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius-sheet);
+  background: var(--bg-content);
+  box-shadow: var(--shadow-lg);
+  animation: pop var(--dur-base) var(--ease-spring);
+}
+
+.pluginPanel:focus {
+  outline: none;
+}
+
+.pluginPanelBody {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.backdropPanel {
+  align-items: center;
+  padding: 24px 16px;
+}

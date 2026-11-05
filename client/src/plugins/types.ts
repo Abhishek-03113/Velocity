@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { IconName } from '../components/Icon'
 
 export interface PluginManifest {
@@ -9,7 +10,7 @@ export interface PluginManifest {
 }
 
 export type PluginSetting =
-  | { key: string; type: 'text'; label: string; hint?: string; default: string; placeholder?: string }
+  | { key: string; type: 'text'; label: string; hint?: string; default: string; placeholder?: string; secret?: boolean }
   | { key: string; type: 'toggle'; label: string; hint?: string; default: boolean }
   | {
       key: string
@@ -62,6 +63,48 @@ export interface NoteBadge {
   onClick?: () => void
 }
 
+/** One row of a palette pick list. */
+export interface PickItem {
+  id: string
+  title: string
+  detail?: string
+  icon?: IconName
+  section?: string
+  badge?: { label: string; tone: BadgeTone }
+  /** Shown but not choosable; `hint` says why. */
+  disabled?: boolean
+  hint?: string
+}
+
+/** A palette-style list the user filters and picks one item from. */
+export interface PickSpec {
+  title: string
+  placeholder: string
+  icon?: IconName
+  items: PickItem[]
+  /** Shown when there are no items at all (e.g. "herdr isn't running"). */
+  emptyText?: string
+  footerHint?: string
+  onPick: (id: string) => void
+}
+
+/** A large plugin-rendered panel over the workspace (e.g. a board). */
+export interface PanelSpec {
+  title: string
+  render: () => ReactNode
+  onClose?: () => void
+}
+
+export interface RequestOptions {
+  headers?: Record<string, string>
+}
+
+export interface StreamHandlers {
+  onEvent: (event: string, data: string) => void
+  onOpen?: () => void
+  onError?: (error: Error) => void
+}
+
 export interface PluginContext {
   id: string
   setting<T extends string | boolean>(key: string): T
@@ -72,13 +115,35 @@ export interface PluginContext {
   /** Longer-lived status-bar activity text; pass null to clear. */
   activity(message: string | null): void
   prompt(spec: PromptSpec): void
-  /** GET `/api/plugins/<id>${path}`; unwraps the envelope and throws Error(error). */
-  api: { get<T>(path: string): Promise<T> }
+  /** `/api/plugins/<id>${path}`; unwraps the envelope and throws Error(error) (with `.status`). */
+  api: {
+    get<T>(path: string, opts?: RequestOptions): Promise<T>
+    post<T>(path: string, body?: unknown, opts?: RequestOptions): Promise<T>
+    /** Server-sent events read over fetch (so headers can carry a token). Reconnects with back-off; returns a stop function. */
+    stream(path: string, handlers: StreamHandlers, opts?: RequestOptions): () => void
+  }
+  /** Palette list mode: filter and pick one item. */
+  pick(spec: PickSpec): void
+  /** A large panel over the workspace; one at a time. */
+  panel: { open(spec: PanelSpec): void; close(): void; isOpen(): boolean }
   notes: {
     create(input: { title: string; content: string; folder?: string; split?: boolean; mode?: 'read' | 'edit' }): number
     open(id: number, opts?: { split?: boolean; mode?: 'read' | 'edit' }): void
     exists(id: number): boolean
     current(): number | null
+    title(id: number): string
+    /** The note's Markdown, loading it first if needed. */
+    content(id: number): Promise<string>
+    /** Append Markdown at the end of the note (saved through the normal sync engine). */
+    append(id: number, markdown: string): Promise<void>
+    /** The current editor selection in that note, or ''. */
+    selection(id: number): string
+  }
+  /** The note's whiteboard, if it has one. */
+  boards: {
+    has(id: number): boolean
+    /** Render the whiteboard to a PNG data URL (null when empty or unavailable). */
+    exportPng(id: number): Promise<string | null>
   }
   /** Existing (case-insensitive) or newly created folder id. */
   folders: { ensure(name: string): number }
