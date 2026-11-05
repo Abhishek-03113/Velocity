@@ -44,12 +44,18 @@ describe('plugin host', () => {
     expect(urlHandlerFor('ftp://example.com/post')).toBeNull()
 
     usePluginStore.getState().setEnabled('blog-reader', false)
-    expect(pluginCommands()).toHaveLength(0)
+    expect(pluginCommands().filter((c) => c.id.startsWith('plugin.blog-reader.'))).toHaveLength(0)
     expect(matchCommand(key(combo))).toBeNull()
     expect(urlHandlerFor('https://example.com/post')).toBeNull()
 
     usePluginStore.getState().setEnabled('blog-reader', true)
     expect(matchCommand(key(combo))?.id).toBe('plugin.blog-reader.open')
+  })
+
+  it('herdr shortcuts are not shadowed by built-in keys', () => {
+    expect(matchCommand(key({ code: 'KeyG', ctrlKey: true, altKey: true }))?.id).toBe('plugin.herdr.share')
+    expect(matchCommand(key({ code: 'KeyG', ctrlKey: true, altKey: true, shiftKey: true }))?.id).toBe('plugin.herdr.share-other')
+    expect(matchCommand(key({ code: 'KeyA', ctrlKey: true, altKey: true }))?.id).toBe('plugin.herdr.board')
   })
 
   it('keeps built-in key bindings ahead of plugin keys', () => {

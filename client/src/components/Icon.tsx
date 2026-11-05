@@ -56,6 +56,12 @@ const PATHS = {
       <path d="M12 6.5v13" />
     </>
   ),
+  terminal: (
+    <>
+      <rect x="3" y="4.5" width="18" height="15" rx="3" />
+      <path d="m7.5 9.5 3 2.5-3 2.5M12.5 15h4" />
+    </>
+  ),
   pencil: (
     <path d="M16.3 4.7a2 2 0 0 1 2.9 2.9L8.5 18.3 4.5 19.5l1.2-4Z" />
   ),

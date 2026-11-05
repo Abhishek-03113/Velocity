@@ -31,9 +31,9 @@ export interface FakeHerdr {
   close(): Promise<void>
 }
 
-export async function startFakeHerdr(): Promise<FakeHerdr> {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-herdr-'))
-  const socketPath = path.join(dir, 'herdr.sock')
+export async function startFakeHerdr(opts: { socketPath?: string } = {}): Promise<FakeHerdr> {
+  const socketPath = opts.socketPath ?? path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'fake-herdr-')), 'herdr.sock')
+  fs.rmSync(socketPath, { force: true })
   const waiters: Array<{ agent: FakeAgent; until: string[]; resolve: () => void }> = []
 
   const fake: FakeHerdr = {

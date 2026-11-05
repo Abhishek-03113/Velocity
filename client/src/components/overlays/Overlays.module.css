@@ -804,6 +804,11 @@
   text-align: left;
 }
 
+.pickItem .paletteTitle,
+.pickItem .paletteDetail {
+  display: block;
+}
+
 .paletteItemDisabled {
   color: var(--label-secondary);
 }

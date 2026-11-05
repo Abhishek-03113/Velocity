@@ -53,6 +53,7 @@ export class HerdrService {
   private agents: AgentInfo[] = []
   private agentsKey = ''
   private connected: boolean | null = null
+  private lastError = 'herdr isn’t reachable'
   private pollTimer: NodeJS.Timeout | null = null
   private running = new Set<number>()
   private recovered = false
@@ -93,6 +94,11 @@ export class HerdrService {
   // ---- events -----------------------------------------------------------
   subscribe(fn: (e: HerdrEvent) => void): () => void {
     this.listeners.add(fn)
+    // A new subscriber gets the current state; later events are changes.
+    if (this.connected !== null) {
+      fn(this.connected ? { type: 'connection', ok: true } : { type: 'connection', ok: false, error: this.lastError })
+      if (this.connected) fn({ type: 'agents', agents: this.agents.map(view) })
+    }
     this.ensurePolling()
     return () => {
       this.listeners.delete(fn)
@@ -138,9 +144,10 @@ export class HerdrService {
           this.recover()
         }
       } catch (err) {
+        this.lastError = err instanceof Error ? err.message : String(err)
         if (this.connected !== false) {
           this.connected = false
-          this.emit({ type: 'connection', ok: false, error: err instanceof Error ? err.message : String(err) })
+          this.emit({ type: 'connection', ok: false, error: this.lastError })
         }
       }
       this.pollTimer = setTimeout(tick, POLL_MS)
