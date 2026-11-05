@@ -51,7 +51,10 @@ const fetchUrl = (u: string) => get(`/api/plugins/blog-reader/fetch?url=${encode
 test('GET /api/plugins lists blog-reader', async () => {
   const r = await get('/api/plugins')
   assert.equal(r.status, 200)
-  assert.deepEqual(r.json.data, [{ id: 'blog-reader', name: 'Blog Reader' }])
+  assert.deepEqual(r.json.data, [
+    { id: 'blog-reader', name: 'Blog Reader' },
+    { id: 'herdr', name: 'Herdr' },
+  ])
 })
 
 test('fetch returns html in the envelope', async () => {
