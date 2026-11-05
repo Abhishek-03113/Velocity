@@ -1,0 +1,158 @@
+/*
+ * Typography of the LaTeX live preview. Plain CSS scoped to .ltx-page (not a CSS Module):
+ * the renderer emits fixed ltx-* class names, and the same sheet is used verbatim in the
+ * print window for PDF export without a TeX engine. Tokens only; paper.ts pins them for print.
+ */
+.ltx-page {
+  max-width: 44em;
+  margin: 0 auto;
+  padding: 28px 32px 30vh;
+  color: var(--label);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.55;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.ltx-page > :first-child { margin-top: 0; }
+.ltx-page p { margin: 0 0 0.75em; text-align: justify; }
+.ltx-page a { color: var(--accent); text-decoration: none; }
+.ltx-page a:hover { text-decoration: underline; }
+
+.ltx-page h1, .ltx-page h2, .ltx-page h3, .ltx-page h4, .ltx-page h5, .ltx-page h6 {
+  margin: 1.5em 0 0.5em;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.ltx-page h1 { font-size: 1.7em; }
+.ltx-page h2 { font-size: 1.35em; }
+.ltx-page h3 { font-size: 1.15em; }
+.ltx-page h4 { font-size: 1em; }
+.ltx-page h5, .ltx-page h6 { display: inline; margin: 0 0.6em 0 0; font-size: 1em; }
+.ltx-page .ltx-secnum { margin-right: 0.6em; }
+.ltx-page .ltx-chapter { font-size: 1.9em; margin-top: 1.2em; }
+.ltx-page .ltx-chapter .ltx-secnum { font-size: 0.7em; }
+.ltx-page .ltx-part { text-align: center; font-size: 2em; margin: 2em 0; }
+
+.ltx-page .ltx-titleblock { margin: 0.5em 0 2em; text-align: center; }
+.ltx-page .ltx-title { margin: 0 0 0.6em; font-size: 1.8em; font-weight: 400; }
+.ltx-page .ltx-authors { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4em 2.5em; font-size: 1.1em; }
+.ltx-page .ltx-date { margin-top: 0.5em; font-size: 1.05em; }
+
+.ltx-page .ltx-abstract { margin: 1.5em 3em; font-size: 0.92em; }
+.ltx-page .ltx-abstract-title { margin-bottom: 0.4em; text-align: center; font-weight: 700; }
+
+.ltx-page ul, .ltx-page ol { margin: 0 0 0.75em; padding-left: 1.8em; }
+.ltx-page li > p { margin-bottom: 0.25em; }
+.ltx-page li.ltx-custom { list-style: none; position: relative; }
+.ltx-page .ltx-item-label { position: absolute; right: calc(100% + 0.5em); white-space: nowrap; }
+.ltx-page ol[type='a'] > li::marker { content: '(' counter(list-item, lower-alpha) ') '; }
+.ltx-page .ltx-description dt { float: left; margin-right: 0.5em; font-weight: 700; }
+.ltx-page .ltx-description dd { margin: 0 0 0.4em 1.5em; }
+
+.ltx-page blockquote { margin: 0 0 0.75em; padding: 0 2.5em; }
+.ltx-page .ltx-center { text-align: center; }
+.ltx-page .ltx-center p { text-align: center; }
+.ltx-page .ltx-flushright, .ltx-page .ltx-flushright p { text-align: right; }
+.ltx-page .ltx-flushleft p { text-align: left; }
+.ltx-page .ltx-minipage { display: inline-block; vertical-align: top; max-width: 100%; }
+
+.ltx-page .ltx-display { margin: 0.6em 0 0.9em; overflow-x: auto; overflow-y: hidden; }
+.ltx-page .katex-display { margin: 0; }
+.ltx-page .katex { font-size: 1.08em; }
+.ltx-page .ltx-math-error { color: var(--system-red); font-family: var(--font-mono); }
+
+.ltx-page figure { margin: 1.2em 0; text-align: center; }
+.ltx-page .ltx-caption { margin-top: 0.5em; font-size: 0.95em; text-align: center; }
+.ltx-page .ltx-caption-label { font-weight: 700; }
+.ltx-page .ltx-img { max-width: 100%; height: auto; }
+.ltx-page .ltx-imgph {
+  display: inline-flex;
+  min-width: 8em;
+  min-height: 4em;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6em 1em;
+  border: 1px dashed var(--separator);
+  border-radius: 6px;
+  color: var(--label-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+}
+
+.ltx-page .ltx-tablewrap { max-width: 100%; overflow-x: auto; }
+.ltx-page .ltx-tabular { margin: 0.4em auto; border-collapse: collapse; }
+.ltx-page .ltx-tabular td { padding: 0.25em 0.75em; vertical-align: top; }
+.ltx-page .ltx-tabular tr.ltx-rule td { border-top: 1px solid var(--label); }
+.ltx-page .ltx-tabular tr:last-child td { border-bottom: 1px solid var(--label); }
+.ltx-page figure .ltx-tabular { margin: 0 auto; }
+
+.ltx-page .ltx-theorem { margin: 0.9em 0; font-style: italic; }
+.ltx-page .ltx-theorem > p:first-of-type { display: inline; }
+.ltx-page .ltx-thm-title { font-style: normal; font-weight: 700; }
+.ltx-page .ltx-thm-definition, .ltx-page .ltx-thm-remark, .ltx-page .ltx-thm-example { font-style: normal; }
+.ltx-page .ltx-proof { margin: 0.6em 0 0.9em; }
+.ltx-page .ltx-qed { float: right; }
+
+.ltx-page pre.ltx-verbatim {
+  margin: 0 0 0.9em;
+  padding: 0.7em 0.9em;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--bg-code);
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  line-height: 1.45;
+  white-space: pre;
+}
+.ltx-page code, .ltx-page .ltx-tt { font-family: var(--font-mono); font-size: 0.88em; }
+.ltx-page .ltx-sc { font-variant: small-caps; }
+.ltx-page .ltx-sf { font-family: var(--font-system); }
+.ltx-page .ltx-rm { font-family: var(--font-serif); font-style: normal; font-weight: 400; }
+.ltx-page .ltx-nowrap { white-space: nowrap; }
+.ltx-page .ltx-fbox { padding: 0 0.25em; border: 1px solid var(--label); }
+.ltx-page .ltx-logo sup, .ltx-page .ltx-logo sub { font-size: 0.75em; }
+.ltx-page .ltx-logo sup { margin-left: -0.35em; margin-right: -0.15em; vertical-align: 0.2em; }
+.ltx-page .ltx-logo sub { margin-left: -0.1em; margin-right: -0.12em; vertical-align: -0.45em; }
+
+.ltx-page .ltx-size-tiny { font-size: 0.5em; }
+.ltx-page .ltx-size-scriptsize { font-size: 0.7em; }
+.ltx-page .ltx-size-footnotesize { font-size: 0.8em; }
+.ltx-page .ltx-size-small { font-size: 0.9em; }
+.ltx-page .ltx-size-large { font-size: 1.2em; }
+.ltx-page .ltx-size-Large { font-size: 1.44em; }
+.ltx-page .ltx-size-LARGE { font-size: 1.73em; }
+.ltx-page .ltx-size-huge { font-size: 2.07em; }
+.ltx-page .ltx-size-Huge { font-size: 2.49em; }
+
+.ltx-page .ltx-toc { margin: 1em 0 2em; }
+.ltx-page .ltx-toc h2 { margin-top: 0; }
+.ltx-page .ltx-toc ul { padding: 0; list-style: none; }
+.ltx-page .ltx-toc-2 { padding-left: 1.5em; }
+.ltx-page .ltx-toc-3 { padding-left: 3em; }
+.ltx-page .ltx-toc a { color: inherit; }
+
+.ltx-page .ltx-fnmark { font-size: 0.7em; }
+.ltx-page .ltx-footnotes { margin-top: 2.5em; padding-top: 0.6em; border-top: 1px solid var(--separator); font-size: 0.85em; }
+.ltx-page .ltx-footnotes ol { padding-left: 1.4em; }
+.ltx-page .ltx-backref { margin-left: 0.3em; }
+.ltx-page .ltx-bibliography { margin-top: 2em; font-size: 0.95em; }
+.ltx-page .ltx-bibliography ol { padding-left: 2.2em; }
+.ltx-page .ltx-bibliography li::marker { content: '[' counter(list-item) ']  '; }
+
+.ltx-page .ltx-pagebreak { margin: 2.5em 0; border: 0; border-top: 1px dashed var(--separator); }
+.ltx-page .ltx-env { margin: 0 0 0.75em; }
+.ltx-page .ltx-unknown, .ltx-page .ltx-muted { color: var(--label-tertiary); font-family: var(--font-mono); font-size: 0.85em; }
+.ltx-page .ltx-missing { color: var(--system-red); }
+.ltx-page .ltx-multicols p { text-align: left; }
+
+@media (max-width: 600px) {
+  .ltx-page { padding: 20px 16px 30vh; font-size: 16px; }
+  .ltx-page .ltx-abstract { margin: 1.2em 0.5em; }
+}
+
+@media print {
+  .ltx-page .ltx-pagebreak { break-after: page; border: 0; margin: 0; }
+  .ltx-page a { color: inherit; }
+}
