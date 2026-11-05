@@ -2,9 +2,10 @@ import type { Hono } from 'hono'
 import type { ServerPlugin } from './types.ts'
 import { blogReaderPlugin } from './blogReader.ts'
 import { herdrPlugin } from './herdr/index.ts'
+import { latexPlugin } from './latex/index.ts'
 
 /** The single additive list of server plugins. */
-export const SERVER_PLUGINS: ServerPlugin[] = [blogReaderPlugin, herdrPlugin]
+export const SERVER_PLUGINS: ServerPlugin[] = [blogReaderPlugin, herdrPlugin, latexPlugin]
 
 let migrated = false
 
