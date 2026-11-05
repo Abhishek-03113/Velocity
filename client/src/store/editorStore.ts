@@ -355,6 +355,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     void migrateLocalBoards(list)
 
     if (list.length === 0) {
+      // Nothing to restore, but this session's layout should still be saved.
+      markLayoutRestored()
       set({ loaded: true })
       const id = get().addPaste(null, { focus: false })
       get().setContent(welcomeNote(), id)

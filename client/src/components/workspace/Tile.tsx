@@ -3,11 +3,12 @@ import { primaryKey } from '../../lib/commands'
 import { displayTitle } from '../../lib/noteMeta'
 import type { LeafNode } from '../../lib/tiling'
 import { closeTile, focusTile, toggleReadMode } from '../../lib/workspace'
+import { pluginName, pluginTileView, usePluginsVersion } from '../../plugins/host'
 import { useEditorStore } from '../../store/editorStore'
 import { useLayoutStore } from '../../store/layoutStore'
 import { useUiStore } from '../../store/uiStore'
 import Editor from '../Editor'
-import { Icon } from '../Icon'
+import { Icon, type IconName } from '../Icon'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import { EmptyTile } from './EmptyTile'
 import styles from './Workspace.module.css'
@@ -26,7 +27,7 @@ interface TileProps {
   dropZone: DropZone | null
 }
 
-function TileTitle({ noteId, board }: { noteId: number; board: boolean }) {
+function TileTitle({ noteId, suffix, icon = 'doc.text' }: { noteId: number; suffix?: string; icon?: IconName }) {
   const title = useEditorStore((s) => {
     const p = s.pastes.find((x) => x.id === noteId)
     return p ? displayTitle(p) : 'Note'
@@ -34,14 +35,48 @@ function TileTitle({ noteId, board }: { noteId: number; board: boolean }) {
   const dirty = useEditorStore((s) => s.pastes.find((x) => x.id === noteId)?.dirty ?? false)
   return (
     <span className={styles.tileTitle}>
-      <Icon name={board ? 'scribble' : 'doc.text'} size={14} className={styles.tileTitleIcon} />
+      <Icon name={icon} size={14} className={styles.tileTitleIcon} />
       <span className={styles.tileTitleText}>
         {title}
-        {board && <span className={styles.tileTitleSuffix}> — Whiteboard</span>}
+        {suffix && <span className={styles.tileTitleSuffix}> — {suffix}</span>}
       </span>
-      {dirty && !board && <span className={styles.tileDirty} title="Saving…" />}
+      {dirty && !suffix && <span className={styles.tileDirty} title="Saving…" />}
     </span>
   )
+}
+
+/** Header title of a plugin tile: the note title plus the view's name. */
+function PluginTileTitle({ noteId, pluginId, view }: { noteId: number; pluginId: string; view: string }) {
+  usePluginsVersion((s) => s.version)
+  const spec = pluginTileView(pluginId, view)
+  return <TileTitle noteId={noteId} suffix={spec?.title ?? pluginName(pluginId)} icon={spec?.icon ?? 'doc.plaintext'} />
+}
+
+function PluginTileBody({ noteId, pluginId, view }: { noteId: number; pluginId: string; view: string }) {
+  // Re-resolve when plugins are switched on or off.
+  usePluginsVersion((s) => s.version)
+  const spec = pluginTileView(pluginId, view)
+  if (!spec) {
+    return (
+      <div className={styles.boardLoading}>
+        {pluginName(pluginId)} is switched off. Turn it on in Settings → Plugins, or close this tile.
+      </div>
+    )
+  }
+  return <>{spec.render(noteId)}</>
+}
+
+function tileLabel(kind: LeafNode['content']['kind']): string {
+  switch (kind) {
+    case 'board':
+      return 'Whiteboard tile'
+    case 'note':
+      return 'Note tile'
+    case 'plugin':
+      return 'Plugin tile'
+    default:
+      return 'Empty tile'
+  }
 }
 
 function NoteBody({ noteId, mode }: { noteId: number; mode: 'edit' | 'read' }) {
@@ -86,7 +121,7 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
       className={`${styles.tile} ${focused ? styles.tileFocused : ''} ${tiled ? styles.tileCard : ''}`}
       data-tile-id={leaf.id}
       data-tile-kind={content.kind}
-      aria-label={content.kind === 'board' ? 'Whiteboard tile' : content.kind === 'note' ? 'Note tile' : 'Empty tile'}
+      aria-label={tileLabel(content.kind)}
       onPointerDownCapture={() => {
         if (!focused) focusTile(leaf.id)
       }}
@@ -101,8 +136,12 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
               <Icon name="plus.circle" size={14} className={styles.tileTitleIcon} />
               <span className={styles.tileTitleText}>Open a Note</span>
             </span>
+          ) : content.kind === 'plugin' ? (
+            <PluginTileTitle noteId={content.noteId} pluginId={content.pluginId} view={content.view} />
+          ) : content.kind === 'board' ? (
+            <TileTitle noteId={content.noteId} suffix="Whiteboard" icon="scribble" />
           ) : (
-            <TileTitle noteId={content.noteId} board={content.kind === 'board'} />
+            <TileTitle noteId={content.noteId} />
           )}
           <div className={styles.tileActions}>
             {content.kind === 'note' && (
@@ -140,6 +179,9 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
           <Suspense fallback={<div className={styles.boardLoading}>Loading whiteboard…</div>}>
             <Whiteboard noteId={content.noteId} />
           </Suspense>
+        )}
+        {content.kind === 'plugin' && (
+          <PluginTileBody noteId={content.noteId} pluginId={content.pluginId} view={content.view} />
         )}
         {content.kind === 'empty' && <EmptyTile tileId={leaf.id} focused={focused} />}
       </div>

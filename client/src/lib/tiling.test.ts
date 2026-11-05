@@ -10,10 +10,12 @@ import {
   remapNote,
   removeLeaf,
   rotateParent,
+  pluginLeafFor,
   sanitize,
   setRatio,
   splitLeaf,
   swapContents,
+  tileKey,
   type LayoutNode,
 } from './tiling'
 
@@ -131,5 +133,31 @@ describe('persistence validation', () => {
     expect(isLayoutNode({ type: 'leaf', id: 'x', content: { kind: 'note', noteId: '1' } })).toBe(false)
     expect(isLayoutNode(null)).toBe(false)
     expect(isLayoutNode({ type: 'split', id: 's', dir: 'diagonal', ratio: 0.5 })).toBe(false)
+  })
+
+  it('accepts plugin tiles only with a plugin id, view and note id', () => {
+    const plugin = { kind: 'plugin', pluginId: 'latex', view: 'preview', noteId: 4 }
+    expect(isLayoutNode({ type: 'leaf', id: 'p', content: plugin })).toBe(true)
+    expect(isLayoutNode({ type: 'leaf', id: 'p', content: { ...plugin, view: undefined } })).toBe(false)
+    expect(isLayoutNode({ type: 'leaf', id: 'p', content: { ...plugin, noteId: '4' } })).toBe(false)
+  })
+})
+
+describe('plugin tiles', () => {
+  const preview = (noteId: number) => ({ kind: 'plugin' as const, pluginId: 'latex', view: 'preview', noteId })
+
+  it('belong to their note: found by plugin, view and note; dropped and remapped with it', () => {
+    let root: LayoutNode = leaf(note(1), 'a')
+    root = splitLeaf(root, 'a', 'row', leaf(preview(1), 'p'))
+    expect(pluginLeafFor(root, 'latex', 'preview', 1)?.id).toBe('p')
+    expect(pluginLeafFor(root, 'latex', 'other', 1)).toBeNull()
+    expect(pluginLeafFor(root, 'herdr', 'preview', 1)).toBeNull()
+    expect(pluginLeafFor(remapNote(root, 1, 9), 'latex', 'preview', 9)?.id).toBe('p')
+    expect(leaves(sanitize(root, (id) => id !== 1))).toHaveLength(1)
+  })
+
+  it('tileKey tells plugin views apart from the note and board of the same note', () => {
+    expect(new Set([tileKey(note(1)), tileKey({ kind: 'board', noteId: 1 }), tileKey(preview(1)), tileKey(preview(2))]).size).toBe(4)
+    expect(tileKey(preview(1))).toBe(tileKey(preview(1)))
   })
 })
