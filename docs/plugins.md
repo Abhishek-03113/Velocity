@@ -70,10 +70,17 @@ the settings rows. Built-in shortcuts always win over plugin shortcuts.
 | `storage.get/set` | Per-plugin JSON bag in `localStorage` (`velocity.plugin.<id>.v1`) |
 | `flash(msg)` / `activity(msg \| null)` | Status-bar message (brief) / long-running status. There are no toasts |
 | `prompt(spec)` | Spotlight-style text input. `↩` submits and `⌘↩` submits with `split: true` |
-| `api.get(path)` | `GET /api/plugins/<id><path>`, unwraps the `{ success, data, error }` envelope |
+| `pick(spec)` | Palette list mode: the user filters and picks one item. Items can have sections, a badge, and be disabled with a hint |
+| `panel.open / close / isOpen` | A large plugin-rendered panel over the workspace (one at a time; Escape closes it) |
+| `api.get(path)` / `api.post(path, body)` | `/api/plugins/<id><path>`, unwraps the `{ success, data, error }` envelope; both take `{ headers }` (errors keep their HTTP `status`) |
+| `api.stream(path, handlers, opts)` | Server-sent events read over `fetch`, so a token header can be sent; reconnects with back-off; returns a stop function |
 | `notes.create / open / exists / current` | Create a note (in a folder, optionally in a new tile and in Read mode), open one, and so on |
+| `notes.title / content / append / selection` | A note's title, its Markdown (loaded if needed), append Markdown, the editor selection |
+| `boards.has / exportPng` | Whether the note has a whiteboard; render it to a PNG data URL with Excalidraw |
 | `folders.ensure(name)` | Existing folder (case-insensitive) or a new one |
 | `refreshBadges()` | Re-read this plugin's note badges after their state changes |
+
+A `text` setting with `secret: true` is masked in Settings.
 
 ### Note badges
 
@@ -97,6 +104,8 @@ export const helloPlugin: ServerPlugin = { id: 'hello', name: 'Hello', router }
 ```
 
 Add it to `SERVER_PLUGINS` in `server/plugins/index.ts`. It is served at `/api/plugins/hello/ping`.
+A plugin with its own tables sets `migrate()` (run once when plugins are mounted, at startup); one
+with timers or connections sets `dispose()`.
 To fetch remote pages, use `fetchPage()` from `shared/fetchPage.ts`. It allows only http(s), blocks
 private and loopback hosts (set `PLUGIN_FETCH_ALLOW_PRIVATE=on` to allow them), re-checks every
 redirect, and caps time (15 s) and size (5 MB).
@@ -118,3 +127,50 @@ redirect, and caps time (15 s) and size (5 MB).
   `Ctrl+Alt+Shift+B` (**Blog Reader: Mark as Read / Unread**) on the open post to flip it. The
   state is kept per browser in the plugin's storage, and survives **Refresh Article**.
 - Settings: folder name, open in new or current tile, Read mode, include images, colour-code read status.
+
+## Herdr
+
+Shares a note with a coding agent that is already running in [herdr](https://herdr.dev) (Claude
+Code, Codex, OpenCode and the rest) and follows every conversation on one **Agents board**. Velocity
+starts no agent processes: it is a client of herdr's local socket API.
+
+### Setup
+
+1. Run herdr 0.9.0 or later and start agents in its panes. For Claude Code, also run
+   `herdr integration install claude`, so summaries can be read from Claude's transcript.
+2. On the Velocity server, set `HERDR_CONNECTOR_TOKEN` (any long random string). Without it every
+   `/api/plugins/herdr` route answers 503. `HERDR_SOCKET_PATH` or `HERDR_SESSION` choose the socket;
+   the default is `~/.config/herdr/herdr.sock`.
+3. In Settings → Plugins → Herdr, paste the same token.
+
+### Use
+
+- **Share Note with Agent** (`Ctrl+Alt+G`): the first send to an agent is the note's title and every
+  paragraph; after that only paragraphs Velocity hasn't sent before (it keeps fingerprints, never
+  the text). A selection is sent as it is. **Share Note with Another Agent…** (`Ctrl+Alt+Shift+G`)
+  always opens the agent picker. Agents that need you can't be picked.
+- **Attachments:** images embedded from Velocity (`/api/assets/<id>`) and the note's whiteboard (a PNG
+  rendered in the browser plus the Excalidraw scene) are written to
+  `<agent folder>/.velocity/attachments/<turn>/`; the prompt points at those files and `.velocity/` is
+  added to the repo's `.git/info/exclude`. When Velocity runs in Docker, set
+  `HERDR_ATTACHMENTS_DIR` (a folder the container can write) and `HERDR_ATTACHMENTS_HOST_DIR` (the
+  same folder on the host); agents may then ask permission to read files outside their own folder.
+- **Summaries:** each send ends by asking the agent for a summary of what it implemented between
+  `<velocity-summary id="…">` marker lines. When herdr reports the agent idle, Velocity reads that
+  block, whole, from Claude Code's transcript or from the agent's screen. Without a block it keeps
+  the final message (Claude Code). The transcript itself is never stored.
+- **Agents board** (`Ctrl+Alt+A`): Shared, Working, Blockers, Completed, following herdr's live state.
+  Click a card for the conversation: each turn's summary with Copy and **Add summary to note** (an
+  `### Outcome · <agent> · <time>` section; Off / Ask / Always in Settings), the agent's screen for
+  blockers, and **Open in herdr**. Velocity never answers approvals.
+- Note badges: Shared, Working, Needs you, New summary, Summary, Didn't finish, Check agent.
+
+### Server pieces
+
+`server/plugins/herdr/`: `socket.ts` (NDJSON client with a method allow-list: no raw keys, no shell
+input, no layout changes), `service.ts` (prompt + wait, Needs you, restart recovery, agent polling),
+`summary.ts`, `transcript.ts`, `attachments.ts`, `store.ts` (`plugin_herdr_conversations`,
+`plugin_herdr_turns`). Tests run against `server/tests/fixtures/fakeHerdr.ts`.
+
+Not built yet: a host bridge for Docker Desktop (Unix sockets don't cross its VM), showing the board
+as a workspace tile beside the editor (it is a panel for now), and margin marks on sent paragraphs.
