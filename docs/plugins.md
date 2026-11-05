@@ -3,8 +3,9 @@
 Velocity plugins are small, additive modules in the spirit of Obsidian community plugins.
 A plugin can add **commands** (with keyboard shortcuts) to the command palette, **settings**
 to Settings → Plugins, a **text prompt** in the palette, a **URL handler** that turns a URL
-pasted into quick open (`Mod+P`) into an action, and **note badges** that colour-code its notes
-in the notes list. Core code never knows about a specific plugin.
+pasted into quick open (`Mod+P`) into an action, **note badges** that colour-code its notes
+in the notes list, **workspace tiles** that sit beside a note, and an **editor mode** for notes
+that are its kind of document. Core code never knows about a specific plugin.
 
 Blog Reader is the first plugin and the reference implementation.
 
@@ -15,6 +16,7 @@ client/src/plugins/
 ├── types.ts           # VelocityPlugin, PluginContext, PromptSpec, …
 ├── host.ts            # builds contexts, activates/disposes, exposes commands + URL handlers
 ├── registry.ts        # PLUGINS = [blogReader, …]  ← the one line you add
+├── latex/             # live preview tile, PDF compile, .tex / PDF export
 └── blogReader/
     ├── index.ts       # manifest, settings, activate(ctx)
     ├── extract.ts     # Readability + metadata (lazy-loaded)
@@ -24,6 +26,7 @@ server/plugins/
 ├── types.ts           # ServerPlugin { id, name, router }
 ├── index.ts           # SERVER_PLUGINS, mountPlugins(app) → /api/plugins/<id>
 ├── shared/fetchPage.ts# SSRF-guarded page fetch (reusable connector transport)
+├── latex/             # POST /api/plugins/latex/compile (TeX engine on the host)
 └── blogReader.ts      # GET /api/plugins/blog-reader/fetch?url=
 ```
 
@@ -76,6 +79,10 @@ the settings rows. Built-in shortcuts always win over plugin shortcuts.
 | `api.stream(path, handlers, opts)` | Server-sent events read over `fetch`, so a token header can be sent; reconnects with back-off; returns a stop function |
 | `notes.create / open / exists / current` | Create a note (in a folder, optionally in a new tile and in Read mode), open one, and so on |
 | `notes.title / content / append / selection` | A note's title, its Markdown (loaded if needed), append Markdown, the editor selection |
+| `notes.useContent(id)` | React hook for plugin components: the note's content, re-rendering as it changes |
+| `notes.goToLine(id, line)` | Show the note in its editor with that line selected (e.g. a compiler error) |
+| `tiles.open / close / toggle / isOpen` | A workspace tile showing one of the plugin's `tiles` views for a note, beside the note's tile |
+| `files.download(name, data, mime?)` | Hand the user a file (`Blob` or string) as a browser download |
 | `boards.has / exportPng` | Whether the note has a whiteboard; render it to a PNG data URL with Excalidraw |
 | `folders.ensure(name)` | Existing folder (case-insensitive) or a new one |
 | `refreshBadges()` | Re-read this plugin's note badges after their state changes |
@@ -89,6 +96,24 @@ on the row and a small pill (`{ label, tone, title?, onClick? }`, where `tone` i
 such as `blue` or `green`). With `onClick` the pill is a button, and its `title` also appears in the
 row's context menu. Return `null` for notes the plugin doesn't own. It runs for every visible row,
 so keep it cheap, and call `ctx.refreshBadges()` whenever the answer changes.
+
+### Workspace tiles
+
+Return `tiles: { <view>: { title, icon?, render(noteId) } }` from `activate`, then call
+`ctx.tiles.open(view, noteId)`. The view gets its own tile beside the note's tile (a real tile:
+focus, swap, zoom, close, drag and sliding columns all work). The layout stores it as
+`{ kind: 'plugin', pluginId, view, noteId }`, so it is restored after a reload, follows the note's
+temp → server id swap and closes when the note is deleted. While the plugin is off, the tile says
+so instead of rendering. `render` is called by React, so lazy-load heavy components inside it and
+keep state in a store; `ctx.notes.useContent(noteId)` keeps a view in step with the note.
+
+### Editor modes
+
+Return `editorMode: { matches(content), extensions() }` to edit your kind of note with its own
+CodeMirror language instead of Markdown and its live preview. `matches` sees the first 4,000
+characters and runs as the user types, so keep it to a regex. The editor swaps modes in place
+when the answer changes (no remount) and when plugins are switched on or off. The first running
+plugin whose `matches` returns true wins.
 
 Enabled state and settings are stored per browser in `velocity.plugins.v1`, like other preferences.
 
@@ -174,3 +199,48 @@ input, no layout changes), `service.ts` (prompt + wait, Needs you, restart recov
 
 Not built yet: a host bridge for Docker Desktop (Unix sockets don't cross its VM), showing the board
 as a workspace tile beside the editor (it is a panel for now), and margin marks on sent paragraphs.
+
+## LaTeX
+
+Write LaTeX in a note and read it typeset beside it, then compile to a real PDF on the server.
+
+- **New LaTeX Document** (palette) creates a note from a template in the **LaTeX** folder and opens
+  the preview beside it. Any note works: one with `\documentclass` (or `\begin{document}`) is a
+  full document; anything else is a body that compiles inside an article preamble (amsmath,
+  amssymb, amsthm, graphicx, hyperref, plus `\newtheorem`s for the theorem environments it uses).
+- **Toggle Live Preview** (`Ctrl+Alt+X`, or click the note's **TeX** pill): a tile with the
+  document typeset as you type: title block, numbered sections and table of contents, lists,
+  tables, figures and captions, theorems and proofs, footnotes, `\label` / `\ref` / `\eqref` / `\cite`,
+  verbatim and listings, and maths with KaTeX (equations numbered, `\newcommand` macros work in
+  maths and text). It is a preview, not TeX: unknown commands show muted and are listed in the
+  tile's status line, and TikZ shows a placeholder.
+- **Compile to PDF** (`Ctrl+Alt+Shift+X`): the tile's **PDF** view shows the PDF from the server's
+  TeX engine. Errors and warnings are listed with their line; click one to jump to it in the note
+  (lines of a wrapped body are mapped back). With **Recompile as you type** on, the PDF view
+  compiles again 1.5 s after you stop typing.
+- **Export as .tex** saves the source (a body is saved wrapped, so it compiles on its own).
+  **Export as PDF** compiles if needed and saves the PDF. Without a TeX engine on the server it
+  prints the live preview instead (choose "Save as PDF" in the print dialog).
+- `\documentclass` notes are edited with LaTeX syntax highlighting instead of rich Markdown.
+- Settings: TeX engine (Auto, latexmk, pdfLaTeX, XeLaTeX, LuaLaTeX, Tectonic), recompile as you type,
+  folder for new documents, TeX pills in the notes list.
+
+### Server
+
+Compiling needs a TeX distribution on the machine running the Velocity server: TeX Live,
+MiKTeX or Tectonic, with `latexmk`, `pdflatex`, `xelatex`, `lualatex` or `tectonic` on `PATH`. In
+Docker, build the server image with `LATEX=on docker compose build server` (adds a TeX Live subset).
+`GET /api/plugins/latex/status` reports what was found.
+
+`POST /api/plugins/latex/compile { source, engine? }` writes the source to a fresh temporary folder,
+runs the engine there (reruns for cross-references) and deletes the folder. Nothing is stored. Shell
+escape is off, kpathsea runs in paranoid mode (`openin_any=p`, `openout_any=p`: no absolute paths,
+no `..`, no dot files), latexmk ignores rc files (`-norc`) and Tectonic runs `--untrusted`. A run is
+killed with its process group after `LATEX_TIMEOUT_MS` (30 s). Sources are capped at 2 MB, PDFs at
+`LATEX_MAX_PDF_BYTES` (20 MB), and `LATEX_MAX_CONCURRENT` (2) engines run at once with up to 8
+waiting (then 429). TeX errors are not HTTP errors: the answer is `{ ok, pdf (base64), log, issues,
+engine, durationMs }`. `LATEX_ENGINE` picks the default engine, `LATEX_BIN_DIR` is searched before
+`PATH`, and `LATEX_COMPILE=off` turns compiling off (503).
+
+Images: `\includegraphics` with an `https://` URL or a Velocity asset (`/api/assets/<id>`) shows in
+the live preview; the TeX engine only sees the note, so the PDF shows images it can find itself.
