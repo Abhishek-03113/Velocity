@@ -16,6 +16,9 @@ const child = spawn('npx', ['tsx', 'index.ts'], {
     ASSETS_DIR: path.join(root, 'assets'),
     DOCS_DIR: path.join(root, 'docs'),
     PLUGIN_FETCH_ALLOW_PRIVATE: 'on', // E2E serves fixtures on localhost
+    // herdr connector: e2e/herdr.spec.ts serves a fake herdr socket at this path.
+    HERDR_CONNECTOR_TOKEN: 'e2e-herdr-token',
+    HERDR_SOCKET_PATH: path.join(os.tmpdir(), `velocity-e2e-herdr-${process.env.PORT ?? '3199'}.sock`),
   },
 })
 const stop = () => child.kill('SIGTERM')

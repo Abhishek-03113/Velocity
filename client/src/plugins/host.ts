@@ -5,6 +5,8 @@
  */
 import { create } from 'zustand'
 import { api } from '../lib/api'
+import { getEditor } from '../lib/editorRegistry'
+import { displayTitle } from '../lib/noteMeta'
 import type { Command } from '../lib/commands'
 import { currentNoteId, focusTile, openNote } from '../lib/workspace'
 import { noteLeafFor } from '../lib/tiling'
@@ -13,8 +15,10 @@ import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
 import { usePluginStore } from '../store/pluginStore'
 import { useUiStore } from '../store/uiStore'
+import { hasBoard, loadScene } from '../store/whiteboardStore'
+import { pluginRequest, pluginStream } from './transport'
 import { PLUGINS } from './registry'
-import type { NoteBadge, PluginContext, PluginInstance, VelocityPlugin } from './types'
+import type { NoteBadge, PluginContext, PluginInstance, RequestOptions, VelocityPlugin } from './types'
 
 interface Active {
   plugin: VelocityPlugin
@@ -55,6 +59,31 @@ function applyMode(noteId: number, mode: 'read' | 'edit') {
   if (mode === 'read') focusTile(leaf.id, { dom: true })
 }
 
+/** Render a note's whiteboard to a PNG data URL with Excalidraw (loaded on demand). */
+async function exportBoardPng(noteId: number): Promise<string | null> {
+  try {
+    const scene = await loadScene(noteId)
+    const elements = (scene?.elements ?? []).filter((e) => !(e as { isDeleted?: boolean }).isDeleted)
+    if (!elements.length) return null
+    const { exportToBlob } = await import('@excalidraw/excalidraw')
+    const blob = await exportToBlob({
+      elements: elements as never,
+      appState: { ...(scene?.appState ?? {}), exportBackground: true, viewBackgroundColor: '#ffffff' } as never,
+      files: (scene?.files ?? {}) as never,
+      mimeType: 'image/png',
+    })
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch (err) {
+    console.error('[plugins] whiteboard export failed:', err)
+    return null
+  }
+}
+
 export function createContext(id: string): PluginContext {
   const folders = { ensure: (name: string) => useGroupStore.getState().ensureGroup(name) }
   return {
@@ -74,11 +103,22 @@ export function createContext(id: string): PluginContext {
     activity: (message) => useUiStore.getState().setActivity(message),
     prompt: (spec) => useUiStore.getState().openPrompt(spec),
     api: {
-      get: async <T>(path: string) => {
+      get: async <T>(path: string, opts?: RequestOptions) => {
+        if (opts?.headers) return pluginRequest<T>(id, path, { method: 'GET' }, opts)
         const res = await api.get<T>(`/api/plugins/${id}${path}`)
         if (res.success === false) throw new Error(res.error ?? 'Request failed')
         return res.data as T
       },
+      post: <T>(path: string, body?: unknown, opts?: RequestOptions) => pluginRequest<T>(id, path, { method: 'POST', body: body ?? {} }, opts),
+      stream: (path, handlers, opts) => pluginStream(id, path, handlers, opts),
+    },
+    pick: (spec) => useUiStore.getState().openPick(spec),
+    panel: {
+      open: (spec) => useUiStore.getState().openPluginPanel({ pluginId: id, ...spec }),
+      close: () => {
+        if (useUiStore.getState().pluginPanel?.pluginId === id) useUiStore.getState().closePluginPanel()
+      },
+      isOpen: () => useUiStore.getState().pluginPanel?.pluginId === id,
     },
     notes: {
       create: ({ title, content, folder, split = false, mode = 'edit' }) => {
@@ -97,6 +137,30 @@ export function createContext(id: string): PluginContext {
       },
       exists: (noteId) => useEditorStore.getState().pastes.some((p) => p.id === noteId),
       current: () => currentNoteId(),
+      title: (noteId) => {
+        const p = useEditorStore.getState().pastes.find((x) => x.id === noteId)
+        return p ? displayTitle(p) : ''
+      },
+      content: async (noteId) => {
+        await useEditorStore.getState().ensureContent(noteId)
+        return useEditorStore.getState().pastes.find((x) => x.id === noteId)?.content ?? ''
+      },
+      append: async (noteId, markdown) => {
+        await useEditorStore.getState().ensureContent(noteId)
+        const current = useEditorStore.getState().pastes.find((x) => x.id === noteId)?.content ?? ''
+        const sep = current === '' ? '' : current.endsWith('\n\n') ? '' : current.endsWith('\n') ? '\n' : '\n\n'
+        useEditorStore.getState().setContent(current + sep + markdown, noteId)
+      },
+      selection: (noteId) => {
+        const view = getEditor(noteId)
+        if (!view) return ''
+        const { from, to } = view.state.selection.main
+        return from === to ? '' : view.state.sliceDoc(from, to)
+      },
+    },
+    boards: {
+      has: (noteId) => hasBoard(noteId),
+      exportPng: (noteId) => exportBoardPng(noteId),
     },
     folders,
     refreshBadges: bumpBadges,
