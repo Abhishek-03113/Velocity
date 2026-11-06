@@ -6,6 +6,7 @@ import { closeTile, focusTile, toggleReadMode } from '../../lib/workspace'
 import { pluginName, pluginTileView, usePluginsVersion } from '../../plugins/host'
 import { useEditorStore } from '../../store/editorStore'
 import { useLayoutStore } from '../../store/layoutStore'
+import { usePluginStore } from '../../store/pluginStore'
 import { useUiStore } from '../../store/uiStore'
 import Editor from '../Editor'
 import { Icon, type IconName } from '../Icon'
@@ -52,14 +53,23 @@ function PluginTileTitle({ noteId, pluginId, view }: { noteId: number; pluginId:
   return <TileTitle noteId={noteId} suffix={spec?.title ?? pluginName(pluginId)} icon={spec?.icon ?? 'doc.plaintext'} />
 }
 
-function PluginTileBody({ noteId, pluginId, view }: { noteId: number; pluginId: string; view: string }) {
+function PluginTileBody({ tileId, noteId, pluginId, view }: { tileId: string; noteId: number; pluginId: string; view: string }) {
   // Re-resolve when plugins are switched on or off.
   usePluginsVersion((s) => s.version)
   const spec = pluginTileView(pluginId, view)
   if (!spec) {
+    const name = pluginName(pluginId)
     return (
-      <div className={styles.boardLoading}>
-        {pluginName(pluginId)} is switched off. Turn it on in Settings → Plugins, or close this tile.
+      <div className={styles.pluginOff}>
+        <p className={styles.pluginOffText}>{name} is switched off.</p>
+        <div className={styles.pluginOffActions}>
+          <button type="button" className={styles.pluginOffPrimary} onClick={() => usePluginStore.getState().setEnabled(pluginId, true)}>
+            Turn On {name}
+          </button>
+          <button type="button" className={styles.pluginOffButton} onClick={() => closeTile(tileId)}>
+            Close Tile
+          </button>
+        </div>
       </div>
     )
   }
@@ -181,7 +191,7 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
           </Suspense>
         )}
         {content.kind === 'plugin' && (
-          <PluginTileBody noteId={content.noteId} pluginId={content.pluginId} view={content.view} />
+          <PluginTileBody tileId={leaf.id} noteId={content.noteId} pluginId={content.pluginId} view={content.view} />
         )}
         {content.kind === 'empty' && <EmptyTile tileId={leaf.id} focused={focused} />}
       </div>

@@ -285,6 +285,8 @@ export function syncPlugins(): void {
       } catch (err) {
         console.error(`[plugins] ${id} failed to dispose:`, err)
       }
+      // A switched-off plugin's panel would only have dead buttons.
+      if (useUiStore.getState().pluginPanel?.pluginId === id) useUiStore.getState().closePluginPanel()
       active.delete(id)
       modeExtensions.delete(id)
       changed = true

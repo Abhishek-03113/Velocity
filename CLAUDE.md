@@ -258,6 +258,7 @@ Track feature development status here. Update each item as work is completed.
 - [x] Herdr connector (share notes with agents in herdr; attachments incl. whiteboard; summaries; Agents board panel; badges)
 - [ ] Herdr: Agents board as a workspace tile beside the editor, margin marks on sent paragraphs, Docker Desktop host bridge
 - [x] Plugin workspace tiles (`plugin` tile kind, `ctx.tiles`) and plugin editor modes (`editorMode`)
+- [x] Plugins switch off and on cleanly (commands, keys, badges, panels, editor mode; tiles offer Turn On / Close Tile); overlays don't take focus back from an overlay opened on top
 - [x] LaTeX plugin (live preview tile with KaTeX, server PDF compile with clickable errors and auto-recompile, `.tex` / PDF export, LaTeX syntax mode, TeX badges)
 - [x] Layout and tab restore across reloads
 - [x] Sidebar toggle animation

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Icon } from '../Icon'
+import { restoreFocus } from '../../lib/focus'
 import styles from './Overlays.module.css'
 
 /** HIG sheet: centred modal panel on a dimmed backdrop, Escape to dismiss. */
@@ -18,9 +19,7 @@ export function Sheet({
   useEffect(() => {
     const previous = document.activeElement
     ref.current?.focus()
-    return () => {
-      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus({ preventScroll: true })
-    }
+    return () => restoreFocus(previous)
   }, [])
 
   return (
