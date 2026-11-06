@@ -17,6 +17,7 @@ import {
   setRatio,
   splitLeaf,
   swapContents,
+  tileKey,
   tileNoteId,
   updateLeaf,
   type Direction,
@@ -182,9 +183,8 @@ function dedupe(root: LayoutNode): LayoutNode {
   const seen = new Set<string>()
   let next: LayoutNode | null = root
   for (const l of leaves(root)) {
-    const noteId = tileNoteId(l.content)
-    if (noteId == null) continue
-    const key = `${l.content.kind}:${noteId}`
+    if (tileNoteId(l.content) == null) continue
+    const key = tileKey(l.content)
     if (seen.has(key) && next) next = removeLeaf(next, l.id)
     seen.add(key)
   }
@@ -334,9 +334,9 @@ export const useLayoutStore = create<LayoutState>((set, get) => {
       }
       const focused = findLeaf(root, focusedId)
       const mode: TileMode = focused?.content.kind === 'note' ? focused.content.mode : 'edit'
-      let target = focused && focused.content.kind !== 'board' ? focused : null
+      let target = focused && (focused.content.kind === 'note' || focused.content.kind === 'empty') ? focused : null
       if (!target) {
-        // Focused tile is a whiteboard — reuse an empty tile, else any note tile.
+        // Focused tile is a whiteboard or plugin view — reuse an empty tile, else any note tile.
         target =
           leaves(root).find((l) => l.content.kind === 'empty') ??
           leaves(root).find((l) => l.content.kind === 'note') ??

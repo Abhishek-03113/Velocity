@@ -1,3 +1,4 @@
+import type { Extension } from '@codemirror/state'
 import type { ReactNode } from 'react'
 import type { IconName } from '../components/Icon'
 
@@ -95,6 +96,23 @@ export interface PanelSpec {
   onClose?: () => void
 }
 
+/** A view a plugin renders inside a workspace tile, beside the editor (one per note). */
+export interface TileView {
+  /** Suffix in the tile header, after the note title (e.g. "LaTeX Preview"). */
+  title: string
+  icon?: IconName
+  /** Rendered inside the tile body. Re-rendered by React; keep state in a store or hooks. */
+  render: (noteId: number) => ReactNode
+}
+
+/** An editor mode for notes whose content is a plugin's kind of document (e.g. LaTeX source). */
+export interface EditorMode {
+  /** Cheap test on the start of the note (first few thousand characters); runs as the user types. */
+  matches: (content: string) => boolean
+  /** CodeMirror extensions used instead of Markdown and its live preview. Called once. */
+  extensions: () => Extension
+}
+
 export interface RequestOptions {
   headers?: Record<string, string>
 }
@@ -138,6 +156,10 @@ export interface PluginContext {
     append(id: number, markdown: string): Promise<void>
     /** The current editor selection in that note, or ''. */
     selection(id: number): string
+    /** React hook: the note's content, re-rendering when it changes (undefined until loaded). */
+    useContent(id: number): string | undefined
+    /** Show the note in its editor with the cursor at the start of a 1-based line. */
+    goToLine(id: number, line: number): void
   }
   /** The note's whiteboard, if it has one. */
   boards: {
@@ -145,8 +167,19 @@ export interface PluginContext {
     /** Render the whiteboard to a PNG data URL (null when empty or unavailable). */
     exportPng(id: number): Promise<string | null>
   }
+  /** Workspace tiles showing one of this plugin's `tiles` views for a note. */
+  tiles: {
+    /** Open (or focus) the view's tile for the note, beside the note's own tile. Returns the tile id. */
+    open(view: string, noteId: number, opts?: { focus?: boolean }): string
+    close(view: string, noteId: number): void
+    /** Open it when closed, close it when open. Returns true when it is now open. */
+    toggle(view: string, noteId: number): boolean
+    isOpen(view: string, noteId: number): boolean
+  }
   /** Existing (case-insensitive) or newly created folder id. */
   folders: { ensure(name: string): number }
+  /** Hand the user a file to save (a browser download). */
+  files: { download(filename: string, data: Blob | string, mime?: string): void }
   /** Ask the UI to re-read this plugin's note badges (call after their state changes). */
   refreshBadges(): void
 }
@@ -156,6 +189,10 @@ export interface PluginInstance {
   urlHandler?: UrlHandler
   /** Badge for a note in the sidebar, or null for notes this plugin doesn't decorate. Keep it cheap. */
   noteBadge?: (noteId: number) => NoteBadge | null
+  /** Editor language for matching notes, in place of Markdown. The first matching plugin wins. */
+  editorMode?: EditorMode
+  /** Views this plugin can show in a workspace tile, keyed by view id (see `ctx.tiles`). */
+  tiles?: Record<string, TileView>
   dispose?: () => void
 }
 

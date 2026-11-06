@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from 'react'
-import { EditorState } from '@codemirror/state'
+import { Compartment, EditorState, type Extension } from '@codemirror/state'
 import {
   EditorView,
   keymap,
@@ -16,6 +16,7 @@ import { tags as t } from '@lezer/highlight'
 import { markdown, markdownKeymap, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { search, searchKeymap } from '@codemirror/search'
+import { editorModeFor, usePluginsVersion } from '../plugins/host'
 import { useEditorStore } from '../store/editorStore'
 import { registerEditor, unregisterEditor } from '../lib/editorRegistry'
 import { isMac } from '../lib/platform'
@@ -49,7 +50,7 @@ const highlight = HighlightStyle.define([
   { tag: [t.number, t.bool, t.atom], color: 'var(--syntax-number)' },
   { tag: [t.variableName, t.propertyName, t.attributeName], color: 'var(--syntax-property)' },
   { tag: [t.typeName, t.className, t.namespace], color: 'var(--syntax-type)' },
-  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: 'var(--syntax-function)' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.tagName], color: 'var(--syntax-function)' },
   { tag: t.invalid, color: 'var(--system-red)' },
 ])
 
@@ -252,7 +253,23 @@ function imageHandlers() {
   })
 }
 
-function buildExtensions() {
+const MARKDOWN_MODE: Extension = [
+  markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false }),
+  markdownLivePreview,
+]
+
+/** Holds each editor's language (a compartment is a key; every editor state keeps its own value). */
+const languageCompartment = new Compartment()
+
+/** How much of the note a plugin editor mode looks at (its marker sits near the top). */
+const MODE_PROBE_CHARS = 4000
+
+/** Markdown with live preview, or a plugin's mode (e.g. LaTeX source) when the content matches. */
+function modeFor(doc: string): { key: string; extension: Extension } {
+  return editorModeFor(doc.slice(0, MODE_PROBE_CHARS)) ?? { key: 'markdown', extension: MARKDOWN_MODE }
+}
+
+function buildExtensions(language: Extension) {
   return [
     history(),
     search({ top: true }),
@@ -274,8 +291,7 @@ function buildExtensions() {
       indentWithTab,
     ]),
     EditorState.allowMultipleSelections.of(true),
-    markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false }),
-    markdownLivePreview,
+    language,
     imageHandlers(),
     syntaxHighlighting(highlight, { fallback: true }),
     theme,
@@ -296,28 +312,49 @@ function Editor({ noteId, spellcheck }: EditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
   const noteIdRef = useRef(noteId)
+  const recheckModeRef = useRef<(() => void) | null>(null)
+  // Plugins switched on or off can change which editor mode applies.
+  const pluginsVersion = usePluginsVersion((st) => st.version)
 
   useEffect(() => {
     if (!containerRef.current) return
     let lastEmitted = contentOf(noteIdRef.current) ?? ''
     let applyingExternal = false
+    let mode = modeFor(lastEmitted)
+    let modeCheck = 0
 
     const view = new EditorView({
       state: EditorState.create({
         doc: lastEmitted,
         extensions: [
-          ...buildExtensions(),
+          ...buildExtensions(languageCompartment.of(mode.extension)),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged && !applyingExternal) {
+            if (!update.docChanged) return
+            if (!applyingExternal) {
               lastEmitted = update.state.doc.toString()
               useEditorStore.getState().setContent(lastEmitted, noteIdRef.current)
             }
+            if (update.changes.touchesRange(0, MODE_PROBE_CHARS)) scheduleModeCheck()
           }),
         ],
       }),
       parent: containerRef.current,
     })
     viewRef.current = view
+
+    // Swap the language when the note becomes (or stops being) a plugin's kind of document.
+    // Deferred: a view can't be reconfigured from inside its own update.
+    const checkMode = () => {
+      modeCheck = 0
+      const next = modeFor(view.state.sliceDoc(0, MODE_PROBE_CHARS))
+      if (next.key === mode.key) return
+      mode = next
+      view.dispatch({ effects: languageCompartment.reconfigure(next.extension) })
+    }
+    const scheduleModeCheck = () => {
+      if (!modeCheck) modeCheck = requestAnimationFrame(checkMode)
+    }
+    recheckModeRef.current = scheduleModeCheck
     registerEditor(noteIdRef.current, view)
     void migrateEmbeddedDataUrls(view)
 
@@ -336,6 +373,8 @@ function Editor({ noteId, spellcheck }: EditorProps) {
 
     return () => {
       unsubscribe()
+      if (modeCheck) cancelAnimationFrame(modeCheck)
+      recheckModeRef.current = null
       unregisterEditor(noteIdRef.current, view)
       view.destroy()
       viewRef.current = null
@@ -350,6 +389,10 @@ function Editor({ noteId, spellcheck }: EditorProps) {
     noteIdRef.current = noteId
     if (view) registerEditor(noteId, view)
   }, [noteId])
+
+  useEffect(() => {
+    recheckModeRef.current?.()
+  }, [pluginsVersion])
 
   useEffect(() => {
     const view = viewRef.current

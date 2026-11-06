@@ -54,6 +54,7 @@ test('GET /api/plugins lists blog-reader', async () => {
   assert.deepEqual(r.json.data, [
     { id: 'blog-reader', name: 'Blog Reader' },
     { id: 'herdr', name: 'Herdr' },
+    { id: 'latex', name: 'LaTeX' },
   ])
 })
 

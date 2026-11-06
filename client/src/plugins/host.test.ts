@@ -10,9 +10,11 @@ vi.mock('../lib/api', () => ({
 }))
 
 import { matchCommand } from '../lib/commands'
+import { leaf, leaves } from '../lib/tiling'
 import { useGroupStore } from '../store/groupStore'
+import { useLayoutStore } from '../store/layoutStore'
 import { usePluginStore } from '../store/pluginStore'
-import { createContext, pluginCommands, startPlugins, urlHandlerFor } from './host'
+import { createContext, editorModeFor, pluginCommands, pluginTileView, startPlugins, urlHandlerFor } from './host'
 
 function key(init: KeyboardEventInit & { code: string }): KeyboardEvent {
   return new KeyboardEvent('keydown', init)
@@ -56,6 +58,56 @@ describe('plugin host', () => {
     expect(matchCommand(key({ code: 'KeyG', ctrlKey: true, altKey: true }))?.id).toBe('plugin.herdr.share')
     expect(matchCommand(key({ code: 'KeyG', ctrlKey: true, altKey: true, shiftKey: true }))?.id).toBe('plugin.herdr.share-other')
     expect(matchCommand(key({ code: 'KeyA', ctrlKey: true, altKey: true }))?.id).toBe('plugin.herdr.board')
+  })
+
+  it('latex shortcuts are not shadowed by built-in keys', () => {
+    expect(matchCommand(key({ code: 'KeyX', ctrlKey: true, altKey: true }))?.id).toBe('plugin.latex.preview')
+    expect(matchCommand(key({ code: 'KeyX', ctrlKey: true, altKey: true, shiftKey: true }))?.id).toBe('plugin.latex.compile')
+  })
+
+  it('tiles.open / toggle / close put a plugin view beside its note, once', () => {
+    useLayoutStore.setState({ root: leaf({ kind: 'note', noteId: 5, mode: 'edit' }, 'n'), focusedId: 'n', columns: [], mode: 'dwindle' })
+    const ctx = createContext('latex')
+    const id = ctx.tiles.open('preview', 5, { focus: false })
+    expect(ctx.tiles.isOpen('preview', 5)).toBe(true)
+    expect(ctx.tiles.open('preview', 5)).toBe(id)
+    expect(leaves(useLayoutStore.getState().root).map((l) => l.content.kind)).toEqual(['note', 'plugin'])
+    expect(useLayoutStore.getState().focusedId).toBe(id)
+
+    expect(ctx.tiles.toggle('preview', 5)).toBe(false)
+    expect(leaves(useLayoutStore.getState().root).map((l) => l.content.kind)).toEqual(['note'])
+    expect(ctx.tiles.toggle('preview', 5)).toBe(true)
+    expect(useLayoutStore.getState().focusedId).toBe('n')
+
+    // Another plugin's view of the same note is a different tile.
+    expect(createContext('herdr').tiles.isOpen('preview', 5)).toBe(false)
+  })
+
+  it('closing a plugin tile that is the only tile shows its note again', () => {
+    useLayoutStore.setState({
+      root: leaf({ kind: 'plugin', pluginId: 'latex', view: 'preview', noteId: 5 }, 'p'),
+      focusedId: 'p',
+      columns: [],
+      mode: 'dwindle',
+    })
+    createContext('latex').tiles.close('preview', 5)
+    expect(useLayoutStore.getState().root).toMatchObject({ type: 'leaf', content: { kind: 'note', noteId: 5 } })
+  })
+
+  it('resolves tile views only for running plugins', () => {
+    expect(pluginTileView('latex', 'preview')?.title).toBe('LaTeX Preview')
+    expect(pluginTileView('latex', 'nope')).toBeNull()
+    usePluginStore.getState().setEnabled('latex', false)
+    expect(pluginTileView('latex', 'preview')).toBeNull()
+  })
+
+  it('editorModeFor gives LaTeX documents the LaTeX editor mode while the plugin runs', () => {
+    const mode = editorModeFor('\\documentclass{article}\n\\begin{document}')
+    expect(mode?.key).toBe('plugin:latex')
+    expect(editorModeFor('\\documentclass{report}')?.extension).toBe(mode!.extension)
+    expect(editorModeFor('# Notes with $x$')).toBeNull()
+    usePluginStore.getState().setEnabled('latex', false)
+    expect(editorModeFor('\\documentclass{article}')).toBeNull()
   })
 
   it('keeps built-in key bindings ahead of plugin keys', () => {

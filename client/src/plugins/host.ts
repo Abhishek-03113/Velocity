@@ -3,13 +3,14 @@
  * commands / URL handlers to the rest of the app. Deliberately free of lib/commands imports
  * (commands.ts reads from here), so only `import type` crosses that boundary.
  */
+import type { Extension } from '@codemirror/state'
 import { create } from 'zustand'
 import { api } from '../lib/api'
 import { getEditor } from '../lib/editorRegistry'
 import { displayTitle } from '../lib/noteMeta'
 import type { Command } from '../lib/commands'
 import { currentNoteId, focusTile, openNote } from '../lib/workspace'
-import { noteLeafFor } from '../lib/tiling'
+import { leaves, noteLeafFor, pluginLeafFor } from '../lib/tiling'
 import { useEditorStore } from '../store/editorStore'
 import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
@@ -18,7 +19,7 @@ import { useUiStore } from '../store/uiStore'
 import { hasBoard, loadScene } from '../store/whiteboardStore'
 import { pluginRequest, pluginStream } from './transport'
 import { PLUGINS } from './registry'
-import type { NoteBadge, PluginContext, PluginInstance, RequestOptions, VelocityPlugin } from './types'
+import type { NoteBadge, PluginContext, PluginInstance, RequestOptions, TileView, VelocityPlugin } from './types'
 
 interface Active {
   plugin: VelocityPlugin
@@ -33,6 +34,29 @@ export const useBadgeVersion = create<{ version: number }>(() => ({ version: 0 }
 
 function bumpBadges() {
   useBadgeVersion.setState((s) => ({ version: s.version + 1 }))
+}
+
+/** Bumped whenever the set of running plugins changes (plugin tiles re-resolve their view). */
+export const usePluginsVersion = create<{ version: number }>(() => ({ version: 0 }))
+
+function bumpPlugins() {
+  usePluginsVersion.setState((s) => ({ version: s.version + 1 }))
+}
+
+/** Save a file through a temporary object URL (there is no other way to hand the user a file). */
+function downloadFile(filename: string, data: Blob | string, mime = 'application/octet-stream') {
+  const blob = typeof data === 'string' ? new Blob([data], { type: mime }) : data
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.rel = 'noopener'
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  // Revoke later: some browsers start the download asynchronously.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000)
 }
 
 function storageKey(id: string) {
@@ -57,6 +81,25 @@ function applyMode(noteId: number, mode: 'read' | 'edit') {
   layout.setMode(leaf.id, mode)
   layout.focus(leaf.id)
   if (mode === 'read') focusTile(leaf.id, { dom: true })
+}
+
+/** Put the cursor at the start of `line` (1-based) in the note's editor, opening it in edit mode if needed. */
+function goToLine(noteId: number, line: number, attempt = 0) {
+  const layout = useLayoutStore.getState()
+  const leaf = noteLeafFor(layout.root, noteId)
+  if (!leaf) openNote(noteId, { focus: true })
+  else if (leaf.content.kind === 'note' && leaf.content.mode !== 'edit') layout.setMode(leaf.id, 'edit')
+  const view = getEditor(noteId)
+  if (!view) {
+    // The editor mounts on the next frame after the tile appears.
+    if (attempt < 10) requestAnimationFrame(() => goToLine(noteId, line, attempt + 1))
+    return
+  }
+  const target = view.state.doc.line(Math.min(Math.max(1, Math.floor(line)), view.state.doc.lines))
+  view.dispatch({ selection: { anchor: target.from, head: target.to }, scrollIntoView: true })
+  const tile = noteLeafFor(useLayoutStore.getState().root, noteId)
+  if (tile) focusTile(tile.id, { dom: true })
+  view.focus()
 }
 
 /** Render a note's whiteboard to a PNG data URL with Excalidraw (loaded on demand). */
@@ -84,8 +127,41 @@ async function exportBoardPng(noteId: number): Promise<string | null> {
   }
 }
 
+function tilesFor(id: string): PluginContext['tiles'] {
+  const isOpen = (view: string, noteId: number) => pluginLeafFor(useLayoutStore.getState().root, id, view, noteId) != null
+  const open = (view: string, noteId: number, opts: { focus?: boolean } = {}) => {
+    const layout = useLayoutStore.getState()
+    const focus = opts.focus ?? true
+    const existing = pluginLeafFor(layout.root, id, view, noteId)
+    if (existing) {
+      if (focus) focusTile(existing.id)
+      return existing.id
+    }
+    const noteLeaf = noteLeafFor(layout.root, noteId)
+    return layout.split('row', { kind: 'plugin', pluginId: id, view, noteId }, { targetId: noteLeaf?.id, focus })
+  }
+  const close = (view: string, noteId: number) => {
+    const layout = useLayoutStore.getState()
+    const existing = pluginLeafFor(layout.root, id, view, noteId)
+    if (!existing) return
+    // The only tile: show the note again rather than an empty workspace.
+    if (leaves(layout.root).length === 1) layout.setContent(existing.id, { kind: 'note', noteId, mode: 'edit' })
+    else layout.close(existing.id)
+  }
+  const toggle = (view: string, noteId: number) => {
+    if (isOpen(view, noteId)) {
+      close(view, noteId)
+      return false
+    }
+    open(view, noteId, { focus: false })
+    return true
+  }
+  return { open, close, toggle, isOpen }
+}
+
 export function createContext(id: string): PluginContext {
   const folders = { ensure: (name: string) => useGroupStore.getState().ensureGroup(name) }
+  const tiles = tilesFor(id)
   return {
     id,
     setting: <T extends string | boolean>(key: string) => usePluginStore.getState().getSetting<T>(id, key),
@@ -157,12 +233,17 @@ export function createContext(id: string): PluginContext {
         const { from, to } = view.state.selection.main
         return from === to ? '' : view.state.sliceDoc(from, to)
       },
+      // A hook: only call it from a plugin component's render.
+      useContent: (noteId) => useEditorStore((s) => s.pastes.find((p) => p.id === noteId)?.content),
+      goToLine: (noteId, line) => goToLine(noteId, line),
     },
     boards: {
       has: (noteId) => hasBoard(noteId),
       exportPng: (noteId) => exportBoardPng(noteId),
     },
+    tiles,
     folders,
+    files: { download: downloadFile },
     refreshBadges: bumpBadges,
   }
 }
@@ -205,12 +286,14 @@ export function syncPlugins(): void {
         console.error(`[plugins] ${id} failed to dispose:`, err)
       }
       active.delete(id)
+      modeExtensions.delete(id)
       changed = true
     }
   }
   if (changed) {
     rebuildCommands()
     bumpBadges()
+    bumpPlugins()
   }
 }
 
@@ -233,7 +316,42 @@ export function startPlugins(): () => void {
     active.clear()
     rebuildCommands()
     bumpBadges()
+    bumpPlugins()
   }
+}
+
+/** A running plugin's tile view, or null when the plugin is off or has no such view. */
+export function pluginTileView(pluginId: string, view: string): (TileView & { pluginName: string }) | null {
+  const running = active.get(pluginId)
+  const spec = running?.instance.tiles?.[view]
+  return spec ? { ...spec, pluginName: running.plugin.manifest.name } : null
+}
+
+const modeExtensions = new Map<string, Extension>()
+
+/** The editor mode of the first running plugin whose matcher accepts this content, or null for Markdown. */
+export function editorModeFor(content: string): { key: string; extension: Extension } | null {
+  for (const [id, { instance }] of active) {
+    const mode = instance.editorMode
+    if (!mode) continue
+    try {
+      if (!mode.matches(content)) continue
+      let extension = modeExtensions.get(id)
+      if (!extension) {
+        extension = mode.extensions()
+        modeExtensions.set(id, extension)
+      }
+      return { key: `plugin:${id}`, extension }
+    } catch (err) {
+      console.error(`[plugins] ${id} editorMode failed:`, err)
+    }
+  }
+  return null
+}
+
+/** A registered plugin's display name (also for plugins that are switched off). */
+export function pluginName(pluginId: string): string {
+  return PLUGINS.find((p) => p.manifest.id === pluginId)?.manifest.name ?? pluginId
 }
 
 /** The first enabled plugin's badge for a note, or null. */

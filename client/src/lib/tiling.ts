@@ -12,6 +12,8 @@ export type TileMode = 'edit' | 'read'
 export type TileContent =
   | { kind: 'note'; noteId: number; mode: TileMode }
   | { kind: 'board'; noteId: number }
+  /** A view a plugin renders for a note (e.g. a live LaTeX preview). */
+  | { kind: 'plugin'; pluginId: string; view: string; noteId: number }
   | { kind: 'empty' }
 
 export type SplitDir = 'row' | 'column' // row = side by side, column = stacked
@@ -93,7 +95,26 @@ export function boardLeafFor(node: LayoutNode, noteId: number): LeafNode | null 
   return findLeafBy(node, (l) => l.content.kind === 'board' && l.content.noteId === noteId)
 }
 
-/** Note id a tile is "about" (note and board tiles both belong to a note). */
+export function pluginLeafFor(node: LayoutNode, pluginId: string, view: string, noteId: number): LeafNode | null {
+  return findLeafBy(
+    node,
+    (l) => l.content.kind === 'plugin' && l.content.pluginId === pluginId && l.content.view === view && l.content.noteId === noteId,
+  )
+}
+
+/** Identity of what a tile shows: two tiles with the same key are duplicates. */
+export function tileKey(content: TileContent): string {
+  switch (content.kind) {
+    case 'empty':
+      return 'empty'
+    case 'plugin':
+      return `plugin:${content.pluginId}:${content.view}:${content.noteId}`
+    default:
+      return `${content.kind}:${content.noteId}`
+  }
+}
+
+/** Note id a tile is "about" (note, board and plugin tiles all belong to a note). */
 export function tileNoteId(content: TileContent): number | null {
   return content.kind === 'empty' ? null : content.noteId
 }
@@ -317,6 +338,9 @@ export function isLayoutNode(value: unknown, depth = 0): value is LayoutNode {
     if (!c || typeof c !== 'object') return false
     if (c.kind === 'empty') return true
     if (c.kind === 'board') return typeof c.noteId === 'number'
+    if (c.kind === 'plugin') {
+      return typeof c.noteId === 'number' && typeof c.pluginId === 'string' && typeof c.view === 'string'
+    }
     if (c.kind === 'note') return typeof c.noteId === 'number' && (c.mode === 'edit' || c.mode === 'read')
     return false
   }

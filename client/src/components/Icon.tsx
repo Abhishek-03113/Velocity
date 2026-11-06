@@ -205,6 +205,8 @@ const PATHS = {
       <path d="m4 4 16 16" />
     </>
   ),
+  /* Summation sign: LaTeX / maths. */
+  sum: <path d="M17.5 5.5h-11l6 6.5-6 6.5h11" />,
 } as const
 
 export type IconName = keyof typeof PATHS

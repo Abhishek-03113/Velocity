@@ -3,6 +3,11 @@ FROM node:20-alpine
 # Install build tools required for native addons (better-sqlite3)
 RUN apk add --no-cache python3 make g++
 
+# LaTeX plugin: optional TeX engine for PDF compiles (adds a few hundred MB).
+# LATEX=on docker compose build server   (or: docker build --build-arg LATEX=on …)
+ARG LATEX=off
+RUN if [ "$LATEX" = "on" ]; then apk add --no-cache texlive texmf-dist-latexrecommended texmf-dist-latexextra texmf-dist-fontsrecommended; fi
+
 WORKDIR /app
 
 # 1. Copy only package manifests and install deps inside the container

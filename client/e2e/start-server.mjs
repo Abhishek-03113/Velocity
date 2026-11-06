@@ -19,6 +19,9 @@ const child = spawn('npx', ['tsx', 'index.ts'], {
     // herdr connector: e2e/herdr.spec.ts serves a fake herdr socket at this path.
     HERDR_CONNECTOR_TOKEN: 'e2e-herdr-token',
     HERDR_SOCKET_PATH: path.join(os.tmpdir(), `velocity-e2e-herdr-${process.env.PORT ?? '3199'}.sock`),
+    // LaTeX plugin: a stand-in pdflatex (CI has no TeX), found ahead of anything on PATH.
+    LATEX_BIN_DIR: path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/tex-bin'),
+    LATEX_ENGINE: 'pdflatex',
   },
 })
 const stop = () => child.kill('SIGTERM')
