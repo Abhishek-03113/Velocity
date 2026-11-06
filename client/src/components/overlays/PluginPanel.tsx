@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useUiStore } from '../../store/uiStore'
+import { restoreFocus } from '../../lib/focus'
 import styles from './Overlays.module.css'
 
 /** A plugin's large panel (e.g. the herdr Agents board), over the workspace. Escape closes it. */
@@ -11,9 +12,7 @@ export default function PluginPanel() {
   useEffect(() => {
     const previous = document.activeElement
     ref.current?.focus()
-    return () => {
-      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus({ preventScroll: true })
-    }
+    return () => restoreFocus(previous)
   }, [])
 
   if (!panel) return null

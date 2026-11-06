@@ -14,7 +14,9 @@ import { leaf, leaves } from '../lib/tiling'
 import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
 import { usePluginStore } from '../store/pluginStore'
-import { createContext, editorModeFor, pluginCommands, pluginTileView, startPlugins, urlHandlerFor } from './host'
+import { useUiStore } from '../store/uiStore'
+import { createContext, editorModeFor, pluginCommands, pluginTileView, startPlugins, urlHandlerFor, usePluginsVersion } from './host'
+import { PLUGINS } from './registry'
 
 function key(init: KeyboardEventInit & { code: string }): KeyboardEvent {
   return new KeyboardEvent('keydown', init)
@@ -108,6 +110,44 @@ describe('plugin host', () => {
     expect(editorModeFor('# Notes with $x$')).toBeNull()
     usePluginStore.getState().setEnabled('latex', false)
     expect(editorModeFor('\\documentclass{article}')).toBeNull()
+  })
+
+  describe.each(PLUGINS.map((p) => p.manifest.id))('switching %s off and on', (id) => {
+    const commandsOf = () => pluginCommands().filter((c) => c.id.startsWith(`plugin.${id}.`))
+    const keysOf = () => commandsOf().flatMap((c) => c.keys ?? [])
+
+    it('removes everything it added, then brings it all back', () => {
+      const commands = commandsOf().map((c) => c.id)
+      expect(commands.length).toBeGreaterThan(0)
+      const firstKey = keysOf()[0]
+      const tileViews = id === 'latex' ? ['preview'] : []
+      const version = usePluginsVersion.getState().version
+      usePluginStore.getState().setEnabled(id, false)
+      expect(usePluginStore.getState().isEnabled(id)).toBe(false)
+      expect(commandsOf()).toHaveLength(0)
+      expect(usePluginsVersion.getState().version).toBeGreaterThan(version)
+      for (const view of tileViews) expect(pluginTileView(id, view)).toBeNull()
+      if (firstKey) {
+        const [code, ...mods] = firstKey.split('+').reverse()
+        const init = { code: code!, ctrlKey: mods.includes('Ctrl'), altKey: mods.includes('Alt'), shiftKey: mods.includes('Shift') }
+        expect(matchCommand(key(init))?.id ?? '').not.toMatch(new RegExp(`^plugin\\.${id}\\.`))
+      }
+      if (id === 'latex') expect(editorModeFor('\\documentclass{article}')).toBeNull()
+      // Stored per browser, so the choice survives a reload.
+      expect(JSON.parse(localStorage.getItem('velocity.plugins.v1')!).enabled[id]).toBe(false)
+
+      usePluginStore.getState().setEnabled(id, true)
+      expect(commandsOf().map((c) => c.id)).toEqual(commands)
+      for (const view of tileViews) expect(pluginTileView(id, view)).not.toBeNull()
+      if (id === 'latex') expect(editorModeFor('\\documentclass{article}')).not.toBeNull()
+    })
+
+    it('closes its panel when switched off', () => {
+      createContext(id).panel.open({ title: 'Panel', render: () => null })
+      expect(useUiStore.getState().pluginPanel?.pluginId).toBe(id)
+      usePluginStore.getState().setEnabled(id, false)
+      expect(useUiStore.getState().pluginPanel).toBeNull()
+    })
   })
 
   it('keeps built-in key bindings ahead of plugin keys', () => {

@@ -115,6 +115,18 @@ characters and runs as the user types, so keep it to a regex. The editor swaps m
 when the answer changes (no remount) and when plugins are switched on or off. The first running
 plugin whose `matches` returns true wins.
 
+### Switching plugins off and on
+
+Every plugin is on by default and has a switch in Settings → Plugins (**Plugins…** in the command
+palette opens that section). Switching one off calls its `dispose()` and takes away everything it
+added: its commands and keys, URL handler, note badges and editor mode. The host also closes its
+panel if it left one open. Its tiles stay in the layout and say the plugin is off, with **Turn On**
+and **Close Tile** buttons, so switching it back on puts them back as they were. Server routes don't
+change; they have their own settings (for example `HERDR_CONNECTOR_TOKEN`, `LATEX_COMPILE`).
+
+A plugin's `dispose()` must undo what `activate()` started: timers, streams, store
+subscriptions, object URLs. `host.test.ts` switches every registered plugin off and on.
+
 Enabled state and settings are stored per browser in `velocity.plugins.v1`, like other preferences.
 
 ## Server side (optional)
