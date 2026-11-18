@@ -4,6 +4,8 @@ import { primaryKey } from '../../lib/commands'
 import { moveMenuItems } from '../../lib/moveMenu'
 import { groupColor, NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { comboLabel } from '../../lib/platform'
+import { folderActionsFor, useFolderActions } from '../../plugins/host'
+import type { FolderAction } from '../../plugins/types'
 import { newNote, requestDeleteGroup } from '../../lib/workspace'
 import { useEditorStore } from '../../store/editorStore'
 import { useGroupStore } from '../../store/groupStore'
@@ -27,6 +29,8 @@ interface SourceRowProps {
   onCancelRename?: () => void
   onDoubleClick?: () => void
   onContextMenu?: (e: MouseEvent) => void
+  /** A plugin's action for this folder: a trailing icon button. */
+  action?: FolderAction | null
   onDragOver?: (e: DragEvent) => void
   onDragLeave?: (e: DragEvent) => void
   onDrop?: (e: DragEvent) => void
@@ -45,6 +49,7 @@ const SourceRow = memo(function SourceRow({
   onCancelRename,
   onDoubleClick,
   onContextMenu,
+  action,
   onDragOver,
   onDragLeave,
   onDrop,
@@ -58,7 +63,7 @@ const SourceRow = memo(function SourceRow({
     <li
       className={`${styles.sourceRow} ${selected ? styles.sourceRowSelected : ''} ${
         dropTarget ? styles.sourceRowDrop : ''
-      }`}
+      } ${action ? styles.sourceRowAction : ''}`}
       onDragOver={onDragOver}
       onDragEnter={onDragOver}
       onDragLeave={onDragLeave}
@@ -100,9 +105,31 @@ const SourceRow = memo(function SourceRow({
           <span className={styles.sourceCount}>{count}</span>
         </button>
       )}
+      {action && !editing && (
+        <button
+          type="button"
+          className={styles.sourceAction}
+          title={action.label}
+          aria-label={action.label}
+          draggable={false}
+          onClick={(e) => {
+            e.stopPropagation()
+            action.run()
+          }}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <Icon name={action.icon} size={15} />
+        </button>
+      )}
     </li>
   )
 })
+
+/** A folder row that asks running plugins for an action on it. */
+function FolderRow({ group, ...props }: Omit<SourceRowProps, 'action' | 'icon' | 'label'> & { group: { id: number; name: string } }) {
+  const action = useFolderActions(group)[0] ?? null
+  return <SourceRow {...props} icon="folder" label={group.name} action={action} />
+}
 
 export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void }) {
   const { groups, activeGroupId, editingGroupId, setActiveGroupId, setEditingGroupId, addGroup, setGroupName } =
@@ -197,12 +224,15 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
     },
   }
 
-  const folderMenu = (e: MouseEvent, groupId: number) => {
+  const folderMenu = (e: MouseEvent, group: { id: number; name: string }) => {
     e.preventDefault()
+    const groupId = group.id
+    const pluginItems = folderActionsFor(group).flatMap((a) => [{ label: a.label, icon: a.icon, onSelect: a.run }])
     onMenu({
       x: e.clientX,
       y: e.clientY,
       items: [
+        ...(pluginItems.length ? [...pluginItems, { separator: true as const }] : []),
         { label: 'New Note in Folder', icon: 'square.and.pencil', onSelect: () => newNote({ groupId }) },
         { label: 'Rename Folder', icon: 'pencil', onSelect: () => setEditingGroupId(groupId) },
         { separator: true },
@@ -262,11 +292,10 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
         {foldersExpanded && (
           <ul>
             {groups.map((g) => (
-              <SourceRow
+              <FolderRow
                 key={g.id}
-                icon="folder"
+                group={g}
                 tint={colors.get(g.id)}
-                label={g.name}
                 count={counts[String(g.id)] ?? 0}
                 selected={activeGroupId === g.id}
                 dropTarget={dropTarget === g.id}
@@ -278,7 +307,7 @@ export function FoldersColumn({ onMenu }: { onMenu: (menu: MenuState) => void })
                   setEditingGroupId(null)
                 }}
                 onCancelRename={() => setEditingGroupId(null)}
-                onContextMenu={(e) => folderMenu(e, g.id)}
+                onContextMenu={(e) => folderMenu(e, g)}
                 {...dragProps(g.id)}
               />
             ))}

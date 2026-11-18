@@ -16,6 +16,8 @@ import {
   splitLeaf,
   swapContents,
   tileKey,
+  tileNoteId,
+  viewLeafFor,
   type LayoutNode,
 } from './tiling'
 
@@ -159,5 +161,31 @@ describe('plugin tiles', () => {
   it('tileKey tells plugin views apart from the note and board of the same note', () => {
     expect(new Set([tileKey(note(1)), tileKey({ kind: 'board', noteId: 1 }), tileKey(preview(1)), tileKey(preview(2))]).size).toBe(4)
     expect(tileKey(preview(1))).toBe(tileKey(preview(1)))
+  })
+})
+
+describe('workspace view tiles', () => {
+  const shelf = { kind: 'view' as const, pluginId: 'books', view: 'shelf' }
+
+  it('have a note-less identity', () => {
+    expect(tileKey(shelf)).toBe('view:books:shelf')
+    expect(tileNoteId(shelf)).toBeNull()
+    expect(tileKey(shelf)).not.toBe(tileKey({ ...shelf, pluginId: 'other' }))
+  })
+
+  it('are found by plugin and view, and survive sanitize and remapNote', () => {
+    let root: LayoutNode = leaf(note(1), 'a')
+    root = splitLeaf(root, 'a', 'row', leaf(shelf, 'v'))
+    expect(viewLeafFor(root, 'books', 'shelf')?.id).toBe('v')
+    expect(viewLeafFor(root, 'books', 'other')).toBeNull()
+    expect(leaves(sanitize(root, () => false)).map((l) => l.content.kind)).toEqual(['view'])
+    expect(viewLeafFor(remapNote(root, 1, 9), 'books', 'shelf')?.id).toBe('v')
+  })
+
+  it('validate structurally and round-trip through JSON', () => {
+    const root = splitLeaf(leaf(note(1), 'a'), 'a', 'row', leaf(shelf, 'v'))
+    expect(isLayoutNode(JSON.parse(JSON.stringify(root)))).toBe(true)
+    expect(isLayoutNode({ type: 'leaf', id: 'v', content: { kind: 'view', pluginId: 'books' } })).toBe(false)
+    expect(isLayoutNode({ type: 'leaf', id: 'v', content: { kind: 'view', view: 'shelf', pluginId: 3 } })).toBe(false)
   })
 })

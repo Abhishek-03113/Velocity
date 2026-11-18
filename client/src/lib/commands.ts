@@ -109,7 +109,7 @@ export const COMMANDS: Command[] = [
       const { root, focusedId } = useLayoutStore.getState()
       const tile = findLeaf(root, focusedId)
       // An empty tile has no tab of its own — close the tile instead.
-      if (tile?.content.kind === 'empty') return ws.closeTile()
+      if (tile?.content.kind === 'empty' || tile?.content.kind === 'view') return ws.closeTile()
       const id = ws.currentNoteId()
       if (id != null) useEditorStore.getState().closeTab(id)
     },

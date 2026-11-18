@@ -81,6 +81,7 @@ the settings rows. Built-in shortcuts always win over plugin shortcuts.
 | `notes.title / content / append / selection` | A note's title, its Markdown (loaded if needed), append Markdown, the editor selection |
 | `notes.useContent(id)` | React hook for plugin components: the note's content, re-rendering as it changes |
 | `notes.goToLine(id, line)` | Show the note in its editor with that line selected (e.g. a compiler error) |
+| `views.open / close / isOpen` | A workspace view with no note behind it, from the plugin's `views` (see Workspace views) |
 | `tiles.open / close / toggle / isOpen` | A workspace tile showing one of the plugin's `tiles` views for a note, beside the note's tile |
 | `files.download(name, data, mime?)` | Hand the user a file (`Blob` or string) as a browser download |
 | `boards.has / exportPng` | Whether the note has a whiteboard; render it to a PNG data URL with Excalidraw |
@@ -107,6 +108,25 @@ temp → server id swap and closes when the note is deleted. While the plugin is
 so instead of rendering. `render` is called by React, so lazy-load heavy components inside it and
 keep state in a store; `ctx.notes.useContent(noteId)` keeps a view in step with the note.
 
+### Workspace views
+
+Return `views: { <view>: { title, icon?, render() } }` for a view that belongs to no note (a
+bookshelf, a dashboard). `ctx.views.open(view)` focuses the view's tile if it is open, otherwise
+fills the focused tile when that is empty, otherwise splits beside the focused tile;
+`ctx.views.close(view)` closes it (the only tile becomes empty instead) and
+`ctx.views.isOpen(view)` reports it. The layout stores `{ kind: 'view', pluginId, view }`, so it is
+restored after a reload. The header shows the view's icon and title; while the plugin is off the tile
+shows the same **Turn On** / **Close Tile** state as plugin tiles. Note-only commands (read mode,
+close note tab) do not apply to a view tile.
+
+### Folder actions
+
+Return `folderAction(folder: { id, name })` to offer one action per sidebar folder, or `null` for
+folders you do not decorate: `{ label, icon, run }`. It shows as a trailing icon button on the folder
+row (on hover, focus or when selected), as the first item of the folder's context menu, and as a
+button in the notes column header while that folder is selected. It is called on render, so keep it
+cheap, and call `ctx.refreshBadges()` when its answer changes. Switching the plugin off removes it.
+
 ### Editor modes
 
 Return `editorMode: { matches(content), extensions() }` to edit your kind of note with its own
@@ -119,7 +139,7 @@ plugin whose `matches` returns true wins.
 
 Every plugin is on by default and has a switch in Settings → Plugins (**Plugins…** in the command
 palette opens that section). Switching one off calls its `dispose()` and takes away everything it
-added: its commands and keys, URL handler, note badges and editor mode. The host also closes its
+added: its commands and keys, URL handler, note badges, folder actions and editor mode. The host also closes its
 panel if it left one open. Its tiles stay in the layout and say the plugin is off, with **Turn On**
 and **Close Tile** buttons, so switching it back on puts them back as they were. Server routes don't
 change; they have their own settings (for example `HERDR_CONNECTOR_TOKEN`, `LATEX_COMPILE`).

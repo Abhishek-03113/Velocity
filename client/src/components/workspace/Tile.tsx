@@ -3,7 +3,7 @@ import { primaryKey } from '../../lib/commands'
 import { displayTitle } from '../../lib/noteMeta'
 import type { LeafNode } from '../../lib/tiling'
 import { closeTile, focusTile, toggleReadMode } from '../../lib/workspace'
-import { pluginName, pluginTileView, usePluginsVersion } from '../../plugins/host'
+import { pluginName, pluginTileView, pluginWorkspaceView, usePluginsVersion } from '../../plugins/host'
 import { useEditorStore } from '../../store/editorStore'
 import { useLayoutStore } from '../../store/layoutStore'
 import { usePluginStore } from '../../store/pluginStore'
@@ -53,26 +53,47 @@ function PluginTileTitle({ noteId, pluginId, view }: { noteId: number; pluginId:
   return <TileTitle noteId={noteId} suffix={spec?.title ?? pluginName(pluginId)} icon={spec?.icon ?? 'doc.plaintext'} />
 }
 
+/** Header of a note-less workspace view: its icon and title. */
+function ViewTileTitle({ pluginId, view }: { pluginId: string; view: string }) {
+  usePluginsVersion((s) => s.version)
+  const spec = pluginWorkspaceView(pluginId, view)
+  return (
+    <span className={styles.tileTitle}>
+      <Icon name={spec?.icon ?? 'doc.plaintext'} size={14} className={styles.tileTitleIcon} />
+      <span className={styles.tileTitleText}>{spec?.title ?? pluginName(pluginId)}</span>
+    </span>
+  )
+}
+
+function PluginOff({ tileId, pluginId }: { tileId: string; pluginId: string }) {
+  const name = pluginName(pluginId)
+  return (
+    <div className={styles.pluginOff}>
+      <p className={styles.pluginOffText}>{name} is switched off.</p>
+      <div className={styles.pluginOffActions}>
+        <button type="button" className={styles.pluginOffPrimary} onClick={() => usePluginStore.getState().setEnabled(pluginId, true)}>
+          Turn On {name}
+        </button>
+        <button type="button" className={styles.pluginOffButton} onClick={() => closeTile(tileId)}>
+          Close Tile
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ViewTileBody({ tileId, pluginId, view }: { tileId: string; pluginId: string; view: string }) {
+  usePluginsVersion((s) => s.version)
+  const spec = pluginWorkspaceView(pluginId, view)
+  if (!spec) return <PluginOff tileId={tileId} pluginId={pluginId} />
+  return <>{spec.render()}</>
+}
+
 function PluginTileBody({ tileId, noteId, pluginId, view }: { tileId: string; noteId: number; pluginId: string; view: string }) {
   // Re-resolve when plugins are switched on or off.
   usePluginsVersion((s) => s.version)
   const spec = pluginTileView(pluginId, view)
-  if (!spec) {
-    const name = pluginName(pluginId)
-    return (
-      <div className={styles.pluginOff}>
-        <p className={styles.pluginOffText}>{name} is switched off.</p>
-        <div className={styles.pluginOffActions}>
-          <button type="button" className={styles.pluginOffPrimary} onClick={() => usePluginStore.getState().setEnabled(pluginId, true)}>
-            Turn On {name}
-          </button>
-          <button type="button" className={styles.pluginOffButton} onClick={() => closeTile(tileId)}>
-            Close Tile
-          </button>
-        </div>
-      </div>
-    )
-  }
+  if (!spec) return <PluginOff tileId={tileId} pluginId={pluginId} />
   return <>{spec.render(noteId)}</>
 }
 
@@ -84,6 +105,8 @@ function tileLabel(kind: LeafNode['content']['kind']): string {
       return 'Note tile'
     case 'plugin':
       return 'Plugin tile'
+    case 'view':
+      return 'Workspace view tile'
     default:
       return 'Empty tile'
   }
@@ -146,6 +169,8 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
               <Icon name="plus.circle" size={14} className={styles.tileTitleIcon} />
               <span className={styles.tileTitleText}>Open a Note</span>
             </span>
+          ) : content.kind === 'view' ? (
+            <ViewTileTitle pluginId={content.pluginId} view={content.view} />
           ) : content.kind === 'plugin' ? (
             <PluginTileTitle noteId={content.noteId} pluginId={content.pluginId} view={content.view} />
           ) : content.kind === 'board' ? (
@@ -193,6 +218,7 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
         {content.kind === 'plugin' && (
           <PluginTileBody tileId={leaf.id} noteId={content.noteId} pluginId={content.pluginId} view={content.view} />
         )}
+        {content.kind === 'view' && <ViewTileBody tileId={leaf.id} pluginId={content.pluginId} view={content.view} />}
         {content.kind === 'empty' && <EmptyTile tileId={leaf.id} focused={focused} />}
       </div>
 
