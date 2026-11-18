@@ -1,0 +1,24 @@
+/* The book itself is styled inside its iframe; only the frame around it uses tokens. */
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  outline: none;
+}
+
+/* --focus-ring is an outer box-shadow, so draw it on an inset pseudo-element (the root clips overflow). */
+.root:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.mount {
+  width: 100%;
+  height: 100%;
+}
