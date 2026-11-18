@@ -45,6 +45,23 @@ export function findBookNote(
   return found
 }
 
+/** The title the server gives a freshly uploaded file (mirrors server `titleFromFileName`). */
+export function fileTitle(fileName: string): string {
+  const base = fileName.replace(/\.(epub|pdf)$/i, '').trim()
+  return (base || 'Untitled book').slice(0, 300)
+}
+
+/**
+ * A book whose import was cut short (page closed or reloaded between the upload and the metadata
+ * PATCH): still titled from its file name and without a cover. `checked` holds ids already looked at.
+ */
+export function needsMetadata(
+  book: Pick<Book, 'id' | 'title' | 'file_name' | 'cover_url'>,
+  skip: { has(id: number): boolean },
+): boolean {
+  return !book.cover_url && book.title === fileTitle(book.file_name) && !skip.has(book.id)
+}
+
 export type NoteLookup =
   | { status: 'found'; id: number }
   /** Nothing carries the marker and every candidate's content is known: the note really is gone. */

@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { bookIdOf, bookNoteContent, findBookNote, formatAddedDate, lookupBookNote } from './note'
+import { bookIdOf, bookNoteContent, findBookNote, fileTitle, formatAddedDate, lookupBookNote, needsMetadata } from './note'
+
+describe('metadata repair', () => {
+  const book = { id: 1, title: 'sample', file_name: 'sample.epub', cover_url: null }
+  const none = new Set<number>()
+
+  it('derives the server default title from the file name', () => {
+    expect(fileTitle('My Book.PDF')).toBe('My Book')
+    expect(fileTitle('.epub')).toBe('Untitled book')
+    expect(fileTitle(`${'x'.repeat(400)}.pdf`)).toHaveLength(300)
+  })
+
+  it('flags books still titled from the file and without a cover', () => {
+    expect(needsMetadata(book, none)).toBe(true)
+  })
+
+  it('leaves books with a cover, a real title, or already checked alone', () => {
+    expect(needsMetadata({ ...book, cover_url: '/api/assets/3' }, none)).toBe(false)
+    expect(needsMetadata({ ...book, title: 'The Velocity Sampler' }, none)).toBe(false)
+    expect(needsMetadata(book, new Set([1]))).toBe(false)
+  })
+})
 
 describe('lookupBookNote', () => {
   const marker = '<!-- velocity-book:5 -->\n'

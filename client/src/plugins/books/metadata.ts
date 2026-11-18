@@ -20,7 +20,7 @@ import {
   type BookPatch,
 } from './api'
 import { useGroupStore } from '../../store/groupStore'
-import { bookNoteContent, findBookNote, lookupBookNote } from './note'
+import { bookNoteContent, findBookNote, lookupBookNote, needsMetadata } from './note'
 import { scanNotes, useBooksStore, type UploadItem } from './store'
 import type { Book } from './types'
 
@@ -66,7 +66,10 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
     store().setLoading(true)
     try {
       const list = await listBooks()
-      if (!disposed) store().setBooks(list)
+      if (!disposed) {
+        store().setBooks(list)
+        void repairMetadata()
+      }
     } catch (err) {
       fail('could not load the library', err)
       if (!disposed) store().setLoading(false, err instanceof Error ? err.message : 'Failed to load')
@@ -157,13 +160,12 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
     updateActivity()
   }
 
-  const processBook = async (item: UploadItem, book: Book): Promise<Book> => {
-    store().patchUpload(item.key, { status: 'processing', progress: 1 })
+  /** Title, author, page count and cover (uploaded) read from the file's bytes. Never throws. */
+  const readMetaPatch = async (format: Book['format'], data: ArrayBuffer): Promise<BookPatch> => {
     const patch: BookPatch = {}
     try {
-      const data = await item.file.arrayBuffer()
       const meta =
-        book.format === 'epub'
+        format === 'epub'
           ? await (await import('./reader/epub/meta')).readEpubMeta(data)
           : await (await import('./reader/pdf/meta')).readPdfMeta(data)
       if (meta.title?.trim()) patch.title = meta.title.trim().slice(0, 300)
@@ -180,6 +182,10 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
       // A book we cannot read here still belongs on the shelf, under the title the server chose.
       fail('could not read book metadata', err)
     }
+    return patch
+  }
+
+  const applyPatch = async (book: Book, patch: BookPatch): Promise<Book> => {
     if (Object.keys(patch).length === 0) return book
     try {
       const updated = await patchBook(book.id, patch)
@@ -191,6 +197,50 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
     }
   }
 
+  const processBook = async (item: UploadItem, book: Book): Promise<Book> => {
+    store().patchUpload(item.key, { status: 'processing', progress: 1 })
+    importing.add(book.id)
+    try {
+      return await applyPatch(book, await readMetaPatch(book.format, await item.file.arrayBuffer()))
+    } finally {
+      importing.delete(book.id)
+    }
+  }
+
+  // ── Repair: an import cut short by closing or reloading the page ────────────
+
+  const checkedKey = 'metaChecked'
+  const checked = new Set<number>(ctx.storage.get<number[]>(checkedKey) ?? [])
+  const importing = new Set<number>()
+  let repairing = false
+
+  /** Give books left titled from their file name (and without a cover) the metadata the file has. */
+  const repairMetadata = async () => {
+    if (repairing || disposed) return
+    repairing = true
+    try {
+      const todo = Object.values(store().books).filter((b) => needsMetadata(b, checked) && !importing.has(b.id))
+      for (const book of todo) {
+        if (disposed) return
+        try {
+          const res = await fetch(bookFileUrl(book))
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          const updated = await applyPatch(book, await readMetaPatch(book.format, await res.arrayBuffer()))
+          // The note is the last import step: a cut-short book has none yet.
+          if (!disposed) await noteForBook(book.id)
+          // Looked at once per browser; a file that really has no metadata is not read again.
+          checked.add(book.id)
+          ctx.storage.set(checkedKey, [...checked])
+          if (updated !== book) ctx.flash(`Finished adding “${updated.title}”`)
+        } catch (err) {
+          fail(`could not repair book ${book.id}`, err)
+        }
+      }
+    } finally {
+      repairing = false
+    }
+  }
+
   const run = async (item: UploadItem) => {
     const controller = new AbortController()
     aborts.add(controller)
@@ -198,15 +248,21 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
       store().patchUpload(item.key, { status: 'uploading', progress: 0, error: undefined })
       const { book, duplicate } = await uploadBook(item.file, (p) => store().patchUpload(item.key, { progress: p }), controller.signal)
       if (disposed) return
-      store().upsertBook(book)
       if (duplicate) {
+        store().upsertBook(book)
         ctx.flash(`“${book.title}” is already on your shelf`)
         finishCard(item.key)
         store().setFocusBook(book.id)
+        // A copy whose first import was cut short gets its metadata now, from the file in hand.
+        if (needsMetadata(book, checked) && !importing.has(book.id)) {
+          const fixed = await processBook(item, book)
+          if (!disposed) await noteForBook(fixed.id)
+        }
         return
       }
       const finished = await processBook(item, book)
       if (disposed) return
+      store().upsertBook(finished)
       ensureNote(finished)
       ctx.flash(`Added “${finished.title}”`)
       finishCard(item.key)
