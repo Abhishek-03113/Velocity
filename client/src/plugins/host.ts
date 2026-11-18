@@ -4,13 +4,14 @@
  * (commands.ts reads from here), so only `import type` crosses that boundary.
  */
 import type { Extension } from '@codemirror/state'
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import { api } from '../lib/api'
 import { getEditor } from '../lib/editorRegistry'
 import { displayTitle } from '../lib/noteMeta'
 import type { Command } from '../lib/commands'
 import { currentNoteId, focusTile, openNote } from '../lib/workspace'
-import { leaves, noteLeafFor, pluginLeafFor } from '../lib/tiling'
+import { findLeaf, leaves, noteLeafFor, pluginLeafFor, viewLeafFor } from '../lib/tiling'
 import { useEditorStore } from '../store/editorStore'
 import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
@@ -19,7 +20,7 @@ import { useUiStore } from '../store/uiStore'
 import { hasBoard, loadScene } from '../store/whiteboardStore'
 import { pluginRequest, pluginStream } from './transport'
 import { PLUGINS } from './registry'
-import type { NoteBadge, PluginContext, PluginInstance, RequestOptions, TileView, VelocityPlugin } from './types'
+import type { FolderAction, NoteBadge, PluginContext, PluginInstance, RequestOptions, TileView, VelocityPlugin, WorkspaceView } from './types'
 
 interface Active {
   plugin: VelocityPlugin
@@ -159,9 +160,38 @@ function tilesFor(id: string): PluginContext['tiles'] {
   return { open, close, toggle, isOpen }
 }
 
+function viewsFor(id: string): PluginContext['views'] {
+  const open = (view: string, opts: { focus?: boolean } = {}) => {
+    const layout = useLayoutStore.getState()
+    const focus = opts.focus ?? true
+    const existing = viewLeafFor(layout.root, id, view)
+    if (existing) {
+      if (focus) focusTile(existing.id)
+      return existing.id
+    }
+    const content = { kind: 'view' as const, pluginId: id, view }
+    const focused = findLeaf(layout.root, layout.focusedId)
+    if (focused?.content.kind === 'empty') {
+      layout.setContent(focused.id, content)
+      return focused.id
+    }
+    return layout.split('row', content, { targetId: focused?.id, focus })
+  }
+  const close = (view: string) => {
+    const layout = useLayoutStore.getState()
+    const existing = viewLeafFor(layout.root, id, view)
+    if (!existing) return
+    if (leaves(layout.root).length === 1) layout.setContent(existing.id, { kind: 'empty' })
+    else layout.close(existing.id)
+  }
+  const isOpen = (view: string) => viewLeafFor(useLayoutStore.getState().root, id, view) != null
+  return { open, close, isOpen }
+}
+
 export function createContext(id: string): PluginContext {
   const folders = { ensure: (name: string) => useGroupStore.getState().ensureGroup(name) }
   const tiles = tilesFor(id)
+  const views = viewsFor(id)
   return {
     id,
     setting: <T extends string | boolean>(key: string) => usePluginStore.getState().getSetting<T>(id, key),
@@ -196,6 +226,7 @@ export function createContext(id: string): PluginContext {
       },
       isOpen: () => useUiStore.getState().pluginPanel?.pluginId === id,
     },
+    views,
     notes: {
       create: ({ title, content, folder, split = false, mode = 'edit' }) => {
         const groupId = folder?.trim() ? folders.ensure(folder) : null
@@ -327,6 +358,41 @@ export function pluginTileView(pluginId: string, view: string): (TileView & { pl
   const running = active.get(pluginId)
   const spec = running?.instance.tiles?.[view]
   return spec ? { ...spec, pluginName: running.plugin.manifest.name } : null
+}
+
+/** A running plugin's note-less workspace view, or null when the plugin is off or has no such view. */
+export function pluginWorkspaceView(pluginId: string, view: string): (WorkspaceView & { pluginName: string }) | null {
+  const running = active.get(pluginId)
+  const spec = running?.instance.views?.[view]
+  return spec ? { ...spec, pluginName: running.plugin.manifest.name } : null
+}
+
+/** Actions running plugins offer for a folder, in registration order. */
+export function folderActionsFor(folder: { id: number; name: string }): (FolderAction & { pluginId: string })[] {
+  const out: (FolderAction & { pluginId: string })[] = []
+  for (const [pluginId, { instance }] of active) {
+    if (!instance.folderAction) continue
+    try {
+      const action = instance.folderAction(folder)
+      if (action) out.push({ ...action, pluginId })
+    } catch (err) {
+      console.error(`[plugins] ${pluginId} folderAction failed:`, err)
+    }
+  }
+  return out
+}
+
+/** React hook: a folder's plugin actions, re-read when plugins switch on/off or refresh their badges. */
+export function useFolderActions(folder: { id: number; name: string } | null): (FolderAction & { pluginId: string })[] {
+  const pluginsVersion = usePluginsVersion((s) => s.version)
+  const badgeVersion = useBadgeVersion((s) => s.version)
+  const id = folder?.id
+  const name = folder?.name
+  return useMemo(
+    () => (id == null || name == null ? [] : folderActionsFor({ id, name })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [id, name, pluginsVersion, badgeVersion],
+  )
 }
 
 const modeExtensions = new Map<string, Extension>()
