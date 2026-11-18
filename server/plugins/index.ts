@@ -3,9 +3,10 @@ import type { ServerPlugin } from './types.ts'
 import { blogReaderPlugin } from './blogReader.ts'
 import { herdrPlugin } from './herdr/index.ts'
 import { latexPlugin } from './latex/index.ts'
+import { booksPlugin } from './books/index.ts'
 
 /** The single additive list of server plugins. */
-export const SERVER_PLUGINS: ServerPlugin[] = [blogReaderPlugin, herdrPlugin, latexPlugin]
+export const SERVER_PLUGINS: ServerPlugin[] = [blogReaderPlugin, herdrPlugin, latexPlugin, booksPlugin]
 
 let migrated = false
 

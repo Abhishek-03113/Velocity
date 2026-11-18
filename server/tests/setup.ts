@@ -7,6 +7,7 @@ const root = mkdtempSync(path.join(os.tmpdir(), 'velocity-test-'))
 process.env.DB_PATH = path.join(root, 'test.db')
 process.env.ASSETS_DIR = path.join(root, 'assets')
 process.env.DOCS_DIR = path.join(root, 'docs')
+process.env.BOOKS_DIR = path.join(root, 'books')
 process.env.DOCS_SYNC = 'off'
 process.env.EMPTY_NOTE_CLEANUP = 'off'
 
