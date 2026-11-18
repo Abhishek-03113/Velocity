@@ -409,8 +409,7 @@
 /* Plugin folder action in the notes header (e.g. Open Bookshelf). */
 .folderAction {
   display: inline-flex;
-  min-width: 0;
-  flex-shrink: 1;
+  flex-shrink: 0;
   align-items: center;
   gap: 5px;
   padding: 3px 8px;

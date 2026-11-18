@@ -18,6 +18,7 @@ import {
 import { useEditorStore } from '../../store/editorStore'
 import { useGroupStore } from '../../store/groupStore'
 import { focusedNoteId, useLayoutStore } from '../../store/layoutStore'
+import { pluginWorkspaceView, usePluginsVersion } from '../../plugins/host'
 import { useUiStore } from '../../store/uiStore'
 import { Icon } from '../Icon'
 import { ContextMenu, type MenuState } from '../ui/ContextMenu'
@@ -67,7 +68,7 @@ export default function Toolbar() {
     useShallow((s) => ({ sidebarOpen: s.sidebarOpen, toggleSidebar: s.toggleSidebar })),
   )
   const sliding = useLayoutStore((s) => s.mode === 'sliding')
-  const { noteId, tileMode, tileCount, focusedKind, boardOpen } = useLayoutStore(
+  const { noteId, tileMode, tileCount, focusedKind, boardOpen, viewPlugin, viewId } = useLayoutStore(
     useShallow((s) => {
       const leaf = findLeaf(s.root, s.focusedId)
       const id = focusedNoteId(s)
@@ -75,6 +76,8 @@ export default function Toolbar() {
         noteId: id,
         tileMode: leaf?.content.kind === 'note' ? leaf.content.mode : null,
         focusedKind: leaf?.content.kind ?? 'empty',
+        viewPlugin: leaf?.content.kind === 'view' ? leaf.content.pluginId : null,
+        viewId: leaf?.content.kind === 'view' ? leaf.content.view : null,
         tileCount: leaves(s.root).length,
         boardOpen:
           id != null && leaves(s.root).some((l) => l.content.kind === 'board' && l.content.noteId === id),
@@ -92,6 +95,9 @@ export default function Toolbar() {
       }
     }),
   )
+  const pluginsVersion = usePluginsVersion((v) => v.version)
+  const viewSpec = viewPlugin && viewId ? pluginWorkspaceView(viewPlugin, viewId) : null
+  void pluginsVersion
   const groupName = useGroupStore((s) => s.groups.find((g) => g.id === groupId)?.name)
 
   useEffect(() => {
@@ -153,13 +159,15 @@ export default function Toolbar() {
               type="button"
               className={styles.titleButton}
               title="Rename (F2)"
-              disabled={noteId == null}
+              disabled={noteId == null || viewSpec != null}
               onClick={() => setEditingTitleId(noteId)}
             >
-              <span className={styles.titleText}>{noteId == null ? 'Velocity' : title}</span>
+              <span className={styles.titleText}>{viewSpec ? viewSpec.title : noteId == null ? 'Velocity' : title}</span>
             </button>
           )}
-          {focusedKind === 'empty' || noteId == null ? (
+          {viewSpec ? (
+            <span className={styles.subtitle}>{viewSpec.pluginName}</span>
+          ) : focusedKind === 'empty' || noteId == null ? (
             <span className={styles.subtitle}>Empty tile</span>
           ) : (
             <button

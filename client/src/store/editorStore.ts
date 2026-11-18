@@ -23,6 +23,8 @@ export interface OpenOptions {
   split?: SplitRequest | false
   /** Move keyboard focus into the editor (default true). */
   focus?: boolean
+  /** addPaste only: false creates the note without opening a tab or touching the workspace (default true). */
+  reveal?: boolean
 }
 
 interface EditorState {
@@ -470,7 +472,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       updated_at: nowStamp(),
       created_at: nowStamp(),
     }
+    const reveal = opts.reveal !== false
     set((state) => {
+      if (!reveal) return { pastes: [paste, ...state.pastes] }
       const openTabIds = [...state.openTabIds, tempId]
       return {
         pastes: [paste, ...state.pastes],
@@ -478,13 +482,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         activeId: tempId,
       }
     })
-    const layout = useLayoutStore.getState()
-    if (opts.split) layout.split(opts.split, { kind: 'note', noteId: tempId, mode: 'edit' })
-    else layout.revealNote(tempId)
-    // New notes always open in edit mode.
-    const leafId = useLayoutStore.getState().focusedId
-    layout.setMode(leafId, 'edit')
-    if (opts.focus !== false) focusEditor(tempId)
+    if (reveal) {
+      const layout = useLayoutStore.getState()
+      if (opts.split) layout.split(opts.split, { kind: 'note', noteId: tempId, mode: 'edit' })
+      else layout.revealNote(tempId)
+      // New notes always open in edit mode.
+      const leafId = useLayoutStore.getState().focusedId
+      layout.setMode(leafId, 'edit')
+      if (opts.focus !== false) focusEditor(tempId)
+    }
 
     // Defer POST until the group has a real server id (temp ids are rejected by Zod).
     if (!isTempGroupId(paste.group_id)) createPasteOnServer(tempId, get, set)

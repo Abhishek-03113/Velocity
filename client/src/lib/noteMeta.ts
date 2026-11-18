@@ -9,6 +9,9 @@ export function hasExplicitTitle(title: string | null | undefined): boolean {
   return t.length > 0 && t !== UNTITLED
 }
 
+/** A line that is only an HTML comment (e.g. a plugin's note marker): never a title or preview. */
+const COMMENT_LINE = /^\s*<!--.*-->\s*$/
+
 /** Strip markdown syntax from a single line so it reads as plain text. */
 export function plainLine(line: string): string {
   return line
@@ -29,7 +32,7 @@ export function derivedTitle(content: string | undefined): string {
   while (start <= head.length) {
     const end = head.indexOf('\n', start)
     const line = head.slice(start, end === -1 ? undefined : end)
-    if (!/^\s*(```|---|\*\*\*)/.test(line)) {
+    if (!/^\s*(```|---|\*\*\*)/.test(line) && !COMMENT_LINE.test(line)) {
       const text = plainLine(line)
       if (text) return text.length > 80 ? `${text.slice(0, 80)}…` : text
     }
@@ -56,7 +59,7 @@ export function snippet(content: string | undefined, title: string, max = 120): 
   let length = 0
   let skippedTitle = false
   for (const raw of head.split('\n')) {
-    if (/^\s*(```|---|\*\*\*)/.test(raw)) continue
+    if (/^\s*(```|---|\*\*\*)/.test(raw) || COMMENT_LINE.test(raw)) continue
     const text = plainLine(raw)
     if (!text) continue
     if (!skippedTitle && (text === title || title.startsWith(text.slice(0, 40)))) {

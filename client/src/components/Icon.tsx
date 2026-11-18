@@ -34,6 +34,13 @@ const PATHS = {
       <path d="M4.5 9.5h5M4.5 16h5M10.5 12.5h4" />
     </>
   ),
+  'arrow.up.arrow.down': (
+    <>
+      <path d="M8 19V5.5M4.5 9 8 5.5 11.5 9" />
+      <path d="M16 5v13.5M12.5 15l3.5 3.5 3.5-3.5" />
+    </>
+  ),
+  'line.3.horizontal.decrease': <path d="M4 7h16M7 12h10M10 17h4" />,
   'folder.badge.plus': (
     <>
       <path d="M12 18.5H5.5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2V12" />

@@ -17,7 +17,7 @@ closest reference for a plugin with tiles, a store, lazy-loaded heavy code and a
 | ID | Story | Task |
 |---|---|---|
 | US-1 | As a reader, I add EPUB and PDF files (file picker or drag and drop) and they are kept on my Velocity server, so my library is on every device. | ACC-20, ACC-23 |
-| US-2 | As a reader, I find my books in a **Books** folder and open a **Bookshelf** of covers from that folder (or `Ctrl+Alt+L`). | ACC-19, ACC-23 |
+| US-2 | As a reader, I find my books in a **Books** folder and open a **Bookshelf** of covers from that folder (or `Ctrl+Alt+O`). | ACC-19, ACC-23 |
 | US-3 | As a reader, I read EPUBs comfortably: pages or scroll, contents, font size and family, Auto / Light / Sepia / Dark, and I resume where I left off on any device. | ACC-21, ACC-24 |
 | US-4 | As a reader, I read PDFs sharply at any zoom, with the outline, selectable text and page jumps, and I resume where I left off. | ACC-22, ACC-24 |
 | US-5 | As a note-taker, I keep a note per book beside the reader and quote a selected passage into it in one click. | ACC-24 |
@@ -155,7 +155,7 @@ at phone width. No toasts: `ctx.flash` / `ctx.activity` and inline states only.
 and ACC-24 add the rest they use.
 
 **Bookshelf view** (screenshot reference: a grid of covers with Sort / Filter / Search / New in the bar)
-- Bar (38px, like `latex/LatexPreview.module.css .bar`): "Bookshelf" · "11 books" (label-secondary) ·
+- Bar (38px, like `latex/LatexPreview.module.css .bar`): "11 books" (label-secondary; the tile header already says Bookshelf) ·
   spacer · Sort menu (Recently opened, Title, Author, Date added, Progress) · Filter menu (All, Reading,
   Unread, Finished; All formats, EPUB, PDF) · search field (filters title and author as you type) ·
   **Add Books** (accent button, `plus`).
@@ -196,7 +196,7 @@ and ACC-24 add the rest they use.
 while reading, "Finished" green; clicking it opens the reader. Setting toggles badges.
 
 **Commands** (palette section Plugins, prefix "Books:"):
-`Open Bookshelf` (`Ctrl+Alt+L`), `Add Books…` (`Ctrl+Alt+Shift+L`), `Open in Reader` (enabled when the
+`Open Bookshelf` (`Ctrl+Alt+O`), `Add Books…` (`Ctrl+Alt+Shift+O`), `Open in Reader` (enabled when the
 current note is a book note). **Settings**: Books folder name (default `Books`), Mark books in the notes
 list (toggle).
 
