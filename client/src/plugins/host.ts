@@ -164,6 +164,8 @@ function viewsFor(id: string): PluginContext['views'] {
   const open = (view: string, opts: { focus?: boolean } = {}) => {
     const layout = useLayoutStore.getState()
     const focus = opts.focus ?? true
+    // On phones the sidebar is an overlay: get it out of the way, like opening a note does.
+    if (focus && typeof window !== 'undefined' && window.innerWidth < 760) useUiStore.getState().setSidebarOpen(false)
     const existing = viewLeafFor(layout.root, id, view)
     if (existing) {
       if (focus) focusTile(existing.id)
