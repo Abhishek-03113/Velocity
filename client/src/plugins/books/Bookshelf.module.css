@@ -61,8 +61,8 @@
 .add:focus-visible,
 .linkButton:focus-visible,
 .more:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .barButtonOn {
@@ -84,8 +84,15 @@
 }
 
 .search:focus-within {
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: var(--focus-ring);
   color: var(--label-secondary);
+}
+
+/* One ring, on the field: the global :focus-visible ring would otherwise double up on the input. */
+.search input:focus,
+.search input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .search input {
@@ -158,8 +165,12 @@
 }
 
 .bookCard:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 5px;
+  outline: none;
+  box-shadow: none;
+}
+
+.bookCard:focus-visible .cover {
+  box-shadow: var(--focus-ring), var(--shadow-md);
 }
 
 .coverWrap {
@@ -243,14 +254,17 @@
   position: absolute;
   top: 6px;
   right: 6px;
+  z-index: 1;
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   place-items: center;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--bg-content);
+  background: color-mix(in srgb, var(--bg-content) 72%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   color: var(--label);
   box-shadow: var(--shadow-sm);
   cursor: pointer;

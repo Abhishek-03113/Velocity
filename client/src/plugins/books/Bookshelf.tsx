@@ -373,7 +373,7 @@ function BookCard({
             onMenu(r.left, r.bottom + 4)
           }}
         >
-          <Icon name="ellipsis.circle" size={18} />
+          <Icon name="ellipsis" size={14} />
         </button>
       </div>
       <div className={styles.cardTitle}>{book.title}</div>

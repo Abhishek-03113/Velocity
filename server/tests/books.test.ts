@@ -174,6 +174,7 @@ test('GET /:id/file serves bytes, ranges, 416 and 304', async () => {
   assert.equal(full.headers.get('accept-ranges'), 'bytes')
   assert.equal(full.headers.get('etag'), `"${book.sha256}"`)
   assert.equal(full.headers.get('cache-control'), 'private, max-age=31536000, immutable')
+  assert.equal(full.headers.get('x-content-type-options'), 'nosniff')
   assert.equal(full.headers.get('content-length'), String(bytes.length))
   assert.equal(
     full.headers.get('content-disposition'),
