@@ -101,6 +101,7 @@ const theme = EditorView.theme({
   '.cm-md-h4': { fontSize: '1.05em', fontWeight: '650' },
   '.cm-md-h5': { fontSize: '1em', fontWeight: '650', color: 'var(--label-secondary)' },
   '.cm-md-h6': { fontSize: '0.95em', fontWeight: '650', color: 'var(--label-tertiary)' },
+  '.cm-md-hidden-line': { height: '0', overflow: 'hidden', padding: '0 !important', lineHeight: '0', fontSize: '0' },
   '.cm-md-quote': {
     borderLeft: '3px solid var(--fill)',
     paddingLeft: '18px !important',

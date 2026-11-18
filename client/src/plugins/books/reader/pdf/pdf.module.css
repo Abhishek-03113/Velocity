@@ -92,3 +92,13 @@
     scroll-behavior: auto;
   }
 }
+
+/* pdf.js measures text on a canvas it appends to <body>; its own stylesheet (not loaded here) hides it. */
+:global(.hiddenCanvasElement) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  display: none;
+}

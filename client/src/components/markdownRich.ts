@@ -399,6 +399,18 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
         // Images are owned by markdownImagePreview (StateField).
         if (name === 'Image') return false
 
+        // A one-line HTML comment (e.g. a plugin's note marker) collapses away until the cursor moves into it
+        // (a cursor resting at its very start, the default for a freshly opened note, doesn't count).
+        if (name === 'CommentBlock') {
+          const line = state.doc.lineAt(node.from)
+          const entered = state.selection.ranges.some((r) => r.to > node.from && r.from <= node.to)
+          if (node.to <= line.to && !entered && line.number < state.doc.lines) {
+            widgets.push(Decoration.line({ class: 'cm-md-hidden-line' }).range(line.from))
+            if (node.to > node.from) widgets.push(hiddenMark.range(node.from, node.to))
+          }
+          return false
+        }
+
         if (name === 'FencedCode' || name === 'CodeBlock') {
           const first = state.doc.lineAt(node.from).number
           const last = state.doc.lineAt(node.to).number

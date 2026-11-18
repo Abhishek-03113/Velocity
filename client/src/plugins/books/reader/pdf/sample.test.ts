@@ -1,24 +1,21 @@
 // @vitest-environment node
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { buildPdf } from '../../../../../e2e/fixtures/books/make-pdf'
 import { flattenOutline, type OutlineNode } from './helpers'
 
-// Runs in Node, and the client tsconfig has no Node typings: load the built-ins through variable specifiers.
-const node = async (name: string) => (await import(/* @vite-ignore */ name)) as any // eslint-disable-line @typescript-eslint/no-explicit-any
-
 describe('sample.pdf fixture', () => {
-  it('opens in pdf.js with info, 12 pages and the 3-entry outline', async () => {
-    const { execFileSync } = await node('node:child_process')
-    const { readFileSync } = await node('node:fs')
-    const { resolve } = await node('node:path')
-    const { pathToFileURL, fileURLToPath } = await node('node:url')
+  it('is what make-pdf.ts generates, and opens in pdf.js with info, 12 pages and the 3-entry outline', async () => {
     const clientRoot = resolve(fileURLToPath(import.meta.url), '../../../../../..')
-    const script = resolve(clientRoot, 'e2e/fixtures/books/make-pdf.mjs')
     const sample = resolve(clientRoot, 'e2e/fixtures/books/sample.pdf')
-    execFileSync((await node('node:process')).execPath, [script])
+    const generated = buildPdf()
+    expect(readFileSync(sample).equals(generated)).toBe(true)
     const lib = await import('pdfjs-dist/legacy/build/pdf.mjs')
     lib.GlobalWorkerOptions.workerSrc = pathToFileURL(resolve(clientRoot, 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs')).href
     const doc = await lib.getDocument({
-      data: new Uint8Array(readFileSync(sample)),
+      data: new Uint8Array(generated),
       isEvalSupported: false,
       useSystemFonts: true,
     }).promise
