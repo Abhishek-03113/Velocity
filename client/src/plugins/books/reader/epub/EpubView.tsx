@@ -182,9 +182,19 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     const loc = lastLocRef.current
     const b = bookRef.current
     if (!loc || !b) return
+    // epub.js reports atStart/atEnd in scrolled flow as soon as the first/last section is partly visible
+    // (every section is one "page"), so confirm them against the scroll position.
+    let { atStart, atEnd } = loc
+    if (propsRef.current.appearance.layout === 'scrolled') {
+      const scroller = mountRef.current?.querySelector<HTMLElement>('.epub-container')
+      if (scroller) {
+        atStart = atStart && scroller.scrollTop <= 2
+        atEnd = atEnd && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2
+      }
+    }
     let progress = 0
-    if (loc.atEnd) progress = 1
-    else if (loc.atStart && !locationsReadyRef.current) progress = 0
+    if (atEnd) progress = 1
+    else if (atStart && !locationsReadyRef.current) progress = 0
     else if (locationsReadyRef.current) {
       try {
         progress = b.locations.percentageFromCfi(loc.start.cfi)
@@ -201,8 +211,8 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       position: loc.start.cfi,
       progress: Math.min(1, Math.max(0, progress)),
       chapter: chapterFor(loc.start.href),
-      atStart: loc.atStart,
-      atEnd: loc.atEnd,
+      atStart,
+      atEnd,
     } satisfies ReaderLocation)
   }, [chapterFor])
 
