@@ -215,6 +215,15 @@ const PATHS = {
   ),
   /* Summation sign: LaTeX / maths. */
   sum: <path d="M17.5 5.5h-11l6 6.5-6 6.5h11" />,
+  /* Books reader. */
+  'list.bullet': <path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" />,
+  minus: <path d="M5 12h14" />,
+  'quote.bubble': (
+    <>
+      <path d="M5.5 4.5h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5V16.5h-1a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z" />
+      <path d="M9.6 8.4c-1 .5-1.5 1.3-1.5 2.4h1.7v1.7H8.1M14.6 8.4c-1 .5-1.5 1.3-1.5 2.4h1.7v1.7h-1.7" />
+    </>
+  ),
 } as const
 
 export type IconName = keyof typeof PATHS
