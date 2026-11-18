@@ -19,6 +19,7 @@ import styles from './EpubView.module.css'
 
 interface RenditionLocation {
   start: { cfi: string; href: string }
+  end?: { cfi: string }
   atStart: boolean
   atEnd: boolean
 }
@@ -59,6 +60,7 @@ interface EpubBook {
 
 interface EpubRendition {
   display(target?: string): Promise<unknown>
+  currentLocation(): RenditionLocation | undefined
   next(): Promise<unknown>
   prev(): Promise<unknown>
   resize(): void
@@ -69,6 +71,29 @@ interface EpubRendition {
   hooks: {
     render: { register(cb: (view: { iframe?: HTMLIFrameElement }) => void): void }
     content: { register(cb: (contents: EpubContents) => void): void }
+  }
+}
+
+type CfiCompare = (a: string, b: string) => number
+
+/**
+ * epub.js can land one page early when a saved CFI sits right on a page boundary. After displaying a CFI, step
+ * forward while the page it ended up on finishes before the target (at most two pages).
+ */
+async function displayAt(rendition: EpubRendition, target: string | undefined, compare: CfiCompare | null): Promise<void> {
+  await rendition.display(target)
+  if (!target || !compare || !target.startsWith('epubcfi(')) return
+  for (let i = 0; i < 2; i++) {
+    const end = rendition.currentLocation()?.end?.cfi
+    if (!end) return
+    let behind = false
+    try {
+      behind = compare(target, end) > 0
+    } catch {
+      return
+    }
+    if (!behind) return
+    await rendition.next()
   }
 }
 
@@ -168,6 +193,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
   const tocRef = useRef<TocItem[]>([])
   const lastLocRef = useRef<RenditionLocation | null>(null)
   const lastCfiRef = useRef<string | null>(null)
+  const cfiCompareRef = useRef<CfiCompare | null>(null)
   const locationsReadyRef = useRef(false)
   const readyForUrlRef = useRef<string | null>(null)
   const [book, setBook] = useState<EpubBook | null>(null)
@@ -229,8 +255,10 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
 
     void (async () => {
       try {
-        const { default: ePub } = await import('epubjs')
+        const { default: ePub, EpubCFI } = await import('epubjs')
         if (cancelled) return
+        const cfi = new EpubCFI()
+        cfiCompareRef.current = (a, b) => cfi.compare(a, b)
         // The server URL has no .epub extension, so say what it is.
         const b = ePub(url, { openAs: 'epub' }) as unknown as EpubBook
         opened = b
@@ -328,7 +356,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     void (async () => {
       try {
         try {
-          await rendition.display(start)
+          await displayAt(rendition, start, cfiCompareRef.current)
         } catch {
           if (start) await rendition.display() // stale / invalid saved position
           else throw new Error('display failed')
