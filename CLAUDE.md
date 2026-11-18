@@ -49,6 +49,8 @@ cd client && npm run test:e2e  # Playwright E2E — CI only, see below
 - **Never run the full unit/API suites.** Run only the test files your change touches, e.g. `cd client && npx vitest run src/lib/foo.test.ts` or `cd server && node --import tsx --test tests/foo.test.ts`.
 - Lint and typecheck are cheap: `cd client && npm run lint && npx tsc --noEmit`.
 
+New code, scripts and tests are TypeScript (`.ts`/`.tsx`), run with `tsx` where needed. Fixture generators: `cd client && npm run fixtures:books`; typecheck the E2E folder with `npm run typecheck:e2e`.
+
 Server runs on `http://localhost:3000`, client on `http://localhost:5173`.
 
 Environment: copy `.env.example` to `.env` and set `PORT` and `CLIENT_URL`.

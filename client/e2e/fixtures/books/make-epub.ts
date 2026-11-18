@@ -1,17 +1,18 @@
-// Generates sample.epub next to this script: `node e2e/fixtures/books/make-epub.mjs` (from client/).
+// Generates sample.epub next to this script: `npm run fixtures:books` (from client/), or `tsx e2e/fixtures/books/make-epub.ts`.
 // EPUB 3 with an NCX for EPUB 2 readers. Output is deterministic (fixed timestamps) so the file diffs cleanly.
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { deflateSync } from 'node:zlib'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import JSZip from 'jszip'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const FIXED = new Date('2024-01-01T00:00:00Z')
 
 // 8x12 solid-colour PNG (a few hundred bytes), generated here so no binary blob lives in the source.
-import { deflateSync } from 'node:zlib'
-function crc32(buf) {
-  let c, crc = 0xffffffff
+function crc32(buf: Buffer): number {
+  let c: number
+  let crc = 0xffffffff
   for (let n = 0; n < buf.length; n++) {
     c = (crc ^ buf[n]) & 0xff
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
@@ -19,7 +20,7 @@ function crc32(buf) {
   }
   return (crc ^ 0xffffffff) >>> 0
 }
-function chunk(type, data) {
+function chunk(type: string, data: Buffer): Buffer {
   const len = Buffer.alloc(4)
   len.writeUInt32BE(data.length)
   const body = Buffer.concat([Buffer.from(type), data])
@@ -27,10 +28,10 @@ function chunk(type, data) {
   crc.writeUInt32BE(crc32(body))
   return Buffer.concat([len, body, crc])
 }
-function makePng(w, h) {
-  const rows = []
+function makePng(w: number, h: number): Buffer {
+  const rows: Buffer[] = []
   for (let y = 0; y < h; y++) {
-    const row = [0]
+    const row: number[] = [0]
     for (let x = 0; x < w; x++) {
       const t = y / h
       row.push(Math.round(40 + 90 * t), Math.round(70 + 60 * (x / w)), Math.round(150 - 60 * t))
@@ -50,7 +51,13 @@ function makePng(w, h) {
   ])
 }
 
-const chapters = [
+interface Chapter {
+  id: string
+  title: string
+  lead: string
+}
+
+const chapters: Chapter[] = [
   { id: 'ch1', title: 'Chapter 1: Departure', lead: 'The harbour woke slowly' },
   { id: 'ch2', title: 'Chapter 2: Momentum', lead: 'By the second week the journey had a rhythm' },
   { id: 'ch3', title: 'Chapter 3: Arrival', lead: 'The coastline appeared as a thin grey line' },
@@ -67,18 +74,18 @@ const sentences = [
   'When the wind finally turned in their favour, the sail filled with a soft crack and the boat leaned into the day.',
 ]
 
-function paragraphs(chIndex) {
-  const out = []
+function paragraphs(chIndex: number): string {
+  const out: string[] = []
   for (let i = 0; i < 8; i++) {
-    const a = sentences[(i + chIndex) % sentences.length]
-    const b = sentences[(i + chIndex + 3) % sentences.length]
-    const c = sentences[(i + chIndex + 5) % sentences.length]
-    out.push(`<p>${i === 0 ? chapters[chIndex].lead + '. ' : ''}${a} ${b} ${c}</p>`)
+    const a = sentences[(i + chIndex) % sentences.length]!
+    const b = sentences[(i + chIndex + 3) % sentences.length]!
+    const c = sentences[(i + chIndex + 5) % sentences.length]!
+    out.push(`<p>${i === 0 ? chapters[chIndex]!.lead + '. ' : ''}${a} ${b} ${c}</p>`)
   }
   return out.join('\n    ')
 }
 
-const xhtml = (title, body) => `<?xml version="1.0" encoding="UTF-8"?>
+const xhtml = (title: string, body: string): string => `<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en">
   <head><meta charset="utf-8"/><title>${title}</title></head>
   <body>
@@ -158,7 +165,13 @@ chapters.forEach((c, i) => {
   zip.file(`OEBPS/${c.id}.xhtml`, xhtml(c.title, `    <h1>${c.title}</h1>\n    ${paragraphs(i)}`), opts)
 })
 
-const data = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', mimeType: 'application/epub+zip' })
-const out = join(here, 'sample.epub')
-writeFileSync(out, data)
-console.log(`wrote ${out} (${data.length} bytes)`)
+/** The sample EPUB as bytes (deterministic). */
+export const buildEpub = (): Promise<Buffer> =>
+  zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', mimeType: 'application/epub+zip' })
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const data = await buildEpub()
+  const out = join(here, 'sample.epub')
+  writeFileSync(out, data)
+  console.log(`wrote ${out} (${data.length} bytes)`)
+}
