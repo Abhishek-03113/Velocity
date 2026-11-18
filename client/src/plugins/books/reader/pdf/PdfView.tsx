@@ -81,7 +81,7 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
       prev: () => ctlRef.current?.prev(),
       goTo: (target) => ctlRef.current?.goTo(target),
       goToProgress: (p) => ctlRef.current?.goToProgress(p),
-      focus: () => scrollerRef.current?.focus({ preventScroll: true }),
+      focus: () => scrollerRef.current?.focus({ preventScroll: true, focusVisible: false } as FocusOptions),
     }),
     [],
   )
@@ -337,7 +337,7 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
         emitLocation()
       },
       focus() {
-        scroller.focus({ preventScroll: true })
+        scroller.focus({ preventScroll: true, focusVisible: false } as FocusOptions)
       },
       refit,
     }

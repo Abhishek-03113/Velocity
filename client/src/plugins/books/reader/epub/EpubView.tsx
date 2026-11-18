@@ -469,7 +469,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
         }
         if (target) void r.display(target).catch(() => undefined)
       },
-      focus: () => rootRef.current?.focus({ preventScroll: true }),
+      focus: () => rootRef.current?.focus({ preventScroll: true, focusVisible: false } as FocusOptions),
     }),
     [],
   )

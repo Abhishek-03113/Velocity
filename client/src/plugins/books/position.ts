@@ -52,6 +52,7 @@ export function createPositionSync(options: Options): PositionSync {
   let timer: ReturnType<typeof setTimeout> | null = null
   let inflight = false
   let disposed = false
+  let unloading = false
 
   const clearTimer = () => {
     if (timer) clearTimeout(timer)
@@ -81,7 +82,8 @@ export function createPositionSync(options: Options): PositionSync {
       }
     } catch (err) {
       failed = true
-      console.error('[books] could not save reading position (kept locally)', err)
+      // A request cut off by the page unloading is expected; the local copy is kept either way.
+      if (!unloading) console.error('[books] could not save reading position (kept locally)', err)
       if (!pending) pending = sending
     } finally {
       inflight = false
@@ -98,9 +100,16 @@ export function createPositionSync(options: Options): PositionSync {
   }
 
   const onPageHide = () => {
+    unloading = true
     void send(true)
   }
-  if (typeof window !== 'undefined') window.addEventListener('pagehide', onPageHide)
+  const onPageShow = () => {
+    unloading = false
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', onPageHide)
+    window.addEventListener('pageshow', onPageShow)
+  }
 
   return {
     update(loc) {
@@ -127,7 +136,10 @@ export function createPositionSync(options: Options): PositionSync {
       clearTimer()
       void send(true)
       disposed = true
-      if (typeof window !== 'undefined') window.removeEventListener('pagehide', onPageHide)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pagehide', onPageHide)
+        window.removeEventListener('pageshow', onPageShow)
+      }
     },
   }
 }

@@ -11,9 +11,8 @@
 .root:focus-visible::after {
   content: '';
   position: absolute;
-  inset: 3px;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--focus-ring);
+  inset: 0;
+  box-shadow: inset 0 0 0 2px var(--accent);
   pointer-events: none;
   z-index: 1;
 }
