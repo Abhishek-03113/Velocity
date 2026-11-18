@@ -15,6 +15,7 @@ const child = spawn('npx', ['tsx', 'index.ts'], {
     DB_PATH: path.join(root, 'velocity.db'),
     ASSETS_DIR: path.join(root, 'assets'),
     DOCS_DIR: path.join(root, 'docs'),
+    BOOKS_DIR: path.join(root, 'books'), // Books plugin uploads
     PLUGIN_FETCH_ALLOW_PRIVATE: 'on', // E2E serves fixtures on localhost
     // herdr connector: e2e/herdr.spec.ts serves a fake herdr socket at this path.
     HERDR_CONNECTOR_TOKEN: 'e2e-herdr-token',

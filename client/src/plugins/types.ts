@@ -105,6 +105,24 @@ export interface TileView {
   render: (noteId: number) => ReactNode
 }
 
+/** A workspace view with no note behind it (e.g. a bookshelf), opened with `ctx.views`. */
+export interface WorkspaceView {
+  /** Tile header title. */
+  title: string
+  icon?: IconName
+  /** Rendered inside the tile body. Re-rendered by React; keep state in a store or hooks. */
+  render: () => ReactNode
+}
+
+/** One action a plugin offers for a sidebar folder (row button, context menu, notes header). */
+export interface FolderAction {
+  label: string
+  /** Compact label for the notes-column header (default: `label`). */
+  short?: string
+  icon: IconName
+  run: () => void
+}
+
 /** An editor mode for notes whose content is a plugin's kind of document (e.g. LaTeX source). */
 export interface EditorMode {
   /** Cheap test on the start of the note (first few thousand characters); runs as the user types. */
@@ -176,6 +194,14 @@ export interface PluginContext {
     toggle(view: string, noteId: number): boolean
     isOpen(view: string, noteId: number): boolean
   }
+  /** Workspace views not tied to a note, from this plugin's `views`. */
+  views: {
+    /** Focus the view's tile; else fill an empty focused tile; else split beside the focused tile. Returns the tile id. */
+    open(view: string, opts?: { focus?: boolean }): string
+    /** Close the tile (the only tile becomes empty instead). */
+    close(view: string): void
+    isOpen(view: string): boolean
+  }
   /** Existing (case-insensitive) or newly created folder id. */
   folders: { ensure(name: string): number }
   /** Hand the user a file to save (a browser download). */
@@ -193,6 +219,10 @@ export interface PluginInstance {
   editorMode?: EditorMode
   /** Views this plugin can show in a workspace tile, keyed by view id (see `ctx.tiles`). */
   tiles?: Record<string, TileView>
+  /** Note-less workspace views, keyed by view id (see `ctx.views`). */
+  views?: Record<string, WorkspaceView>
+  /** An action for this folder (shown on its row, in its menu and in the notes header), or null. Keep it cheap. */
+  folderAction?: (folder: { id: number; name: string }) => FolderAction | null
   dispose?: () => void
 }
 

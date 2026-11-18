@@ -15,8 +15,20 @@ import { useGroupStore } from '../store/groupStore'
 import { useLayoutStore } from '../store/layoutStore'
 import { usePluginStore } from '../store/pluginStore'
 import { useUiStore } from '../store/uiStore'
-import { createContext, editorModeFor, pluginCommands, pluginTileView, startPlugins, urlHandlerFor, usePluginsVersion } from './host'
+import {
+  createContext,
+  editorModeFor,
+  folderActionsFor,
+  pluginCommands,
+  pluginTileView,
+  pluginWorkspaceView,
+  startPlugins,
+  syncPlugins,
+  urlHandlerFor,
+  usePluginsVersion,
+} from './host'
 import { PLUGINS } from './registry'
+import type { VelocityPlugin } from './types'
 
 function key(init: KeyboardEventInit & { code: string }): KeyboardEvent {
   return new KeyboardEvent('keydown', init)
@@ -147,6 +159,91 @@ describe('plugin host', () => {
       expect(useUiStore.getState().pluginPanel?.pluginId).toBe(id)
       usePluginStore.getState().setEnabled(id, false)
       expect(useUiStore.getState().pluginPanel).toBeNull()
+    })
+  })
+
+  describe('workspace views and folder actions', () => {
+    const run = vi.fn()
+    const fake: VelocityPlugin = {
+      manifest: { id: 'fake-shelf', name: 'Fake Shelf', description: 'test', icon: 'folder', version: '0.0.0' },
+      activate: () => ({
+        views: { shelf: { title: 'Shelf', icon: 'folder', render: () => null } },
+        // A neutral folder name: the real Books plugin owns "Books".
+        folderAction: (folder) => (folder.name.toLowerCase() === 'shelf' ? { label: 'Open Shelf', icon: 'folder', run } : null),
+      }),
+    }
+    const kinds = () => leaves(useLayoutStore.getState().root).map((l) => l.content.kind)
+    const reset = (root = leaf({ kind: 'empty' }, 'e')) =>
+      useLayoutStore.setState({ root, focusedId: root.type === 'leaf' ? root.id : 'e', zoomedId: null, columns: [], mode: 'dwindle' })
+
+    beforeEach(() => {
+      (PLUGINS as VelocityPlugin[]).push(fake)
+      syncPlugins()
+    })
+    afterEach(() => {
+      (PLUGINS as VelocityPlugin[]).pop()
+      syncPlugins()
+    })
+
+    it('views.open fills an empty focused tile', () => {
+      reset()
+      const ctx = createContext('fake-shelf')
+      expect(ctx.views.isOpen('shelf')).toBe(false)
+      expect(ctx.views.open('shelf')).toBe('e')
+      expect(useLayoutStore.getState().root).toMatchObject({ type: 'leaf', content: { kind: 'view', pluginId: 'fake-shelf', view: 'shelf' } })
+      expect(ctx.views.isOpen('shelf')).toBe(true)
+    })
+
+    it('views.open splits beside a note tile, then focuses the existing view', () => {
+      reset(leaf({ kind: 'note', noteId: 5, mode: 'edit' }, 'n'))
+      const ctx = createContext('fake-shelf')
+      const id = ctx.views.open('shelf')
+      expect(kinds()).toEqual(['note', 'view'])
+      expect(useLayoutStore.getState().focusedId).toBe(id)
+      useLayoutStore.getState().focus('n')
+      expect(ctx.views.open('shelf')).toBe(id)
+      expect(kinds()).toEqual(['note', 'view'])
+      expect(useLayoutStore.getState().focusedId).toBe(id)
+    })
+
+    it('views.open works in sliding mode', () => {
+      useLayoutStore.getState().setTilingMode('sliding')
+      useLayoutStore.getState().setContent(useLayoutStore.getState().focusedId, { kind: 'note', noteId: 5, mode: 'edit' })
+      const ctx = createContext('fake-shelf')
+      ctx.views.open('shelf')
+      expect(kinds()).toContain('view')
+      expect(ctx.views.isOpen('shelf')).toBe(true)
+      ctx.views.close('shelf')
+      expect(ctx.views.isOpen('shelf')).toBe(false)
+      useLayoutStore.getState().setTilingMode('dwindle')
+    })
+
+    it('views.close removes the tile, or empties the only tile', () => {
+      reset(leaf({ kind: 'note', noteId: 5, mode: 'edit' }, 'n'))
+      const ctx = createContext('fake-shelf')
+      ctx.views.open('shelf')
+      ctx.views.close('shelf')
+      expect(kinds()).toEqual(['note'])
+      reset()
+      ctx.views.open('shelf')
+      ctx.views.close('shelf')
+      expect(useLayoutStore.getState().root).toMatchObject({ type: 'leaf', content: { kind: 'empty' } })
+    })
+
+    it('resolves views and folder actions only while the plugin is enabled', () => {
+      expect(pluginWorkspaceView('fake-shelf', 'shelf')?.title).toBe('Shelf')
+      expect(pluginWorkspaceView('fake-shelf', 'nope')).toBeNull()
+      expect(folderActionsFor({ id: 1, name: 'Shelf' }).map((a) => a.label)).toEqual(['Open Shelf'])
+      expect(folderActionsFor({ id: 2, name: 'Other' })).toEqual([])
+      folderActionsFor({ id: 1, name: 'shelf' })[0]!.run()
+      expect(run).toHaveBeenCalled()
+
+      usePluginStore.getState().setEnabled('fake-shelf', false)
+      expect(folderActionsFor({ id: 1, name: 'Shelf' })).toEqual([])
+      expect(pluginWorkspaceView('fake-shelf', 'shelf')).toBeNull()
+
+      usePluginStore.getState().setEnabled('fake-shelf', true)
+      expect(folderActionsFor({ id: 1, name: 'Shelf' })).toHaveLength(1)
     })
   })
 

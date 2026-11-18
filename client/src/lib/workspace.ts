@@ -12,7 +12,7 @@ import { useUiStore } from '../store/uiStore'
 import { focusEditor, getEditor } from './editorRegistry'
 import { displayTitle } from './noteMeta'
 import { getThemeFamily, variantsFor, type Appearance } from './themes'
-import { findLeaf, leaves, type Direction } from './tiling'
+import { findLeaf, leaves, tileNoteId, type Direction } from './tiling'
 
 const narrow = () => typeof window !== 'undefined' && window.innerWidth < 760
 
@@ -64,7 +64,7 @@ export function focusTile(tileId: string, opts: { dom?: boolean } = {}) {
   const layout = useLayoutStore.getState()
   layout.focus(tileId)
   const tile = findLeaf(useLayoutStore.getState().root, tileId)
-  if (!tile || tile.content.kind === 'empty') {
+  if (!tile || tile.content.kind === 'empty' || tile.content.kind === 'view') {
     if (opts.dom) document.querySelector<HTMLElement>(`[data-tile-id="${tileId}"] input`)?.focus()
     return
   }
@@ -109,7 +109,9 @@ export function closeTile(tileId?: string) {
   if (leaves(layout.root).length <= 1) {
     // Last tile: closing it means closing its note tab (a fresh one replaces it).
     const tile = findLeaf(layout.root, id)
-    if (tile && tile.content.kind !== 'empty') useEditorStore.getState().closeTab(tile.content.noteId)
+    const noteId = tile ? tileNoteId(tile.content) : null
+    if (noteId != null) useEditorStore.getState().closeTab(noteId)
+    else if (tile?.content.kind === 'view') layout.setContent(id, { kind: 'empty' })
     return
   }
   layout.close(id)

@@ -26,6 +26,21 @@ const PATHS = {
   'folder': (
     <path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z" />
   ),
+  'books.vertical': (
+    <>
+      <path d="M4.5 6.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v13h-5Z" />
+      <path d="M9.5 9.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v10h-5Z" />
+      <path d="m15.6 7.2 2.8-.8a1 1 0 0 1 1.2.7l2 7.4a1 1 0 0 1-.7 1.2l-2.8.8a1 1 0 0 1-1.2-.7l-2-7.4a1 1 0 0 1 .7-1.2Z" />
+      <path d="M4.5 9.5h5M4.5 16h5M10.5 12.5h4" />
+    </>
+  ),
+  'arrow.up.arrow.down': (
+    <>
+      <path d="M8 19V5.5M4.5 9 8 5.5 11.5 9" />
+      <path d="M16 5v13.5M12.5 15l3.5 3.5 3.5-3.5" />
+    </>
+  ),
+  'line.3.horizontal.decrease': <path d="M4 7h16M7 12h10M10 17h4" />,
   'folder.badge.plus': (
     <>
       <path d="M12 18.5H5.5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2V12" />
@@ -207,6 +222,15 @@ const PATHS = {
   ),
   /* Summation sign: LaTeX / maths. */
   sum: <path d="M17.5 5.5h-11l6 6.5-6 6.5h11" />,
+  /* Books reader. */
+  'list.bullet': <path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" />,
+  minus: <path d="M5 12h14" />,
+  'quote.bubble': (
+    <>
+      <path d="M5.5 4.5h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5V16.5h-1a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z" />
+      <path d="M9.6 8.4c-1 .5-1.5 1.3-1.5 2.4h1.7v1.7H8.1M14.6 8.4c-1 .5-1.5 1.3-1.5 2.4h1.7v1.7h-1.7" />
+    </>
+  ),
 } as const
 
 export type IconName = keyof typeof PATHS

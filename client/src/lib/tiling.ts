@@ -14,6 +14,8 @@ export type TileContent =
   | { kind: 'board'; noteId: number }
   /** A view a plugin renders for a note (e.g. a live LaTeX preview). */
   | { kind: 'plugin'; pluginId: string; view: string; noteId: number }
+  /** A workspace view a plugin renders with no note behind it (e.g. a bookshelf). */
+  | { kind: 'view'; pluginId: string; view: string }
   | { kind: 'empty' }
 
 export type SplitDir = 'row' | 'column' // row = side by side, column = stacked
@@ -102,11 +104,17 @@ export function pluginLeafFor(node: LayoutNode, pluginId: string, view: string, 
   )
 }
 
+export function viewLeafFor(node: LayoutNode, pluginId: string, view: string): LeafNode | null {
+  return findLeafBy(node, (l) => l.content.kind === 'view' && l.content.pluginId === pluginId && l.content.view === view)
+}
+
 /** Identity of what a tile shows: two tiles with the same key are duplicates. */
 export function tileKey(content: TileContent): string {
   switch (content.kind) {
     case 'empty':
       return 'empty'
+    case 'view':
+      return `view:${content.pluginId}:${content.view}`
     case 'plugin':
       return `plugin:${content.pluginId}:${content.view}:${content.noteId}`
     default:
@@ -114,9 +122,9 @@ export function tileKey(content: TileContent): string {
   }
 }
 
-/** Note id a tile is "about" (note, board and plugin tiles all belong to a note). */
+/** Note id a tile is "about" (note, board and plugin tiles belong to a note; empty and view tiles do not). */
 export function tileNoteId(content: TileContent): number | null {
-  return content.kind === 'empty' ? null : content.noteId
+  return content.kind === 'empty' || content.kind === 'view' ? null : content.noteId
 }
 
 /** Map every leaf (and split) to its rect inside `bounds`. */
@@ -321,7 +329,7 @@ export function sanitize(
 export function remapNote(root: LayoutNode, from: number, to: number): LayoutNode {
   return (
     mapNode(root, (n) => {
-      if (n.type !== 'leaf' || n.content.kind === 'empty') return n
+      if (n.type !== 'leaf' || n.content.kind === 'empty' || n.content.kind === 'view') return n
       if (n.content.noteId !== from) return n
       return { ...n, content: { ...n.content, noteId: to } }
     }) ?? root
@@ -337,6 +345,7 @@ export function isLayoutNode(value: unknown, depth = 0): value is LayoutNode {
     const c = n.content as Record<string, unknown> | undefined
     if (!c || typeof c !== 'object') return false
     if (c.kind === 'empty') return true
+    if (c.kind === 'view') return typeof c.pluginId === 'string' && typeof c.view === 'string'
     if (c.kind === 'board') return typeof c.noteId === 'number'
     if (c.kind === 'plugin') {
       return typeof c.noteId === 'number' && typeof c.pluginId === 'string' && typeof c.view === 'string'

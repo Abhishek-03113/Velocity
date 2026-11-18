@@ -223,6 +223,61 @@
   background: var(--fill-secondary);
 }
 
+/* Plugin folder action: replaces the count on hover / focus / selection. */
+.sourceRowAction {
+  position: relative;
+}
+
+.sourceAction {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated, var(--fill-secondary));
+  box-shadow: 0 0 0 0.5px var(--separator);
+  color: var(--label-secondary);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.sourceRowAction:hover .sourceAction,
+.sourceRowAction:focus-within .sourceAction,
+.sourceRowAction.sourceRowSelected .sourceAction,
+.sourceAction:focus-visible {
+  opacity: 1;
+}
+
+.sourceRowAction:hover .sourceCount,
+.sourceRowAction:focus-within .sourceCount,
+.sourceRowAction.sourceRowSelected .sourceCount {
+  opacity: 0;
+}
+
+.sourceAction:hover {
+  background: var(--fill-secondary);
+  color: var(--accent);
+}
+
+.sourceAction:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@media (pointer: coarse) {
+  .sourceAction {
+    opacity: 1;
+  }
+
+  .sourceRowAction .sourceCount {
+    opacity: 0;
+  }
+}
+
 .sourceRowDrop {
   background: var(--accent-soft) !important;
   box-shadow: inset 0 0 0 1.5px var(--accent);
@@ -349,6 +404,34 @@
   color: var(--label-tertiary);
   font-size: var(--text-callout);
   font-variant-numeric: tabular-nums;
+}
+
+/* Plugin folder action in the notes header (e.g. Open Bookshelf). */
+.folderAction {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+}
+
+.folderAction span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderAction:hover {
+  background: var(--accent-soft);
+}
+
+.folderAction:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .notesActions {

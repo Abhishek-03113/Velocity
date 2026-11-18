@@ -24,7 +24,7 @@ import {
   requestDelete,
   startRename,
 } from '../../lib/workspace'
-import { noteBadgeFor, useBadgeVersion } from '../../plugins/host'
+import { noteBadgeFor, useBadgeVersion, useFolderActions } from '../../plugins/host'
 import type { NoteBadge } from '../../plugins/types'
 import { useEditorStore } from '../../store/editorStore'
 import { useGroupStore } from '../../store/groupStore'
@@ -359,6 +359,11 @@ export function NotesColumn({
   }
 
   const title = filterName(activeGroupId, groups)
+  const activeFolder = useMemo(
+    () => (typeof activeGroupId === 'number' ? (groups.find((g) => g.id === activeGroupId) ?? null) : null),
+    [activeGroupId, groups],
+  )
+  const folderActions = useFolderActions(activeFolder)
 
   return (
     <section className={styles.notes} aria-label="Notes">
@@ -380,6 +385,12 @@ export function NotesColumn({
           </button>
         )}
         <span className={styles.notesCount}>{rows.length}</span>
+        {folderActions.map((a) => (
+          <button key={a.pluginId} type="button" className={styles.folderAction} title={a.label} aria-label={a.label} onClick={a.run}>
+            <Icon name={a.icon} size={14} />
+            <span>{a.short ?? a.label}</span>
+          </button>
+        ))}
         <div className={styles.notesActions}>
           {compact ? (
             <ToolbarButton icon="xmark" label="Close Sidebar" onClick={toggleSidebar} />
