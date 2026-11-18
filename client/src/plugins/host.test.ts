@@ -168,7 +168,8 @@ describe('plugin host', () => {
       manifest: { id: 'fake-shelf', name: 'Fake Shelf', description: 'test', icon: 'folder', version: '0.0.0' },
       activate: () => ({
         views: { shelf: { title: 'Shelf', icon: 'folder', render: () => null } },
-        folderAction: (folder) => (folder.name.toLowerCase() === 'books' ? { label: 'Open Shelf', icon: 'folder', run } : null),
+        // A neutral folder name: the real Books plugin owns "Books".
+        folderAction: (folder) => (folder.name.toLowerCase() === 'shelf' ? { label: 'Open Shelf', icon: 'folder', run } : null),
       }),
     }
     const kinds = () => leaves(useLayoutStore.getState().root).map((l) => l.content.kind)
@@ -232,17 +233,17 @@ describe('plugin host', () => {
     it('resolves views and folder actions only while the plugin is enabled', () => {
       expect(pluginWorkspaceView('fake-shelf', 'shelf')?.title).toBe('Shelf')
       expect(pluginWorkspaceView('fake-shelf', 'nope')).toBeNull()
-      expect(folderActionsFor({ id: 1, name: 'Books' }).map((a) => a.label)).toEqual(['Open Shelf'])
+      expect(folderActionsFor({ id: 1, name: 'Shelf' }).map((a) => a.label)).toEqual(['Open Shelf'])
       expect(folderActionsFor({ id: 2, name: 'Other' })).toEqual([])
-      folderActionsFor({ id: 1, name: 'books' })[0]!.run()
+      folderActionsFor({ id: 1, name: 'shelf' })[0]!.run()
       expect(run).toHaveBeenCalled()
 
       usePluginStore.getState().setEnabled('fake-shelf', false)
-      expect(folderActionsFor({ id: 1, name: 'Books' })).toEqual([])
+      expect(folderActionsFor({ id: 1, name: 'Shelf' })).toEqual([])
       expect(pluginWorkspaceView('fake-shelf', 'shelf')).toBeNull()
 
       usePluginStore.getState().setEnabled('fake-shelf', true)
-      expect(folderActionsFor({ id: 1, name: 'Books' })).toHaveLength(1)
+      expect(folderActionsFor({ id: 1, name: 'Shelf' })).toHaveLength(1)
     })
   })
 
