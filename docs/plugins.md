@@ -17,6 +17,7 @@ client/src/plugins/
 ├── host.ts            # builds contexts, activates/disposes, exposes commands + URL handlers
 ├── registry.ts        # PLUGINS = [blogReader, …]  ← the one line you add
 ├── latex/             # live preview tile, PDF compile, .tex / PDF export
+├── books/             # Bookshelf view, EPUB + PDF reader tile, quotes into the book's note
 └── blogReader/
     ├── index.ts       # manifest, settings, activate(ctx)
     ├── extract.ts     # Readability + metadata (lazy-loaded)
@@ -27,6 +28,7 @@ server/plugins/
 ├── index.ts           # SERVER_PLUGINS, mountPlugins(app) → /api/plugins/<id>
 ├── shared/fetchPage.ts# SSRF-guarded page fetch (reusable connector transport)
 ├── latex/             # POST /api/plugins/latex/compile (TeX engine on the host)
+├── books/             # /api/plugins/books: book files + one row per book (plugin_books)
 └── blogReader.ts      # GET /api/plugins/blog-reader/fetch?url=
 ```
 
@@ -184,6 +186,49 @@ redirect, and caps time (15 s) and size (5 MB).
   `Ctrl+Alt+Shift+B` (**Blog Reader: Mark as Read / Unread**) on the open post to flip it. The
   state is kept per browser in the plugin's storage, and survives **Refresh Article**.
 - Settings: folder name, open in new or current tile, Read mode, include images, colour-code read status.
+
+## Books
+
+Read EPUB and PDF books beside your notes. Books live on your Velocity server, so the library, covers
+and reading positions follow you to every device.
+
+![Bookshelf](screenshots/books/01-bookshelf-light.png)
+
+- **Add:** **Books: Add Books…** (`Ctrl+Alt+Shift+O`), the **Add Books** button on the shelf, or drop EPUB / PDF
+  files onto the shelf. Title, author, page count and cover are read in the browser (epub.js, pdf.js);
+  the file is stored as it is. The same file added twice is kept once. Failures (too large, not an
+  EPUB or PDF, server unreachable) show on a card with **Retry** and **Dismiss**.
+- **Bookshelf:** the **Books** folder offers an **Open Bookshelf** button (folder row, its context menu and the
+  notes-column header), or press `Ctrl+Alt+O`. It is a workspace view, not a note: a grid of covers
+  (a generated cover when a book has none) with progress bars and a Finished mark, **Sort** (recently
+  opened, title, author, date added, progress), **Filter** (reading, unread, finished; EPUB, PDF) and a
+  search field. Right-click a card, or use its `…` button: Open, Open Notes, Mark as Unread / Finished,
+  Rename…, Download Original, Remove from Library… (asks first; it deletes the file and the note).
+- **Reader:** a tile beside your notes. EPUB: pages or scroll, contents, text size, Serif / Sans / the book's own
+  fonts, Auto / Light / Sepia / Dark. PDF: sharp at any zoom, fit width / page, 50 to 400 %, outline, selectable
+  text. Keys with the reader focused: arrows, PageUp / PageDown, Space, Home / End. EPUB scripts never run
+  (the iframe is sandboxed).
+- **Notes and quotes:** every book has a note in the Books folder, made when the book is added. Its first
+  line is a hidden marker (`<!-- velocity-book:<id> -->`) that the plugin owns; the editor folds it away
+  and Read mode doesn't show it. Select text in the reader and choose **Quote in Notes** to append
+  `> passage` with `— *Chapter* · 42%` (PDF: `— p. 12`) to that note.
+- **Reading position:** local-first. Each page turn updates the tile at once and is kept in the plugin's
+  storage; the server row is updated about 1.5 s later (and on tab close), and on open the newer of the two wins.
+  A book is Finished from 98 %. Reload restores the Bookshelf and Reader tiles.
+- Notes-list badges: EPUB / PDF while unread, a percentage while reading, Finished. Click one to open the book.
+- Commands: Open Bookshelf (`Ctrl+Alt+O`), Add Books… (`Ctrl+Alt+Shift+O`), Open in Reader (when a book note is open).
+- Settings: Books folder name (default `Books`), badges in the notes list.
+
+### Server
+
+`server/plugins/books/`: `index.ts` (routes), `files.ts` (streaming upload, sniffing, Range), `store.ts`
+(`plugin_books`). Files are stored as `<id>.epub` / `<id>.pdf` in `BOOKS_DIR` (default `data/books`, which the
+Docker volume covers). `POST /api/plugins/books` takes the raw file as the body with an `X-File-Name` header;
+the format is sniffed from the bytes (an upload that is neither a PDF nor an EPUB is a 415), the body is
+hashed while it streams to disk, and anything over `BOOKS_MAX_BYTES` (200 MB) is a 413. `GET /:id/file` supports
+`Range` and an ETag, so a large PDF opens without downloading all of it. Reverse proxies need a matching body
+limit: the bundled nginx configs set `client_max_body_size 200m;` on `/api/`; raise it together with
+`BOOKS_MAX_BYTES`. Nothing leaves your server, and nothing is fetched from the internet.
 
 ## Herdr
 
