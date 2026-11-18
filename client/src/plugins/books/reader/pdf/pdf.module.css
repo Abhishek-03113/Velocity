@@ -11,7 +11,7 @@
 }
 
 .scroller:focus-visible {
-  box-shadow: inset var(--focus-ring);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .sheet {

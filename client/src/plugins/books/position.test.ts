@@ -113,6 +113,16 @@ describe('createPositionSync', () => {
     sync.dispose()
   })
 
+  it('does not log a failure while the page is unloading, but still keeps the copy', async () => {
+    const { sync, store } = setup({ fail: true })
+    sync.update({ position: 'p', progress: 0.5 })
+    window.dispatchEvent(new Event('pagehide'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(console.error).not.toHaveBeenCalled()
+    expect(store.get(posKey(7))).toMatchObject({ position: 'p', unsynced: true })
+    sync.dispose()
+  })
+
   it('stops after dispose', async () => {
     const { sync, local } = setup()
     sync.dispose()
