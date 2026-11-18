@@ -1,0 +1,94 @@
+/* PDF reading surface: a vertical scroller of absolutely positioned pages. Colours come in as custom properties from props. */
+.scroller {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: var(--pdf-bg, var(--bg-primary));
+  outline: none;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroller:focus-visible {
+  box-shadow: inset var(--focus-ring);
+}
+
+.sheet {
+  position: relative;
+  min-width: 100%;
+}
+
+.page {
+  position: absolute;
+  background: var(--pdf-page-bg, #fff);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  display: block;
+  filter: var(--pdf-filter, none);
+}
+
+/* Text layer for selection: transparent text positioned over the canvas (pdf.js 4.x needs --scale-factor on the page). */
+.page :global(.textLayer) {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 0;
+}
+
+.page :global(.textLayer) :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.page :global(.textLayer) > :not(:global(.markedContent)),
+.page :global(.textLayer) :global(.markedContent) span:not(:global(.markedContent)) {
+  z-index: 1;
+}
+
+.page :global(.textLayer) span:global(.markedContent) {
+  top: 0;
+  height: 0;
+}
+
+.page :global(.textLayer) ::selection {
+  background: var(--pdf-selection, rgba(0, 122, 255, 0.3));
+}
+
+.page :global(.textLayer) br::selection {
+  background: transparent;
+}
+
+.page :global(.textLayer) :global(.endOfContent) {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroller {
+    scroll-behavior: auto;
+  }
+}
