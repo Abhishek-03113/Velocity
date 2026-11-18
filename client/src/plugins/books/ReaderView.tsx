@@ -384,14 +384,16 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
             />
           )}
         </div>
-        <ProgressTrack
-          progress={progress}
-          label={progressText}
-          onSeek={(p) => {
-            setSelection(null)
-            handleRef.current?.goToProgress(p)
-          }}
-        />
+        {error === null && (
+          <ProgressTrack
+            progress={progress}
+            label={progressText}
+            onSeek={(p) => {
+              setSelection(null)
+              handleRef.current?.goToProgress(p)
+            }}
+          />
+        )}
       </div>
 
       {popover && (

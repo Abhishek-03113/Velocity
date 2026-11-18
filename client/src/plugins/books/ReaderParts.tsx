@@ -79,7 +79,7 @@ const THEME_LABEL: Record<ReaderTheme, string> = { auto: 'Auto', light: 'Light',
 function swatchStyle(theme: ReaderTheme): CSSProperties {
   if (theme === 'auto') {
     const { light, dark } = FIXED_PALETTES
-    return { background: `linear-gradient(135deg, ${light.background} 50%, ${dark.background} 50%)`, color: light.text }
+    return { background: `linear-gradient(135deg, ${light.background} 50%, ${dark.background} 50%)`, color: 'var(--system-gray)' }
   }
   const p = FIXED_PALETTES[theme]
   return { background: p.background, color: p.text }
