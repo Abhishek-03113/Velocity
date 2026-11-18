@@ -19,7 +19,8 @@ import {
   uploadCover,
   type BookPatch,
 } from './api'
-import { bookNoteContent, findBookNote } from './note'
+import { useGroupStore } from '../../store/groupStore'
+import { bookNoteContent, findBookNote, lookupBookNote } from './note'
 import { scanNotes, useBooksStore, type UploadItem } from './store'
 import type { Book } from './types'
 
@@ -88,6 +89,49 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
     if (known != null && ctx.notes.exists(known)) return known
     return findBookNote(bookId, useEditorStore.getState().pastes, cachedContent)
   }
+
+  const folderId = (): number | null => {
+    const wanted = folderName().toLowerCase()
+    return useGroupStore.getState().groups.find((g) => g.name.trim().toLowerCase() === wanted)?.id ?? null
+  }
+
+  const lookup = (bookId: number) => lookupBookNote(bookId, useEditorStore.getState().pastes, folderId(), cachedContent)
+
+  /**
+   * The book's note id, once it is certain: a number when found, null when it really is gone, and
+   * undefined when it cannot be told yet (notes in the folder that failed to load). Right after a
+   * reload note content may be unloaded, so the Books folder's unknown notes are loaded first.
+   */
+  const resolveNote = async (bookId: number): Promise<number | null | undefined> => {
+    const known = noteIdFor(bookId)
+    if (known != null) return known
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = lookup(bookId)
+      if (result.status === 'found') return result.id
+      if (result.status === 'missing') return null
+      await Promise.all(result.candidates.map((id) => useEditorStore.getState().ensureContent(id)))
+    }
+    const last = lookup(bookId)
+    return last.status === 'found' ? last.id : last.status === 'missing' ? null : undefined
+  }
+
+  /** Resolve, then create the note when it is certainly missing. One at a time per book. */
+  const pendingNotes = new Map<number, Promise<number | undefined>>()
+  const noteForBook = (bookId: number): Promise<number | undefined> => {
+    const inflight = pendingNotes.get(bookId)
+    if (inflight) return inflight
+    const job = (async () => {
+      const id = await resolveNote(bookId)
+      if (id === undefined) return undefined
+      if (id != null) return id
+      const book = store().books[bookId]
+      return book ? ensureNote(book) : undefined
+    })().finally(() => pendingNotes.delete(bookId))
+    pendingNotes.set(bookId, job)
+    return job
+  }
+
+  const NOTE_NOT_READY = 'Couldn’t check this book’s note yet. Try again in a moment'
 
   const ensureNote = (book: Book): number => {
     const existing = noteIdFor(book.id)
@@ -220,15 +264,25 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const openBook = (bookId: number) => {
-    const noteId = noteIdFor(bookId) ?? (store().books[bookId] ? ensureNote(store().books[bookId]!) : null)
-    if (noteId == null) return
-    ctx.tiles.open(READER_VIEW, noteId, { focus: true })
+    void noteForBook(bookId).then((noteId) => {
+      if (disposed) return
+      if (noteId == null) {
+        if (store().books[bookId]) ctx.flash(NOTE_NOT_READY)
+        return
+      }
+      ctx.tiles.open(READER_VIEW, noteId, { focus: true })
+    })
   }
 
   const openNotes = (bookId: number) => {
-    const book = store().books[bookId]
-    const noteId = noteIdFor(bookId) ?? (book ? ensureNote(book) : null)
-    if (noteId != null) ctx.notes.open(noteId, { split: true })
+    void noteForBook(bookId).then((noteId) => {
+      if (disposed) return
+      if (noteId == null) {
+        if (store().books[bookId]) ctx.flash(NOTE_NOT_READY)
+        return
+      }
+      ctx.notes.open(noteId, { split: true })
+    })
   }
 
   const save = (book: Book, patch: BookPatch, local: Partial<Book>) => {
@@ -254,8 +308,9 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
         const title = value.trim()
         if (!title || title === book.title) return
         save(book, { title }, { title })
-        const noteId = noteIdFor(book.id)
-        if (noteId != null) useEditorStore.getState().setTitle(noteId, title)
+        void resolveNote(book.id).then((noteId) => {
+          if (noteId != null) useEditorStore.getState().setTitle(noteId, title)
+        })
       },
     })
   }
@@ -281,6 +336,12 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
       destructive: true,
       onConfirm: () => {
         void (async () => {
+          // Know the note before the book goes: with its content unloaded it could be left behind.
+          const noteId = await resolveNote(book.id)
+          if (noteId === undefined) {
+            ctx.flash(NOTE_NOT_READY)
+            return
+          }
           try {
             await deleteBook(book.id)
           } catch (err) {
@@ -290,7 +351,6 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
               return
             }
           }
-          const noteId = noteIdFor(book.id)
           store().removeBook(book.id)
           if (noteId != null) useEditorStore.getState().deletePaste(noteId)
           scanNotes()

@@ -1,5 +1,37 @@
 import { describe, expect, it } from 'vitest'
-import { bookIdOf, bookNoteContent, findBookNote, formatAddedDate } from './note'
+import { bookIdOf, bookNoteContent, findBookNote, formatAddedDate, lookupBookNote } from './note'
+
+describe('lookupBookNote', () => {
+  const marker = '<!-- velocity-book:5 -->\n'
+  it('finds a note from loaded or cached content', () => {
+    const notes = [
+      { id: 1, group_id: 2, content: marker },
+      { id: 2, group_id: 2, content: undefined },
+    ]
+    expect(lookupBookNote(5, notes, 2)).toEqual({ status: 'found', id: 1 })
+    const cached = (id: number) => (id === 3 ? '<!-- velocity-book:6 -->' : undefined)
+    expect(lookupBookNote(6, [{ id: 3, group_id: 2, content: undefined }], 2, cached)).toEqual({ status: 'found', id: 3 })
+  })
+
+  it('is pending, not missing, while Books-folder notes are still unloaded', () => {
+    const notes = [
+      { id: 1, group_id: 2, content: 'plain' },
+      { id: 2, group_id: 2, content: undefined },
+      { id: 3, group_id: 9, content: undefined },
+      { id: -4, group_id: 2, content: undefined },
+    ]
+    expect(lookupBookNote(5, notes, 2)).toEqual({ status: 'pending', candidates: [2] })
+  })
+
+  it('is missing once every candidate is known', () => {
+    const notes = [
+      { id: 1, group_id: 2, content: 'plain' },
+      { id: 2, group_id: 2, content: undefined },
+    ]
+    expect(lookupBookNote(5, notes, 2, () => 'cached')).toEqual({ status: 'missing' })
+    expect(lookupBookNote(5, notes, null)).toEqual({ status: 'missing' })
+  })
+})
 
 const book = { id: 12, author: 'Martin Kleppmann', format: 'epub' as const }
 

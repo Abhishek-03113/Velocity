@@ -44,3 +44,34 @@ export function findBookNote(
   }
   return found
 }
+
+export type NoteLookup =
+  | { status: 'found'; id: number }
+  /** Nothing carries the marker and every candidate's content is known: the note really is gone. */
+  | { status: 'missing' }
+  /** Not found yet, but these notes' content is still unknown (not loaded, not in the search cache). */
+  | { status: 'pending'; candidates: number[] }
+
+export interface LookupNote extends NoteLike {
+  group_id?: number | null
+}
+
+/**
+ * Decide whether a book's note exists. Right after a reload the content of notes may not be cached
+ * yet, so "not found" only means "missing" once every note in the Books folder has known content:
+ * callers load the `pending` candidates and look again, and never create a note while any remain.
+ */
+export function lookupBookNote(
+  bookId: number,
+  notes: readonly LookupNote[],
+  folderId: number | null,
+  fallback?: (id: number) => string | undefined,
+): NoteLookup {
+  const id = findBookNote(bookId, notes, fallback)
+  if (id != null) return { status: 'found', id }
+  if (folderId == null) return { status: 'missing' }
+  const candidates = notes
+    .filter((n) => n.group_id === folderId && n.id > 0 && n.content === undefined && fallback?.(n.id) === undefined)
+    .map((n) => n.id)
+  return candidates.length ? { status: 'pending', candidates } : { status: 'missing' }
+}

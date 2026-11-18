@@ -163,6 +163,7 @@ router.get('/:id/file', (c) => {
     'Accept-Ranges': 'bytes',
     ETag: etag,
     'Cache-Control': 'private, max-age=31536000, immutable',
+    'X-Content-Type-Options': 'nosniff',
     'Content-Disposition': `inline; filename*=UTF-8''${encodedName}`,
   }
 
