@@ -386,9 +386,9 @@ export function NotesColumn({
         )}
         <span className={styles.notesCount}>{rows.length}</span>
         {folderActions.map((a) => (
-          <button key={a.pluginId} type="button" className={styles.folderAction} title={a.label} onClick={a.run}>
+          <button key={a.pluginId} type="button" className={styles.folderAction} title={a.label} aria-label={a.label} onClick={a.run}>
             <Icon name={a.icon} size={14} />
-            <span>{a.label}</span>
+            <span>{a.short ?? a.label}</span>
           </button>
         ))}
         <div className={styles.notesActions}>

@@ -117,6 +117,8 @@ export interface WorkspaceView {
 /** One action a plugin offers for a sidebar folder (row button, context menu, notes header). */
 export interface FolderAction {
   label: string
+  /** Compact label for the notes-column header (default: `label`). */
+  short?: string
   icon: IconName
   run: () => void
 }

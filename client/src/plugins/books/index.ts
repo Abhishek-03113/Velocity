@@ -171,7 +171,7 @@ const plugin: VelocityPlugin = {
 
       folderAction: (folder) =>
         folder.name.trim().toLowerCase() === (ctx.setting<string>('folder').trim() || 'Books').toLowerCase()
-          ? { label: 'Open Bookshelf', icon: 'books.vertical', run: openShelf }
+          ? { label: 'Open Bookshelf', short: 'Bookshelf', icon: 'books.vertical', run: openShelf }
           : null,
 
       noteBadge: (noteId) => {

@@ -168,8 +168,17 @@ export default function Bookshelf({ library, pickFiles }: Props) {
     if (at < 0) return
     // Resolved grid-template-columns lists one track per column.
     const columns = Math.max(1, getComputedStyle(gridRef.current!).gridTemplateColumns.split(' ').length)
-    const next =
-      dir === -3 ? 0 : dir === 3 ? cards.length - 1 : dir === 1 ? at + 1 : dir === -1 ? at - 1 : at + Math.sign(dir) * columns
+    // Upload cards fill the leading grid cells but are not focus targets. Card i sits in cell i + uploads,
+    // so one row up or down is still i ∓ columns; moving up into the upload row stays put.
+    let next = at
+    if (dir === -3) next = 0
+    else if (dir === 3) next = cards.length - 1
+    else if (dir === 1 || dir === -1) next = at + dir
+    else {
+      next = at + Math.sign(dir) * columns
+      if (next < 0) return
+      if (next > cards.length - 1) next = at < cards.length - 1 ? cards.length - 1 : at
+    }
     const card = cards[Math.min(cards.length - 1, Math.max(0, next))]
     card?.focus()
   }
@@ -199,7 +208,6 @@ export default function Bookshelf({ library, pickFiles }: Props) {
       }}
     >
       <div className={styles.bar}>
-        <span className={styles.title}>Bookshelf</span>
         {loaded && (
           <span className={styles.count}>{filtered ? `${visible.length} of ${count}` : count}</span>
         )}
