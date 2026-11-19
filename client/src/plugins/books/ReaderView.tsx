@@ -53,6 +53,8 @@ import {
   type TocItem,
 } from './reader/types'
 import { useReaderColors } from './useReaderColors'
+import { clearBookAnnotations } from './annotations'
+import { usePendingGoTo } from './store'
 import type { Book, BookAnnotation, ReaderHost } from './types'
 import styles from './ReaderTile.module.css'
 
@@ -196,6 +198,17 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
       if (syncRef.current === sync) syncRef.current = null
     }
   }, [book.id, host, ctx, startAt])
+
+  // A velocity://book link (highlights note, Read mode) asked for a place: it beats the saved position.
+  const pending = usePendingGoTo(book.id)
+  const pendingLocator = pending.locator
+  const consumePending = pending.consume
+  useEffect(() => {
+    if (!pendingLocator || !ready || error !== null) return
+    guardRef.current?.release()
+    handleRef.current?.goTo(pendingLocator)
+    consumePending()
+  }, [pendingLocator, ready, error, consumePending])
 
   const chrome = useChrome({ autoHide: paged, ready, hold: drawer || options || !!menu || !!toolbar || !!noteSheet })
 
@@ -473,7 +486,7 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
       message: `${list.length} ${list.length === 1 ? noun : `${noun}s`} in “${book.title}” will be deleted. This can’t be undone.`,
       confirmLabel: 'Clear All',
       destructive: true,
-      onConfirm: () => list.forEach((a) => host.removeAnnotation?.(book.id, a.id)),
+      onConfirm: () => clearBookAnnotations(book.id, kind),
     })
   }
 
