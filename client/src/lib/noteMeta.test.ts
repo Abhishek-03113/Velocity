@@ -29,4 +29,16 @@ describe('note metadata', () => {
     expect(relativeTime(now - 10_000, now)).toBe('Just now')
     expect(relativeTime(new Date(2026, 3, 14, 9, 0).getTime(), now)).toBe('Yesterday')
   })
+
+  it('ignores comment-only lines such as plugin markers', () => {
+    const content = '<!-- velocity-book:3 -->\n> **Ada** · EPUB · added 1 Jan 2026\n\n## Notes\n'
+    expect(derivedTitle(content)).toBe('Ada · EPUB · added 1 Jan 2026')
+    expect(snippet(content, 'The Book')).not.toContain('<!--')
+  })
+
+  it('hides the highlights note marker from titles and snippets', () => {
+    const content = '<!-- velocity-book-highlights:12 -->\n> **Dune** · Frank Herbert · 2 highlights\n\n## Chapter 1\n\n> Fear is the mind-killer.\n'
+    expect(derivedTitle(content)).toBe('Dune · Frank Herbert · 2 highlights')
+    expect(snippet(content, 'Dune — Highlights')).not.toContain('<!--')
+  })
 })

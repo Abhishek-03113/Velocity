@@ -1,13 +1,16 @@
 import { lazy, memo, Suspense, useCallback } from 'react'
 import { primaryKey } from '../../lib/commands'
 import { displayTitle } from '../../lib/noteMeta'
-import type { LeafNode } from '../../lib/tiling'
+import { tileNoteId, type LeafNode } from '../../lib/tiling'
+import { NOTE_DRAG_TYPE, TILE_DRAG_TYPE } from '../../lib/groupColors'
 import { closeTile, focusTile, toggleReadMode } from '../../lib/workspace'
+import { pluginName, pluginTileView, pluginWorkspaceView, usePluginsVersion } from '../../plugins/host'
 import { useEditorStore } from '../../store/editorStore'
 import { useLayoutStore } from '../../store/layoutStore'
+import { usePluginStore } from '../../store/pluginStore'
 import { useUiStore } from '../../store/uiStore'
 import Editor from '../Editor'
-import { Icon } from '../Icon'
+import { Icon, type IconName } from '../Icon'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import { EmptyTile } from './EmptyTile'
 import styles from './Workspace.module.css'
@@ -16,17 +19,15 @@ const Whiteboard = lazy(() => import('../Whiteboard'))
 // Read mode pulls in marked + DOMPurify — only load them when someone reads.
 const MarkdownPreview = lazy(() => import('../MarkdownPreview'))
 
-export type DropZone = 'left' | 'right' | 'top' | 'bottom' | 'center'
 
 interface TileProps {
   leaf: LeafNode
   focused: boolean
   tiled: boolean
   zoomed: boolean
-  dropZone: DropZone | null
 }
 
-function TileTitle({ noteId, board }: { noteId: number; board: boolean }) {
+function TileTitle({ noteId, suffix, icon = 'doc.text' }: { noteId: number; suffix?: string; icon?: IconName }) {
   const title = useEditorStore((s) => {
     const p = s.pastes.find((x) => x.id === noteId)
     return p ? displayTitle(p) : 'Note'
@@ -34,14 +35,80 @@ function TileTitle({ noteId, board }: { noteId: number; board: boolean }) {
   const dirty = useEditorStore((s) => s.pastes.find((x) => x.id === noteId)?.dirty ?? false)
   return (
     <span className={styles.tileTitle}>
-      <Icon name={board ? 'scribble' : 'doc.text'} size={14} className={styles.tileTitleIcon} />
+      <Icon name={icon} size={14} className={styles.tileTitleIcon} />
       <span className={styles.tileTitleText}>
         {title}
-        {board && <span className={styles.tileTitleSuffix}> — Whiteboard</span>}
+        {suffix && <span className={styles.tileTitleSuffix}> — {suffix}</span>}
       </span>
-      {dirty && !board && <span className={styles.tileDirty} title="Saving…" />}
+      {dirty && !suffix && <span className={styles.tileDirty} title="Saving…" />}
     </span>
   )
+}
+
+/** Header title of a plugin tile: the note title plus the view's name. */
+function PluginTileTitle({ noteId, pluginId, view }: { noteId: number; pluginId: string; view: string }) {
+  usePluginsVersion((s) => s.version)
+  const spec = pluginTileView(pluginId, view)
+  return <TileTitle noteId={noteId} suffix={spec?.title ?? pluginName(pluginId)} icon={spec?.icon ?? 'doc.plaintext'} />
+}
+
+/** Header of a note-less workspace view: its icon and title. */
+function ViewTileTitle({ pluginId, view }: { pluginId: string; view: string }) {
+  usePluginsVersion((s) => s.version)
+  const spec = pluginWorkspaceView(pluginId, view)
+  return (
+    <span className={styles.tileTitle}>
+      <Icon name={spec?.icon ?? 'doc.plaintext'} size={14} className={styles.tileTitleIcon} />
+      <span className={styles.tileTitleText}>{spec?.title ?? pluginName(pluginId)}</span>
+    </span>
+  )
+}
+
+function PluginOff({ tileId, pluginId }: { tileId: string; pluginId: string }) {
+  const name = pluginName(pluginId)
+  return (
+    <div className={styles.pluginOff}>
+      <p className={styles.pluginOffText}>{name} is switched off.</p>
+      <div className={styles.pluginOffActions}>
+        <button type="button" className={styles.pluginOffPrimary} onClick={() => usePluginStore.getState().setEnabled(pluginId, true)}>
+          Turn On {name}
+        </button>
+        <button type="button" className={styles.pluginOffButton} onClick={() => closeTile(tileId)}>
+          Close Tile
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ViewTileBody({ tileId, pluginId, view }: { tileId: string; pluginId: string; view: string }) {
+  usePluginsVersion((s) => s.version)
+  const spec = pluginWorkspaceView(pluginId, view)
+  if (!spec) return <PluginOff tileId={tileId} pluginId={pluginId} />
+  return <>{spec.render()}</>
+}
+
+function PluginTileBody({ tileId, noteId, pluginId, view }: { tileId: string; noteId: number; pluginId: string; view: string }) {
+  // Re-resolve when plugins are switched on or off.
+  usePluginsVersion((s) => s.version)
+  const spec = pluginTileView(pluginId, view)
+  if (!spec) return <PluginOff tileId={tileId} pluginId={pluginId} />
+  return <>{spec.render(noteId)}</>
+}
+
+function tileLabel(kind: LeafNode['content']['kind']): string {
+  switch (kind) {
+    case 'board':
+      return 'Whiteboard tile'
+    case 'note':
+      return 'Note tile'
+    case 'plugin':
+      return 'Plugin tile'
+    case 'view':
+      return 'Workspace view tile'
+    default:
+      return 'Empty tile'
+  }
 }
 
 function NoteBody({ noteId, mode }: { noteId: number; mode: 'edit' | 'read' }) {
@@ -77,7 +144,7 @@ function NoteSkeleton() {
   )
 }
 
-function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
+function TileImpl({ leaf, focused, tiled, zoomed }: TileProps) {
   const { content } = leaf
   const showHeader = tiled || zoomed
 
@@ -86,7 +153,7 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
       className={`${styles.tile} ${focused ? styles.tileFocused : ''} ${tiled ? styles.tileCard : ''}`}
       data-tile-id={leaf.id}
       data-tile-kind={content.kind}
-      aria-label={content.kind === 'board' ? 'Whiteboard tile' : content.kind === 'note' ? 'Note tile' : 'Empty tile'}
+      aria-label={tileLabel(content.kind)}
       onPointerDownCapture={() => {
         if (!focused) focusTile(leaf.id)
       }}
@@ -95,14 +162,34 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
       }}
     >
       {showHeader && (
-        <header className={styles.tileHeader}>
+        <header
+          className={styles.tileHeader}
+          draggable
+          title="Drag to move this tile"
+          onDragStart={(e) => {
+            // Pick the tile up: drop it on another tile's edge to move it there, or its centre to swap places.
+            e.dataTransfer.effectAllowed = 'move'
+            e.dataTransfer.setData(TILE_DRAG_TYPE, leaf.id)
+            const noteId = tileNoteId(content)
+            // Carrying the note too lets the folders column file it, like a note dragged from the list.
+            if (noteId != null) e.dataTransfer.setData(NOTE_DRAG_TYPE, String(noteId))
+            const section = e.currentTarget.closest('section')
+            if (section) e.dataTransfer.setDragImage(section, Math.min(120, e.nativeEvent.offsetX + 12), 14)
+          }}
+        >
           {content.kind === 'empty' ? (
             <span className={styles.tileTitle}>
               <Icon name="plus.circle" size={14} className={styles.tileTitleIcon} />
               <span className={styles.tileTitleText}>Open a Note</span>
             </span>
+          ) : content.kind === 'view' ? (
+            <ViewTileTitle pluginId={content.pluginId} view={content.view} />
+          ) : content.kind === 'plugin' ? (
+            <PluginTileTitle noteId={content.noteId} pluginId={content.pluginId} view={content.view} />
+          ) : content.kind === 'board' ? (
+            <TileTitle noteId={content.noteId} suffix="Whiteboard" icon="scribble" />
           ) : (
-            <TileTitle noteId={content.noteId} board={content.kind === 'board'} />
+            <TileTitle noteId={content.noteId} />
           )}
           <div className={styles.tileActions}>
             {content.kind === 'note' && (
@@ -141,10 +228,13 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
             <Whiteboard noteId={content.noteId} />
           </Suspense>
         )}
+        {content.kind === 'plugin' && (
+          <PluginTileBody tileId={leaf.id} noteId={content.noteId} pluginId={content.pluginId} view={content.view} />
+        )}
+        {content.kind === 'view' && <ViewTileBody tileId={leaf.id} pluginId={content.pluginId} view={content.view} />}
         {content.kind === 'empty' && <EmptyTile tileId={leaf.id} focused={focused} />}
       </div>
 
-      {dropZone && <div className={`${styles.dropZone} ${styles[`drop_${dropZone}`]}`} aria-hidden="true" />}
     </section>
   )
 }

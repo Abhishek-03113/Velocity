@@ -1,0 +1,209 @@
+/* LaTeX preview tile chrome. Document typography lives in paper.css. Tokens only. */
+.root {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--bg-content);
+}
+
+.bar {
+  display: flex;
+  min-height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 10px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.status {
+  overflow: hidden;
+  min-width: 0;
+  margin-left: 6px;
+  color: var(--label-secondary);
+  font-size: var(--text-footnote);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.placeholder {
+  max-width: 44em;
+  margin: 0 auto;
+  padding: 28px 32px;
+  color: var(--label-tertiary);
+}
+
+.pdfPane {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.pdf {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: var(--bg-secondary);
+}
+
+.issues {
+  max-height: 38%;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--separator);
+  list-style: none;
+  font-size: var(--text-footnote);
+}
+
+.issueError,
+.issueWarning {
+  --tone: var(--system-orange);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 0 10px;
+  color: var(--label);
+}
+
+.issueError {
+  --tone: var(--system-red);
+}
+
+.issueError > svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--tone);
+}
+
+.issueButton {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.issueButton {
+  cursor: pointer;
+}
+
+button.issueButton:hover {
+  background: var(--fill-tertiary);
+}
+
+button.issueButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+}
+
+.issueKind {
+  flex-shrink: 0;
+  color: var(--tone);
+  font-weight: 600;
+}
+
+.issueLine {
+  flex-shrink: 0;
+  color: var(--label-secondary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.issueText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.logRow {
+  padding: 2px 14px 4px;
+  color: var(--label-secondary);
+}
+
+.logRow summary {
+  cursor: pointer;
+}
+
+.log {
+  max-height: 240px;
+  margin: 6px 0 0;
+  padding: 8px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--bg-code);
+  color: var(--label);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: var(--label-secondary);
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  color: var(--label);
+  font-size: var(--text-callout);
+  font-weight: 600;
+}
+
+.emptyText {
+  max-width: 34em;
+  margin: 0;
+  font-size: var(--text-footnote);
+  line-height: 1.45;
+}
+
+.primary {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary:hover {
+  background: var(--accent-hover);
+}
+
+.primary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

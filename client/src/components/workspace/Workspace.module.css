@@ -25,20 +25,14 @@
   inset: calc(var(--tile-gap) / 2);
 }
 
+/* Geometry changes are animated with transforms (FLIP, see Workspace.tsx), never by transitioning left/top/width/
+   height: that would re-lay out every editor and reader frame on every animation frame. */
 .slot {
   position: absolute;
   display: flex;
   min-width: 0;
   min-height: 0;
-  transition:
-    left var(--dur-slow) var(--ease-spring),
-    top var(--dur-slow) var(--ease-spring),
-    width var(--dur-slow) var(--ease-spring),
-    height var(--dur-slow) var(--ease-spring);
-}
-
-.resizing .slot {
-  transition: none;
+  transform-origin: 0 0;
 }
 
 .resizing {
@@ -91,6 +85,7 @@
 .tileHeader {
   display: flex;
   height: 34px;
+  cursor: grab;
   flex-shrink: 0;
   align-items: center;
   gap: 8px;
@@ -174,6 +169,67 @@
   font-size: var(--text-callout);
 }
 
+/* ---- Tile of a switched-off plugin ---------------------------------- */
+.pluginOff {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+
+.pluginOffText {
+  margin: 0;
+  color: var(--label-secondary);
+  font-size: var(--text-callout);
+}
+
+.pluginOffActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pluginOffPrimary,
+.pluginOffButton {
+  min-height: 28px;
+  padding: 4px 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pluginOffPrimary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.pluginOffPrimary:hover {
+  background: var(--accent-hover);
+}
+
+.pluginOffButton {
+  background: var(--fill-tertiary);
+  color: var(--label);
+}
+
+.pluginOffButton:hover {
+  background: var(--fill-secondary);
+}
+
+.pluginOffPrimary:focus-visible,
+.pluginOffButton:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* ---- Loading skeleton ----------------------------------------------- */
 .skeleton {
   display: flex;
@@ -247,34 +303,37 @@
 }
 
 /* ---- Drop zones -------------------------------------------------------- */
-.dropZone {
+.dropPreview {
   position: absolute;
-  z-index: 10;
-  border-radius: var(--radius-md);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 2px var(--accent);
   pointer-events: none;
-  transition: all var(--dur-fast) var(--ease-out);
+  /* A lone empty box: animating its geometry is cheap, and it glides between candidate placements. */
+  transition:
+    left var(--dur-fast) var(--ease-out),
+    top var(--dur-fast) var(--ease-out),
+    width var(--dur-fast) var(--ease-out),
+    height var(--dur-fast) var(--ease-out);
 }
 
-.drop_center {
-  inset: 8px;
+.dropPreviewWhole {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-.drop_left {
-  inset: 8px 50% 8px 8px;
-}
-
-.drop_right {
-  inset: 8px 8px 8px 50%;
-}
-
-.drop_top {
-  inset: 8px 8px 50% 8px;
-}
-
-.drop_bottom {
-  inset: 50% 8px 8px 8px;
+.dropLabel {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgb(0 0 0 / 0.2));
 }
 
 /* ---- Empty tile (launcher) -------------------------------------------- */

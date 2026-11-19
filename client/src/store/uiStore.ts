@@ -13,7 +13,7 @@ import {
   type Appearance,
   type ThemeVariantPrefs,
 } from '../lib/themes'
-import type { PromptSpec } from '../plugins/types'
+import type { PanelSpec, PickSpec, PromptSpec } from '../plugins/types'
 
 export type ThemePref = 'system' | 'light' | 'dark'
 /** 'theme' follows the active theme family's natural accent. */
@@ -36,6 +36,20 @@ export interface Preferences {
   tileGaps: boolean
   sort: SortOrder
   spellcheck: boolean
+  /** Sidebar column widths in px (dragged at their right edge; see SIDEBAR_WIDTHS for limits). */
+  foldersWidth: number
+  notesWidth: number
+}
+
+/** Default and limits of the two resizable sidebar columns, in px. */
+export const SIDEBAR_WIDTHS = {
+  folders: { initial: 212, min: 160, max: 360 },
+  notes: { initial: 288, min: 220, max: 560 },
+} as const
+
+export function clampSidebarWidth(which: keyof typeof SIDEBAR_WIDTHS, px: number): number {
+  const { min, max, initial } = SIDEBAR_WIDTHS[which]
+  return Number.isFinite(px) ? Math.round(Math.min(max, Math.max(min, px))) : initial
 }
 
 export const DEFAULT_PREFS: Preferences = {
@@ -49,12 +63,14 @@ export const DEFAULT_PREFS: Preferences = {
   tileGaps: true,
   sort: 'updated',
   spellcheck: true,
+  foldersWidth: SIDEBAR_WIDTHS.folders.initial,
+  notesWidth: SIDEBAR_WIDTHS.notes.initial,
 }
 
 const PREFS_KEY = 'velocity.prefs.v1'
 const CHROME_KEY = 'velocity.chrome.v1'
 
-export type PaletteMode = 'notes' | 'commands' | 'move' | 'prompt'
+export type PaletteMode = 'notes' | 'commands' | 'move' | 'prompt' | 'pick'
 export type SettingsSection = 'plugins'
 
 export interface AlertSpec {
@@ -78,6 +94,10 @@ interface UiState {
   settingsSection: SettingsSection | null
   /** Active plugin text prompt, shown by the palette in 'prompt' mode. */
   prompt: PromptSpec | null
+  /** Active plugin pick list, shown by the palette in 'pick' mode. */
+  pick: PickSpec | null
+  /** A plugin's large panel over the workspace (one at a time). */
+  pluginPanel: (PanelSpec & { pluginId: string }) | null
   alert: AlertSpec | null
   /** Brief status message in the status bar ("Saved", "Exported…") — not a toast. */
   flash: string | null
@@ -95,6 +115,9 @@ interface UiState {
   openPalette: (mode?: PaletteMode) => void
   closePalette: () => void
   openPrompt: (spec: PromptSpec) => void
+  openPick: (spec: PickSpec) => void
+  openPluginPanel: (spec: PanelSpec & { pluginId: string }) => void
+  closePluginPanel: () => void
   openSettings: (section?: SettingsSection) => void
   setSettingsOpen: (open: boolean) => void
   setShortcutsOpen: (open: boolean) => void
@@ -145,6 +168,8 @@ export function sanitizePrefs(raw: Partial<Preferences>): Preferences {
   if (typeof raw.tileGaps === 'boolean') p.tileGaps = raw.tileGaps
   if (raw.sort === 'updated' || raw.sort === 'title') p.sort = raw.sort
   if (typeof raw.spellcheck === 'boolean') p.spellcheck = raw.spellcheck
+  if (typeof raw.foldersWidth === 'number') p.foldersWidth = clampSidebarWidth('folders', raw.foldersWidth)
+  if (typeof raw.notesWidth === 'number') p.notesWidth = clampSidebarWidth('notes', raw.notesWidth)
   return p
 }
 
@@ -204,6 +229,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   shortcutsOpen: false,
   settingsSection: null,
   prompt: null,
+  pick: null,
+  pluginPanel: null,
   alert: null,
   flash: null,
   activity: null,
@@ -244,8 +271,19 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
 
   openPalette: (mode = 'notes') => set({ paletteOpen: true, paletteMode: mode }),
-  closePalette: () => set({ paletteOpen: false, prompt: null }),
+  closePalette: () => set({ paletteOpen: false, prompt: null, pick: null }),
   openPrompt: (spec) => set({ paletteOpen: true, paletteMode: 'prompt', prompt: spec }),
+  openPick: (spec) => set({ paletteOpen: true, paletteMode: 'pick', pick: spec }),
+  openPluginPanel: (spec) => {
+    const previous = get().pluginPanel
+    if (previous && previous.pluginId !== spec.pluginId) previous.onClose?.()
+    set({ pluginPanel: spec })
+  },
+  closePluginPanel: () => {
+    const previous = get().pluginPanel
+    set({ pluginPanel: null })
+    previous?.onClose?.()
+  },
   openSettings: (section) => set({ settingsOpen: true, settingsSection: section ?? null }),
   setSettingsOpen: (open) => set(open ? { settingsOpen: true } : { settingsOpen: false, settingsSection: null }),
   setShortcutsOpen: (open) => set({ shortcutsOpen: open }),

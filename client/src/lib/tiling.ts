@@ -12,6 +12,10 @@ export type TileMode = 'edit' | 'read'
 export type TileContent =
   | { kind: 'note'; noteId: number; mode: TileMode }
   | { kind: 'board'; noteId: number }
+  /** A view a plugin renders for a note (e.g. a live LaTeX preview). */
+  | { kind: 'plugin'; pluginId: string; view: string; noteId: number }
+  /** A workspace view a plugin renders with no note behind it (e.g. a bookshelf). */
+  | { kind: 'view'; pluginId: string; view: string }
   | { kind: 'empty' }
 
 export type SplitDir = 'row' | 'column' // row = side by side, column = stacked
@@ -93,9 +97,34 @@ export function boardLeafFor(node: LayoutNode, noteId: number): LeafNode | null 
   return findLeafBy(node, (l) => l.content.kind === 'board' && l.content.noteId === noteId)
 }
 
-/** Note id a tile is "about" (note and board tiles both belong to a note). */
+export function pluginLeafFor(node: LayoutNode, pluginId: string, view: string, noteId: number): LeafNode | null {
+  return findLeafBy(
+    node,
+    (l) => l.content.kind === 'plugin' && l.content.pluginId === pluginId && l.content.view === view && l.content.noteId === noteId,
+  )
+}
+
+export function viewLeafFor(node: LayoutNode, pluginId: string, view: string): LeafNode | null {
+  return findLeafBy(node, (l) => l.content.kind === 'view' && l.content.pluginId === pluginId && l.content.view === view)
+}
+
+/** Identity of what a tile shows: two tiles with the same key are duplicates. */
+export function tileKey(content: TileContent): string {
+  switch (content.kind) {
+    case 'empty':
+      return 'empty'
+    case 'view':
+      return `view:${content.pluginId}:${content.view}`
+    case 'plugin':
+      return `plugin:${content.pluginId}:${content.view}:${content.noteId}`
+    default:
+      return `${content.kind}:${content.noteId}`
+  }
+}
+
+/** Note id a tile is "about" (note, board and plugin tiles belong to a note; empty and view tiles do not). */
 export function tileNoteId(content: TileContent): number | null {
-  return content.kind === 'empty' ? null : content.noteId
+  return content.kind === 'empty' || content.kind === 'view' ? null : content.noteId
 }
 
 /** Map every leaf (and split) to its rect inside `bounds`. */
@@ -168,6 +197,14 @@ export function splitLeaf(
       }
     }) ?? root
   )
+}
+
+/** Swap two leaves' places in the tree, keeping their ids (and so their live tiles) — unlike `swapContents`. */
+export function swapLeaves(root: LayoutNode, aId: string, bId: string): LayoutNode {
+  const a = findLeaf(root, aId)
+  const b = findLeaf(root, bId)
+  if (!a || !b || a === b) return root
+  return mapNode(root, (n) => (n.type !== 'leaf' ? n : n.id === aId ? b : n.id === bId ? a : n)) ?? root
 }
 
 /** Remove a leaf; its sibling takes over the parent's space. Returns null if nothing remains. */
@@ -300,7 +337,7 @@ export function sanitize(
 export function remapNote(root: LayoutNode, from: number, to: number): LayoutNode {
   return (
     mapNode(root, (n) => {
-      if (n.type !== 'leaf' || n.content.kind === 'empty') return n
+      if (n.type !== 'leaf' || n.content.kind === 'empty' || n.content.kind === 'view') return n
       if (n.content.noteId !== from) return n
       return { ...n, content: { ...n.content, noteId: to } }
     }) ?? root
@@ -316,7 +353,11 @@ export function isLayoutNode(value: unknown, depth = 0): value is LayoutNode {
     const c = n.content as Record<string, unknown> | undefined
     if (!c || typeof c !== 'object') return false
     if (c.kind === 'empty') return true
+    if (c.kind === 'view') return typeof c.pluginId === 'string' && typeof c.view === 'string'
     if (c.kind === 'board') return typeof c.noteId === 'number'
+    if (c.kind === 'plugin') {
+      return typeof c.noteId === 'number' && typeof c.pluginId === 'string' && typeof c.view === 'string'
+    }
     if (c.kind === 'note') return typeof c.noteId === 'number' && (c.mode === 'edit' || c.mode === 'read')
     return false
   }

@@ -23,3 +23,5 @@ export function groupColorFor(groups: Array<{ id: number }>, groupId: number | n
 }
 
 export const NOTE_DRAG_TYPE = 'application/x-velocity-note'
+/** A workspace tile being picked up by its header (value: the tile id). */
+export const TILE_DRAG_TYPE = 'application/x-velocity-tile'

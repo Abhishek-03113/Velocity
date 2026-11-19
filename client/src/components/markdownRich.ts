@@ -399,6 +399,18 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
         // Images are owned by markdownImagePreview (StateField).
         if (name === 'Image') return false
 
+        // A one-line HTML comment (e.g. a plugin's note marker) collapses away until the cursor moves into it
+        // (a cursor resting at its very start, the default for a freshly opened note, doesn't count).
+        if (name === 'CommentBlock') {
+          const line = state.doc.lineAt(node.from)
+          const entered = state.selection.ranges.some((r) => r.to > node.from && r.from <= node.to)
+          if (node.to <= line.to && !entered && line.number < state.doc.lines) {
+            widgets.push(Decoration.line({ class: 'cm-md-hidden-line' }).range(line.from))
+            if (node.to > node.from) widgets.push(hiddenMark.range(node.from, node.to))
+          }
+          return false
+        }
+
         if (name === 'FencedCode' || name === 'CodeBlock') {
           const first = state.doc.lineAt(node.from).number
           const last = state.doc.lineAt(node.to).number
@@ -408,6 +420,11 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
             )
           }
           return false
+        }
+
+        if (name === 'Link' || name === 'Autolink') {
+          widgets.push(Decoration.mark({ class: 'cm-md-link' }).range(node.from, node.to))
+          return
         }
 
         if (name === 'Blockquote') {
@@ -449,6 +466,13 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
             widgets.push(Decoration.replace({ widget: bulletWidget }).range(node.from, node.to))
           }
           return
+        }
+
+        if (name === 'URL' && node.node.parent?.name === 'Link') {
+          // `[label](destination)` reads as the label alone off the cursor line (the brackets are hidden below); the
+          // Books highlights note has long `velocity://book/..?at=..` destinations that would otherwise show as raw text.
+          if (!isActive(node.from, node.to)) widgets.push(hiddenMark.range(node.from, node.to))
+          return false
         }
 
         if (MARK_NODES.has(name)) {

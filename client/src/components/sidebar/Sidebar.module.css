@@ -18,6 +18,61 @@
   opacity: 1;
 }
 
+/* A column edge is being dragged: follow the pointer, no width animation. */
+.sidebar[data-resizing] {
+  transition: none;
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Column resize handles (SidebarResizer): an 8px hit area centred on the column's right border. */
+.resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.resizerFolders {
+  left: calc(var(--folders-width) - 4px);
+}
+
+.resizerNotes {
+  right: 0;
+  width: 6px;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: transparent;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.resizerNotes::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.resizer:hover::after,
+.resizer:focus-visible::after,
+.sidebar[data-resizing] .resizer::after {
+  background: var(--accent);
+}
+
+.resizer:focus-visible {
+  outline: none;
+}
+
 .closed:not(.overlay) {
   width: 0 !important;
   opacity: 0;
@@ -223,6 +278,61 @@
   background: var(--fill-secondary);
 }
 
+/* Plugin folder action: replaces the count on hover / focus / selection. */
+.sourceRowAction {
+  position: relative;
+}
+
+.sourceAction {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated, var(--fill-secondary));
+  box-shadow: 0 0 0 0.5px var(--separator);
+  color: var(--label-secondary);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.sourceRowAction:hover .sourceAction,
+.sourceRowAction:focus-within .sourceAction,
+.sourceRowAction.sourceRowSelected .sourceAction,
+.sourceAction:focus-visible {
+  opacity: 1;
+}
+
+.sourceRowAction:hover .sourceCount,
+.sourceRowAction:focus-within .sourceCount,
+.sourceRowAction.sourceRowSelected .sourceCount {
+  opacity: 0;
+}
+
+.sourceAction:hover {
+  background: var(--fill-secondary);
+  color: var(--accent);
+}
+
+.sourceAction:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@media (pointer: coarse) {
+  .sourceAction {
+    opacity: 1;
+  }
+
+  .sourceRowAction .sourceCount {
+    opacity: 0;
+  }
+}
+
 .sourceRowDrop {
   background: var(--accent-soft) !important;
   box-shadow: inset 0 0 0 1.5px var(--accent);
@@ -349,6 +459,34 @@
   color: var(--label-tertiary);
   font-size: var(--text-callout);
   font-variant-numeric: tabular-nums;
+}
+
+/* Plugin folder action in the notes header (e.g. Open Bookshelf). */
+.folderAction {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+}
+
+.folderAction span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderAction:hover {
+  background: var(--accent-soft);
+}
+
+.folderAction:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .notesActions {
@@ -557,4 +695,33 @@ li:has(+ li > .noteRowSelected) > .noteRow::after,
   .moveChip {
     opacity: 1;
   }
+}
+
+/* Plugin badge (e.g. Blog Reader read / unread): a tinted edge and a pill on the meta line. */
+.noteRowBadged::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 10px;
+  left: 3px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--badge-color);
+}
+
+.noteBadge {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--badge-color) 16%, transparent);
+  color: color-mix(in srgb, var(--badge-color) 78%, var(--label));
+  font-size: var(--text-caption);
+  font-weight: 600;
+  line-height: 18px;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+button.noteBadge:hover {
+  background: color-mix(in srgb, var(--badge-color) 28%, transparent);
 }

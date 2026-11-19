@@ -1,0 +1,253 @@
+/*
+ * PDF reading surface. Two layouts share one DOM: a scroller holding a sheet of absolutely positioned pages
+ * (scroll layout: all pages stacked; paged layout: current page centred, neighbours hidden for prefetch).
+ * Colours come in as custom properties from props:
+ *   --pdf-bg / --pdf-bg-image   the area around the pages (paper stock + grain)
+ *   --pdf-paper                 the page box fill; the canvas is blended onto it (--pdf-blend, --pdf-filter)
+ *   --pdf-hl-blend              blend mode of highlight fills
+ */
+.scroller {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: var(--pdf-bg, var(--bg-primary));
+  background-image: var(--pdf-bg-image, none);
+  outline: none;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroller:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Paged: swipes and horizontal wheel turn pages, so only vertical panning stays native. */
+.paged {
+  touch-action: pan-y pinch-zoom;
+  overscroll-behavior: none;
+}
+
+/* While a turn animates nothing may scroll sideways (pages travel outside the sheet). */
+.animating {
+  overflow-x: hidden;
+}
+
+.sheet {
+  position: relative;
+  min-width: 100%;
+}
+
+.page {
+  position: absolute;
+  isolation: isolate;
+  background-color: var(--pdf-paper, #fff);
+  background-image: var(--pdf-bg-image, none);
+  box-shadow: var(--shadow-sm), 0 6px 22px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  display: block;
+  filter: var(--pdf-filter, none);
+  mix-blend-mode: var(--pdf-blend, normal);
+}
+
+/* Highlight overlay: above the canvas, below the (transparent) text layer. Hit-testing is done in script. */
+.annots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hl {
+  position: absolute;
+  border-radius: 2px;
+  mix-blend-mode: var(--pdf-hl-blend, multiply);
+}
+
+.line {
+  position: absolute;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.squiggle {
+  position: absolute;
+  height: 4px;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+}
+
+.double {
+  position: absolute;
+  height: 4px;
+  border-top: 1.2px solid;
+  border-bottom: 1.2px solid;
+}
+
+.dashed {
+  position: absolute;
+  height: 0;
+  border-top-width: 2px;
+}
+
+.sketch {
+  position: absolute;
+  height: 7px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.curly {
+  position: absolute;
+  height: 7px;
+  background-repeat: repeat-x;
+  background-position: left top;
+}
+
+.noteMark {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -3px 0 0 3px;
+  border-radius: 50% 50% 50% 0;
+  box-shadow: 0 0 0 1.5px var(--pdf-paper, #fff);
+}
+
+/* Text layer for selection: transparent text positioned over the canvas (pdf.js 4.x needs --scale-factor on the page). */
+.page :global(.textLayer) {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 0;
+}
+
+.page :global(.textLayer) :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.page :global(.textLayer) > :not(:global(.markedContent)),
+.page :global(.textLayer) :global(.markedContent) span:not(:global(.markedContent)) {
+  z-index: 1;
+}
+
+.page :global(.textLayer) span:global(.markedContent) {
+  top: 0;
+  height: 0;
+}
+
+.page :global(.textLayer) ::selection {
+  background: var(--pdf-selection, rgba(0, 122, 255, 0.3));
+}
+
+.page :global(.textLayer) br::selection {
+  background: transparent;
+}
+
+.page :global(.textLayer) :global(.endOfContent) {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --- curl page turn ------------------------------------------------------------------------------------------------
+ * The turning page is a bitmap copy of the current page on an overlay: a leaf that rotates around the spine edge inside
+ * a perspective stage, with a lit front, a darker back and a shadow cast on the page being revealed. */
+.curlStage {
+  position: absolute;
+  z-index: 5;
+  perspective: 1800px;
+  perspective-origin: 50% 50%;
+  pointer-events: none;
+}
+
+.curlShade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.leaf {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.leafFront,
+.leafBack {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.leafBack {
+  background-color: var(--pdf-paper, #fff);
+  background-image: var(--pdf-bg-image, none);
+  box-shadow: var(--shadow-sm);
+}
+
+.leafBack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.leafGloss,
+.leafDim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.leafGloss {
+  width: 60%;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
+  will-change: transform, opacity;
+}
+
+.leafDim {
+  background: rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  will-change: opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroller {
+    scroll-behavior: auto;
+  }
+}
+
+/* pdf.js measures text on a canvas it appends to <body>; its own stylesheet (not loaded here) hides it. */
+:global(.hiddenCanvasElement) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  display: none;
+}

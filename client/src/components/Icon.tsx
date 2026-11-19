@@ -26,6 +26,21 @@ const PATHS = {
   'folder': (
     <path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z" />
   ),
+  'books.vertical': (
+    <>
+      <path d="M4.5 6.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v13h-5Z" />
+      <path d="M9.5 9.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v10h-5Z" />
+      <path d="m15.6 7.2 2.8-.8a1 1 0 0 1 1.2.7l2 7.4a1 1 0 0 1-.7 1.2l-2.8.8a1 1 0 0 1-1.2-.7l-2-7.4a1 1 0 0 1 .7-1.2Z" />
+      <path d="M4.5 9.5h5M4.5 16h5M10.5 12.5h4" />
+    </>
+  ),
+  'arrow.up.arrow.down': (
+    <>
+      <path d="M8 19V5.5M4.5 9 8 5.5 11.5 9" />
+      <path d="M16 5v13.5M12.5 15l3.5 3.5 3.5-3.5" />
+    </>
+  ),
+  'line.3.horizontal.decrease': <path d="M4 7h16M7 12h10M10 17h4" />,
   'folder.badge.plus': (
     <>
       <path d="M12 18.5H5.5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2V12" />
@@ -54,6 +69,12 @@ const PATHS = {
     <>
       <path d="M12 6.5c-1.8-1.3-4.3-2-7.5-2v13c3.2 0 5.7.7 7.5 2 1.8-1.3 4.3-2 7.5-2v-13c-3.2 0-5.7.7-7.5 2Z" />
       <path d="M12 6.5v13" />
+    </>
+  ),
+  terminal: (
+    <>
+      <rect x="3" y="4.5" width="18" height="15" rx="3" />
+      <path d="m7.5 9.5 3 2.5-3 2.5M12.5 15h4" />
     </>
   ),
   pencil: (
@@ -199,6 +220,60 @@ const PATHS = {
       <path d="m4 4 16 16" />
     </>
   ),
+  /* Summation sign: LaTeX / maths. */
+  sum: <path d="M17.5 5.5h-11l6 6.5-6 6.5h11" />,
+  /* Books reader. */
+  'list.bullet': <path d="M9.5 6.5h10M9.5 12h10M9.5 17.5h10M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" />,
+  minus: <path d="M5 12h14" />,
+  'quote.bubble': (
+    <>
+      <path d="M5.5 4.5h13a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5V16.5h-1a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z" />
+      <path d="M9.6 8.4c-1 .5-1.5 1.3-1.5 2.4h1.7v1.7H8.1M14.6 8.4c-1 .5-1.5 1.3-1.5 2.4h1.7v1.7h-1.7" />
+    </>
+  ),
+  /* Books reader v2: bookmarks, highlights, annotations. */
+  bookmark: <path d="M7 4.5h10a1 1 0 0 1 1 1V20l-6-4.2L6 20V5.5a1 1 0 0 1 1-1Z" />,
+  'bookmark.fill': <path d="M7 4.5h10a1 1 0 0 1 1 1V20l-6-4.2L6 20V5.5a1 1 0 0 1 1-1Z" fill="currentColor" />,
+  highlighter: (
+    <>
+      <path d="m14.5 5.5 4 4-7 7-4.2.8.8-4.2 6.4-7.6Z" />
+      <path d="m7.1 13.1 3.8 3.8M4 20h8" />
+    </>
+  ),
+  underline: <path d="M7 4.5v7a5 5 0 0 0 10 0v-7M5 20h14" />,
+  strikethrough: (
+    <path d="M5 12h14M16.5 7.5c-.6-1.8-2.4-3-4.7-3-2.6 0-4.3 1.3-4.3 3.2 0 1.3.8 2.2 2.3 2.8M7.5 16.5c.6 1.9 2.5 3 4.8 3 2.7 0 4.2-1.3 4.2-3 0-.6-.2-1.1-.6-1.6" />
+  ),
+  squiggle: (
+    <>
+      <path d="M7 4.5v7a5 5 0 0 0 10 0v-7" />
+      <path d="M3.5 20c1-1.2 1.9-1.2 2.9 0s1.9 1.2 2.9 0 1.9-1.2 2.9 0 1.9 1.2 2.9 0 1.9-1.2 2.9 0 1.9 1.2 2.9 0" />
+    </>
+  ),
+  'underline.sketch': (
+    <>
+      <path d="M7 4.5v7a5 5 0 0 0 10 0v-7" />
+      <path d="M3.5 19.2c3-.9 6.3-1.1 9.4-.6 2.4.4 4.8.3 7.6-.4M4.8 21c3.3-.5 7.7-.6 10.6-.1" />
+    </>
+  ),
+  curly: (
+    <>
+      <path d="M7 4.5v7a5 5 0 0 0 10 0v-7" />
+      <path d="M3.5 20.5c2.6-.3 2.2-3 .9-2.3-1.2.7.1 3 2.7 2.3 2.6-.3 2.2-3 .9-2.3-1.2.7.1 3 2.7 2.3 2.6-.3 2.2-3 .9-2.3-1.2.7.1 3 2.7 2.3 2.4-.3 2.2-3 .9-2.3-1 .6 0 2.6 2.4 2.3" />
+    </>
+  ),
+  'underline.double': <path d="M7 4.5v6.5a5 5 0 0 0 10 0V4.5M5 18.5h14M5 21h14" />,
+  'underline.dotted': <path d="M7 4.5v7a5 5 0 0 0 10 0v-7M5 20h.01M9.7 20h.01M14.3 20h.01M19 20h.01" />,
+  'underline.dashed': <path d="M7 4.5v7a5 5 0 0 0 10 0v-7M4.5 20h3.5M10.25 20h3.5M16 20h3.5" />,
+  'note.text': (
+    <>
+      <path d="M6.5 3.5h11a2 2 0 0 1 2 2v9l-5 5h-8a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2Z" />
+      <path d="M8.5 8.5h7M8.5 12h4M14.5 19.5v-3a2 2 0 0 1 2-2h3" />
+    </>
+  ),
+  textformat: <path d="M3.5 18.5 9 5.5l5.5 13M5.4 14h7.2M16 10.5h4.5M18.25 10.5v8" />,
+  'line.3.horizontal': <path d="M4.5 7h15M4.5 12h15M4.5 17h15" />,
+  'arrow.uturn.backward': <path d="M9 6.5 4.5 11 9 15.5M5 11h9.5a5 5 0 0 1 0 10H11" />,
 } as const
 
 export type IconName = keyof typeof PATHS

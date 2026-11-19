@@ -215,6 +215,17 @@ test('open a blog post beside my notes, read it, edit it, dedupe it', async ({ p
   await expect(status(page)).toContainText('Already in Blogs')
   expect((await allNotes()).filter((n) => n.title.includes('Reading and Note-Taking'))).toHaveLength(1)
 
+  // 6b. Read status: blog notes are colour-coded unread / read in the notes list.
+  const blogRow = page.locator('[data-note-row]', { hasText: 'Reading and Note-Taking' })
+  await expect(blogRow).toHaveAttribute('data-badge', 'Unread')
+  await blogRow.getByRole('button', { name: 'Mark as Read' }).click()
+  await expect(blogRow).toHaveAttribute('data-badge', 'Read')
+  await expect(status(page)).toContainText('Marked as read')
+  await shot(page, 'read-status')
+  await page.keyboard.press('Control+Alt+Shift+KeyB')
+  await expect(blogRow).toHaveAttribute('data-badge', 'Unread')
+  await expect(page.locator('[data-note-row][data-badge]')).toHaveCount(1)
+
   // 7. Error path.
   await openPrompt(page)
   await page.keyboard.type(`${base}/not-html`)

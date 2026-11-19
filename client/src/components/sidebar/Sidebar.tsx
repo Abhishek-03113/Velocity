@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { COMPACT_QUERY, useMediaQuery, WIDE_QUERY } from '../../hooks/useMediaQuery'
 import { useUiStore } from '../../store/uiStore'
 import { ContextMenu, type MenuState } from '../ui/ContextMenu'
 import { FoldersColumn } from './FoldersColumn'
 import { NotesColumn } from './NotesColumn'
+import { SidebarResizer } from './SidebarResizer'
 import styles from './Sidebar.module.css'
 
 /**
@@ -13,13 +14,16 @@ import styles from './Sidebar.module.css'
  * the whole sidebar becomes an overlay sheet.
  */
 export default function Sidebar() {
-  const { sidebarOpen, foldersOpen, setSidebarOpen } = useUiStore(
+  const { sidebarOpen, foldersOpen, setSidebarOpen, foldersWidth, notesWidth } = useUiStore(
     useShallow((s) => ({
       sidebarOpen: s.sidebarOpen,
       foldersOpen: s.foldersOpen,
       setSidebarOpen: s.setSidebarOpen,
+      foldersWidth: s.prefs.foldersWidth,
+      notesWidth: s.prefs.notesWidth,
     })),
   )
+  const asideRef = useRef<HTMLElement>(null)
   const wide = useMediaQuery(WIDE_QUERY)
   const compact = useMediaQuery(COMPACT_QUERY)
   const [menu, setMenu] = useState<MenuState | null>(null)
@@ -49,10 +53,15 @@ export default function Sidebar() {
           compact ? styles.overlay : ''
         }`}
         aria-label="Sidebar"
+        ref={asideRef}
         style={
           compact
             ? undefined
-            : { width: showFolders ? 'calc(var(--folders-width) + var(--notes-width))' : 'var(--notes-width)' }
+            : ({
+                '--folders-width': `${foldersWidth}px`,
+                '--notes-width': `${notesWidth}px`,
+                width: showFolders ? 'calc(var(--folders-width) + var(--notes-width))' : 'var(--notes-width)',
+              } as CSSProperties)
         }
         aria-hidden={!sidebarOpen || undefined}
         {...(sidebarOpen ? {} : ({ inert: '' } as object))}
@@ -64,6 +73,8 @@ export default function Sidebar() {
           canShowFolders={wide && !compact && !foldersOpen}
           compact={compact}
         />
+        {!compact && sidebarOpen && showFolders && <SidebarResizer which="folders" asideRef={asideRef} />}
+        {!compact && sidebarOpen && <SidebarResizer which="notes" asideRef={asideRef} />}
       </aside>
       {menu && <ContextMenu menu={menu} onClose={closeMenu} />}
     </>

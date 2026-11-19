@@ -4,7 +4,7 @@ import { displayTitle, parseTimestamp, relativeTime } from '../../lib/noteMeta'
 import { isMac } from '../../lib/platform'
 import { newNote, openNote } from '../../lib/workspace'
 import { pluginCommands, urlHandlerFor } from '../../plugins/host'
-import type { PromptSpec } from '../../plugins/types'
+import type { PickItem, PickSpec, PromptSpec } from '../../plugins/types'
 import { useEditorStore } from '../../store/editorStore'
 import { useGroupStore } from '../../store/groupStore'
 import { cachedContent, searchNotes } from '../../store/searchStore'
@@ -155,10 +155,149 @@ function PromptPanel({ spec }: { spec: PromptSpec }) {
   )
 }
 
+/** Palette in pick mode: a plugin offers a list (e.g. agents) and the user picks one. */
+function PickPanel({ spec }: { spec: PickSpec }) {
+  const close = useUiStore((s) => s.closePalette)
+  const [query, setQuery] = useState('')
+  const [index, setIndex] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const previous = document.activeElement
+    inputRef.current?.focus()
+    return () => {
+      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus({ preventScroll: true })
+    }
+  }, [])
+
+  const items = useMemo(() => {
+    const q = query.trim()
+    if (!q) return spec.items
+    return spec.items
+      .map((item) => ({ item, score: fuzzyScore(`${item.title} ${item.detail ?? ''}`, q) }))
+      .filter((x): x is { item: PickItem; score: number } => x.score !== null)
+      .sort((a, b) => a.score - b.score)
+      .map((x) => x.item)
+  }, [spec.items, query])
+
+  const choosable = items.filter((i) => !i.disabled)
+  const active = choosable[Math.min(index, choosable.length - 1)]
+
+  useEffect(() => {
+    listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' })
+  }, [active])
+
+  const choose = (item: PickItem | undefined) => {
+    if (!item || item.disabled) return
+    close()
+    spec.onPick(item.id)
+  }
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      close()
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setIndex((i) => Math.min(i + 1, Math.max(choosable.length - 1, 0)))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      choose(active)
+    }
+  }
+
+  let lastSection: string | undefined
+  return (
+    <div className={styles.backdrop} onMouseDown={close}>
+      <div
+        className={styles.palette}
+        role="dialog"
+        aria-modal="true"
+        aria-label={spec.title}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+      >
+        <div className={styles.paletteSearch}>
+          <Icon name={spec.icon ?? 'command'} size={18} />
+          <span className={styles.promptChip}>{spec.title}</span>
+          <input
+            ref={inputRef}
+            data-bare
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setIndex(0)
+            }}
+            placeholder={spec.placeholder}
+            aria-label={spec.placeholder}
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </div>
+        <div className={styles.paletteList} ref={listRef} role="listbox" aria-label={spec.title}>
+          {spec.items.length === 0 && <div className={styles.promptMessage}>{spec.emptyText ?? 'Nothing to pick.'}</div>}
+          {spec.items.length > 0 && items.length === 0 && <div className={styles.promptMessage}>Nothing matches “{query}”.</div>}
+          {items.map((item) => {
+            const header = item.section && item.section !== lastSection ? item.section : null
+            lastSection = item.section
+            const isActive = item === active
+            return (
+              <div key={item.id}>
+                {header && <div className={styles.paletteSection}>{header}</div>}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isActive}
+                  aria-disabled={item.disabled || undefined}
+                  data-active={isActive}
+                  title={item.hint}
+                  className={`${styles.paletteItem} ${styles.pickItem} ${isActive ? styles.paletteItemActive : ''} ${item.disabled ? styles.paletteItemDisabled : ''}`}
+                  onMouseMove={() => {
+                    if (!item.disabled) setIndex(choosable.indexOf(item))
+                  }}
+                  onClick={() => choose(item)}
+                >
+                  <span className={styles.paletteIcon}>
+                    <Icon name={item.icon ?? spec.icon ?? 'command'} size={16} />
+                  </span>
+                  <span className={styles.paletteText}>
+                    <span className={styles.paletteTitle}>{highlight(item.title, query)}</span>
+                    {(item.detail || item.hint) && <span className={styles.paletteDetail}>{item.disabled && item.hint ? item.hint : item.detail}</span>}
+                  </span>
+                  {item.badge && (
+                    <span className={styles.pickBadge} style={{ ['--badge-color' as string]: `var(--system-${item.badge.tone})` }}>
+                      {item.badge.label}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+        <div className={styles.paletteFooter}>
+          <span>
+            <Kbd combo="Enter" subtle /> Choose
+          </span>
+          <span>
+            <Kbd combo="Escape" subtle /> Close
+          </span>
+          {spec.footerHint && <span className={styles.paletteFooterHint}>{spec.footerHint}</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CommandPalette() {
   const mode = useUiStore((s) => s.paletteMode)
   const prompt = useUiStore((s) => s.prompt)
+  const pick = useUiStore((s) => s.pick)
   if (mode === 'prompt' && prompt) return <PromptPanel spec={prompt} />
+  if (mode === 'pick' && pick) return <PickPanel spec={pick} />
   return <SearchPalette />
 }
 

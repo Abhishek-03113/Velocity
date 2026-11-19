@@ -1,3 +1,5 @@
+import type { Extension } from '@codemirror/state'
+import type { ReactNode } from 'react'
 import type { IconName } from '../components/Icon'
 
 export interface PluginManifest {
@@ -11,7 +13,7 @@ export interface PluginManifest {
 }
 
 export type PluginSetting =
-  | { key: string; type: 'text'; label: string; hint?: string; default: string; placeholder?: string }
+  | { key: string; type: 'text'; label: string; hint?: string; default: string; placeholder?: string; secret?: boolean }
   | { key: string; type: 'toggle'; label: string; hint?: string; default: boolean }
   | {
       key: string
@@ -51,6 +53,96 @@ export interface PromptSpec {
   splitLabel?: string
 }
 
+/** System colour a badge is tinted with (`--system-<tone>`), so it follows the theme. */
+export type BadgeTone = 'blue' | 'green' | 'orange' | 'red' | 'purple' | 'teal' | 'gray'
+
+/** A coloured marker a plugin puts on one of its notes in the sidebar list. */
+export interface NoteBadge {
+  label: string
+  tone: BadgeTone
+  /** Tooltip / accessible name of the badge button. */
+  title?: string
+  /** Makes the badge a button (e.g. to toggle a state). */
+  onClick?: () => void
+}
+
+/** One row of a palette pick list. */
+export interface PickItem {
+  id: string
+  title: string
+  detail?: string
+  icon?: IconName
+  section?: string
+  badge?: { label: string; tone: BadgeTone }
+  /** Shown but not choosable; `hint` says why. */
+  disabled?: boolean
+  hint?: string
+}
+
+/** A palette-style list the user filters and picks one item from. */
+export interface PickSpec {
+  title: string
+  placeholder: string
+  icon?: IconName
+  items: PickItem[]
+  /** Shown when there are no items at all (e.g. "herdr isn't running"). */
+  emptyText?: string
+  footerHint?: string
+  onPick: (id: string) => void
+}
+
+/** A large plugin-rendered panel over the workspace (e.g. a board). */
+export interface PanelSpec {
+  title: string
+  render: () => ReactNode
+  onClose?: () => void
+}
+
+/** A view a plugin renders inside a workspace tile, beside the editor (one per note). */
+export interface TileView {
+  /** Suffix in the tile header, after the note title (e.g. "LaTeX Preview"). */
+  title: string
+  icon?: IconName
+  /** Rendered inside the tile body. Re-rendered by React; keep state in a store or hooks. */
+  render: (noteId: number) => ReactNode
+}
+
+/** A workspace view with no note behind it (e.g. a bookshelf), opened with `ctx.views`. */
+export interface WorkspaceView {
+  /** Tile header title. */
+  title: string
+  icon?: IconName
+  /** Rendered inside the tile body. Re-rendered by React; keep state in a store or hooks. */
+  render: () => ReactNode
+}
+
+/** One action a plugin offers for a sidebar folder (row button, context menu, notes header). */
+export interface FolderAction {
+  label: string
+  /** Compact label for the notes-column header (default: `label`). */
+  short?: string
+  icon: IconName
+  run: () => void
+}
+
+/** An editor mode for notes whose content is a plugin's kind of document (e.g. LaTeX source). */
+export interface EditorMode {
+  /** Cheap test on the start of the note (first few thousand characters); runs as the user types. */
+  matches: (content: string) => boolean
+  /** CodeMirror extensions used instead of Markdown and its live preview. Called once. */
+  extensions: () => Extension
+}
+
+export interface RequestOptions {
+  headers?: Record<string, string>
+}
+
+export interface StreamHandlers {
+  onEvent: (event: string, data: string) => void
+  onOpen?: () => void
+  onError?: (error: Error) => void
+}
+
 export interface PluginContext {
   id: string
   setting<T extends string | boolean>(key: string): T
@@ -61,21 +153,95 @@ export interface PluginContext {
   /** Longer-lived status-bar activity text; pass null to clear. */
   activity(message: string | null): void
   prompt(spec: PromptSpec): void
-  /** GET `/api/plugins/<id>${path}`; unwraps the envelope and throws Error(error). */
-  api: { get<T>(path: string): Promise<T> }
+  /** `/api/plugins/<id>${path}`; unwraps the envelope and throws Error(error) (with `.status`). */
+  api: {
+    get<T>(path: string, opts?: RequestOptions): Promise<T>
+    post<T>(path: string, body?: unknown, opts?: RequestOptions): Promise<T>
+    /** Server-sent events read over fetch (so headers can carry a token). Reconnects with back-off; returns a stop function. */
+    stream(path: string, handlers: StreamHandlers, opts?: RequestOptions): () => void
+  }
+  /** Palette list mode: filter and pick one item. */
+  pick(spec: PickSpec): void
+  /** A large panel over the workspace; one at a time. */
+  panel: { open(spec: PanelSpec): void; close(): void; isOpen(): boolean }
   notes: {
     create(input: { title: string; content: string; folder?: string; split?: boolean; mode?: 'read' | 'edit' }): number
-    open(id: number, opts?: { split?: boolean; mode?: 'read' | 'edit' }): void
+    /** `raw`: open in the editor even when a plugin's `noteView` claims the note (e.g. a book's attached notes). */
+    open(id: number, opts?: { split?: boolean; mode?: 'read' | 'edit'; raw?: boolean }): void
     exists(id: number): boolean
     current(): number | null
+    title(id: number): string
+    /** The note's Markdown, loading it first if needed. */
+    content(id: number): Promise<string>
+    /** Append Markdown at the end of the note (saved through the normal sync engine). */
+    append(id: number, markdown: string): Promise<void>
+    /** The current editor selection in that note, or ''. */
+    selection(id: number): string
+    /** React hook: the note's content, re-rendering when it changes (undefined until loaded). */
+    useContent(id: number): string | undefined
+    /** Show the note in its editor with the cursor at the start of a 1-based line. */
+    goToLine(id: number, line: number): void
+  }
+  /** The note's whiteboard, if it has one. */
+  boards: {
+    has(id: number): boolean
+    /** Render the whiteboard to a PNG data URL (null when empty or unavailable). */
+    exportPng(id: number): Promise<string | null>
+  }
+  /** Workspace tiles showing one of this plugin's `tiles` views for a note. */
+  tiles: {
+    /** Open (or focus) the view's tile for the note, beside the note's own tile. Returns the tile id. */
+    open(view: string, noteId: number, opts?: { focus?: boolean }): string
+    close(view: string, noteId: number): void
+    /** Open it when closed, close it when open. Returns true when it is now open. */
+    toggle(view: string, noteId: number): boolean
+    isOpen(view: string, noteId: number): boolean
+  }
+  /** Workspace views not tied to a note, from this plugin's `views`. */
+  views: {
+    /** Focus the view's tile; else fill an empty focused tile; else split beside the focused tile. Returns the tile id. */
+    open(view: string, opts?: { focus?: boolean }): string
+    /** Close the tile (the only tile becomes empty instead). */
+    close(view: string): void
+    isOpen(view: string): boolean
   }
   /** Existing (case-insensitive) or newly created folder id. */
   folders: { ensure(name: string): number }
+  /** Hand the user a file to save (a browser download). */
+  files: { download(filename: string, data: Blob | string, mime?: string): void }
+  /** Ask the UI to re-read this plugin's note badges (call after their state changes). */
+  refreshBadges(): void
+}
+
+/**
+ * Opens in-app `velocity://` links clicked inside notes (Read mode and the editor), e.g. the Books
+ * highlights note's `velocity://book/<id>?at=<locator>`. Wired by the host (ACC-35).
+ */
+export interface LinkHandler {
+  match: (url: URL) => boolean
+  open: (url: URL, opts: { split: boolean }) => void
 }
 
 export interface PluginInstance {
   commands?: PluginCommand[]
   urlHandler?: UrlHandler
+  /** Badge for a note in the sidebar, or null for notes this plugin doesn't decorate. Keep it cheap. */
+  noteBadge?: (noteId: number) => NoteBadge | null
+  /** Editor language for matching notes, in place of Markdown. The first matching plugin wins. */
+  editorMode?: EditorMode
+  /**
+   * Notes this plugin opens in one of its `tiles` views instead of the editor, everywhere a note opens (notes list,
+   * tabs, drag to a tile, links). `ctx.notes.open(id, { raw: true })` still opens the editor. Keep `match` cheap.
+   */
+  noteView?: { view: string; match: (noteId: number) => boolean }
+  /** Views this plugin can show in a workspace tile, keyed by view id (see `ctx.tiles`). */
+  tiles?: Record<string, TileView>
+  /** Note-less workspace views, keyed by view id (see `ctx.views`). */
+  views?: Record<string, WorkspaceView>
+  /** Handles clicks on matching `velocity://` links in notes. */
+  linkHandler?: LinkHandler
+  /** An action for this folder (shown on its row, in its menu and in the notes header), or null. Keep it cheap. */
+  folderAction?: (folder: { id: number; name: string }) => FolderAction | null
   dispose?: () => void
 }
 

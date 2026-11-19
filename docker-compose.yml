@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.server
+      args:
+        # LaTeX plugin: LATEX=on installs a TeX engine for PDF compiles.
+        LATEX: ${LATEX:-off}
     env_file: .env
     environment:
       PORT: 3000

@@ -12,7 +12,8 @@ import { useUiStore } from '../store/uiStore'
 import { focusEditor, getEditor } from './editorRegistry'
 import { displayTitle } from './noteMeta'
 import { getThemeFamily, variantsFor, type Appearance } from './themes'
-import { findLeaf, leaves, type Direction } from './tiling'
+import { findLeaf, leaves, tileNoteId, type Direction } from './tiling'
+import { contentForNote, primaryLeafFor } from './noteViews'
 
 const narrow = () => typeof window !== 'undefined' && window.innerWidth < 760
 
@@ -21,7 +22,7 @@ function afterOpenOnNarrow() {
   if (narrow()) useUiStore.getState().setSidebarOpen(false)
 }
 
-export function openNote(id: number, opts: { split?: SplitRequest | false; focus?: boolean } = {}) {
+export function openNote(id: number, opts: { split?: SplitRequest | false; focus?: boolean; raw?: boolean } = {}) {
   void useEditorStore.getState().setActiveId(id, opts)
   afterOpenOnNarrow()
 }
@@ -38,11 +39,10 @@ export function newNote(opts: { split?: SplitRequest | false; groupId?: number |
  * Put a note into a specific tile. A note shows in at most one editor tile,
  * so if it is already visible elsewhere it *moves* here (Hyprland-style).
  */
-export function placeNoteInTile(tileId: string, noteId: number) {
+export function placeNoteInTile(tileId: string, noteId: number, opts: { raw?: boolean } = {}) {
   const layout = useLayoutStore.getState()
-  const existing = leaves(layout.root).find(
-    (l) => l.content.kind === 'note' && l.content.noteId === noteId,
-  )
+  const raw = opts.raw === true
+  const existing = primaryLeafFor(layout.root, noteId, raw)
   if (existing?.id === tileId) {
     focusTile(tileId, { dom: true })
     return
@@ -50,9 +50,9 @@ export function placeNoteInTile(tileId: string, noteId: number) {
   if (existing && leaves(layout.root).length > 1) layout.close(existing.id)
   const target = useLayoutStore.getState()
   if (!findLeaf(target.root, tileId)) return
-  target.setContent(tileId, { kind: 'note', noteId, mode: 'edit' })
+  target.setContent(tileId, contentForNote(noteId, 'edit', raw))
   target.focus(tileId)
-  void useEditorStore.getState().setActiveId(noteId)
+  void useEditorStore.getState().setActiveId(noteId, { raw })
 }
 
 export function currentNoteId(): number | null {
@@ -64,7 +64,7 @@ export function focusTile(tileId: string, opts: { dom?: boolean } = {}) {
   const layout = useLayoutStore.getState()
   layout.focus(tileId)
   const tile = findLeaf(useLayoutStore.getState().root, tileId)
-  if (!tile || tile.content.kind === 'empty') {
+  if (!tile || tile.content.kind === 'empty' || tile.content.kind === 'view') {
     if (opts.dom) document.querySelector<HTMLElement>(`[data-tile-id="${tileId}"] input`)?.focus()
     return
   }
@@ -109,7 +109,9 @@ export function closeTile(tileId?: string) {
   if (leaves(layout.root).length <= 1) {
     // Last tile: closing it means closing its note tab (a fresh one replaces it).
     const tile = findLeaf(layout.root, id)
-    if (tile && tile.content.kind !== 'empty') useEditorStore.getState().closeTab(tile.content.noteId)
+    const noteId = tile ? tileNoteId(tile.content) : null
+    if (noteId != null) useEditorStore.getState().closeTab(noteId)
+    else if (tile?.content.kind === 'view') layout.setContent(id, { kind: 'empty' })
     return
   }
   layout.close(id)

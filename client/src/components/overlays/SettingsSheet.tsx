@@ -210,7 +210,8 @@ function PluginSettingRow({ pluginId, setting }: { pluginId: string; setting: Pl
         />
       ) : (
         <input
-          type="text"
+          type={setting.secret ? 'password' : 'text'}
+          autoComplete={setting.secret ? 'off' : undefined}
           className={styles.textInput}
           aria-label={setting.label}
           placeholder={setting.placeholder}

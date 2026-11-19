@@ -23,3 +23,8 @@
 .editor :global(.cm-md-image-placeholder) {
   animation-name: cm-md-shimmer;
 }
+
+/* Mod/Ctrl+click opens a link; show it is clickable while the modifier is held. */
+.editor :global(.cm-link-mod .cm-md-link) {
+  cursor: pointer;
+}
