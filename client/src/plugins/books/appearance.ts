@@ -16,7 +16,7 @@ export const FONT_SCALE = { min: 0.8, max: 1.6, step: 0.1 } as const
 export const PDF_ZOOM = { min: 0.5, max: 4 } as const
 
 /** The fixed reader palettes: the only raw colours in the reader. Auto reads Velocity tokens instead. */
-export const FIXED_PALETTES: Record<Exclude<ReaderTheme, 'auto'>, ReaderColors> = {
+export const FIXED_PALETTES: Record<Exclude<ReaderTheme, 'auto' | 'paper'>, ReaderColors> = {
   light: { background: '#ffffff', text: '#1d1d1f', link: '#0066cc', selection: 'rgba(0, 102, 204, 0.25)', dark: false },
   sepia: { background: '#f4ecd8', text: '#5b4636', link: '#8a5a2b', selection: 'rgba(138, 90, 43, 0.28)', dark: false },
   dark: { background: '#1c1c1e', text: '#e5e5e7', link: '#64a8ff', selection: 'rgba(100, 168, 255, 0.35)', dark: true },
@@ -29,7 +29,8 @@ export interface TokenReader {
 }
 
 export function resolveColors(theme: ReaderTheme, tokens: TokenReader): ReaderColors {
-  if (theme !== 'auto') return { ...FIXED_PALETTES[theme] }
+  // 'paper' falls back to Auto until ACC-38 implements the paper stock.
+  if (theme !== 'auto' && theme !== 'paper') return { ...FIXED_PALETTES[theme] }
   return {
     background: tokens.color('var(--bg-content)'),
     text: tokens.color('var(--label)'),
@@ -75,7 +76,7 @@ export function sanitizeAppearance(raw: unknown): ReaderAppearance {
   else if (typeof r.pdfZoom === 'number' && Number.isFinite(r.pdfZoom)) {
     pdfZoom = Math.round(clamp(r.pdfZoom, PDF_ZOOM.min, PDF_ZOOM.max) * 100) / 100
   }
-  return { theme, fontScale, fontFamily, layout, pdfZoom }
+  return { ...base, theme, fontScale, fontFamily, layout, pdfZoom }
 }
 
 export function loadAppearance(storage: AppearanceStorage): ReaderAppearance {

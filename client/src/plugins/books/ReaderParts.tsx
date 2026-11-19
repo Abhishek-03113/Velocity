@@ -74,10 +74,10 @@ export function ContentsDrawer({ toc, current, onPick, onClose }: ContentsProps)
 
 /* ---- Appearance popover ------------------------------------------------- */
 
-const THEME_LABEL: Record<ReaderTheme, string> = { auto: 'Auto', light: 'Light', sepia: 'Sepia', dark: 'Dark' }
+const THEME_LABEL: Record<ReaderTheme, string> = { paper: 'Paper', auto: 'Auto', light: 'Light', sepia: 'Sepia', dark: 'Dark' }
 
 function swatchStyle(theme: ReaderTheme): CSSProperties {
-  if (theme === 'auto') {
+  if (theme === 'auto' || theme === 'paper') {
     const { light, dark } = FIXED_PALETTES
     return { background: `linear-gradient(135deg, ${light.background} 50%, ${dark.background} 50%)`, color: 'var(--system-gray)' }
   }

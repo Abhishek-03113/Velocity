@@ -70,7 +70,7 @@ describe('appearance persistence', () => {
   it('round-trips through storage', () => {
     const s = memoryStorage()
     saveAppearance(s, { ...DEFAULT_APPEARANCE, theme: 'dark', fontFamily: 'sans', layout: 'scrolled', fontScale: 1.3, pdfZoom: 1.5 })
-    expect(loadAppearance(s)).toEqual({ theme: 'dark', fontFamily: 'sans', layout: 'scrolled', fontScale: 1.3, pdfZoom: 1.5 })
+    expect(loadAppearance(s)).toEqual({ ...DEFAULT_APPEARANCE, theme: 'dark', fontFamily: 'sans', layout: 'scrolled', fontScale: 1.3, pdfZoom: 1.5 })
   })
 })
 
