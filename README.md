@@ -163,9 +163,13 @@ make up
 make down      # stop containers
 make restart   # rebuild and restart
 make rebuild   # clean rebuild (no cache)
+make latex     # rebuild the server with TeX Live for LaTeX PDF compiles
+make ps        # container status (the server has a health check)
+make logs      # follow the server logs
+make help      # every target, including the local Bun ones (install, dev, test, lint, …)
 ```
 
-Data is stored in the `velocity_data` Docker volume. Markdown image assets are also written to `~/velocity_docs` on the host (mounted into the server container).
+Both images build on `oven/bun:1.4-alpine`: the server runs `bun index.ts` (SQLite through the built-in `bun:sqlite`, so no native build tools), and the client is built with Bun and served by nginx. Data is stored in the `velocity_data` Docker volume. Markdown image assets are also written to `~/velocity_docs` on the host (mounted into the server container).
 
 ### Local development
 
