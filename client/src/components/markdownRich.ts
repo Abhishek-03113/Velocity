@@ -422,6 +422,11 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
           return false
         }
 
+        if (name === 'Link' || name === 'Autolink') {
+          widgets.push(Decoration.mark({ class: 'cm-md-link' }).range(node.from, node.to))
+          return
+        }
+
         if (name === 'Blockquote') {
           const first = state.doc.lineAt(node.from).number
           const last = state.doc.lineAt(node.to).number

@@ -230,9 +230,9 @@ export interface PluginInstance {
   tiles?: Record<string, TileView>
   /** Note-less workspace views, keyed by view id (see `ctx.views`). */
   views?: Record<string, WorkspaceView>
-  /** An action for this folder (shown on its row, in its menu and in the notes header), or null. Keep it cheap. */
   /** Handles clicks on matching `velocity://` links in notes. */
   linkHandler?: LinkHandler
+  /** An action for this folder (shown on its row, in its menu and in the notes header), or null. Keep it cheap. */
   folderAction?: (folder: { id: number; name: string }) => FolderAction | null
   dispose?: () => void
 }

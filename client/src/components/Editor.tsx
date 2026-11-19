@@ -20,6 +20,7 @@ import { editorModeFor, usePluginsVersion } from '../plugins/host'
 import { useEditorStore } from '../store/editorStore'
 import { registerEditor, unregisterEditor } from '../lib/editorRegistry'
 import { isMac } from '../lib/platform'
+import { linkOpenHandler } from '../lib/editorLinks'
 import {
   markdownLivePreview,
   toggleWrap,
@@ -283,6 +284,7 @@ function buildExtensions(language: Extension) {
     closeBrackets(),
     cmPlaceholder('Start writing…'),
     formatHandler,
+    linkOpenHandler,
     keymap.of([
       ...closeBracketsKeymap,
       ...searchKeymap,

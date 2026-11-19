@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import { cachedContent } from '../../store/searchStore'
 import type { PluginContext } from '../types'
+import { addAnnotation, removeAnnotation, updateAnnotation, useAnnotations } from './annotations'
 import { bookFileUrl, patchBook } from './api'
 import type { BooksLibrary } from './metadata'
 import { bookIdOf } from './note'
@@ -67,5 +68,11 @@ export function createReaderHost(ctx: PluginContext, library: BooksLibrary): Rea
     },
 
     downloadOriginal: (book) => library.download(book),
+
+    useAnnotations,
+    addAnnotation,
+    updateAnnotation,
+    removeAnnotation,
+    openHighlightsNote: (bookId) => library.highlights.open(bookId),
   }
 }
