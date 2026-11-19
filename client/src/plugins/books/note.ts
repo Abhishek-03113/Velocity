@@ -10,6 +10,21 @@ export function bookIdOf(content: string | null | undefined): number | null {
   return match ? Number(match[1]) : null
 }
 
+/** The marker on line 1 of a book's highlights note (docs/specs/books-reading-experience.md §5). */
+export const HIGHLIGHTS_MARKER_RE = /^<!-- velocity-book-highlights:(\d+) -->/
+
+/** The book id a highlights note belongs to, or null for any other note. */
+export function highlightsBookIdOf(content: string | null | undefined): number | null {
+  if (!content) return null
+  const match = HIGHLIGHTS_MARKER_RE.exec(content.slice(0, 200))
+  return match ? Number(match[1]) : null
+}
+
+/** True for `velocity://book/...` URLs: the ones the Books plugin's link handler owns. */
+export function isBookLinkUrl(url: Pick<URL, 'protocol' | 'host'>): boolean {
+  return url.protocol === 'velocity:' && url.host === 'book'
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** `18 Nov 2026` (d MMM yyyy, en-GB style, independent of the browser's ICU data). */
@@ -36,11 +51,12 @@ export function findBookNote(
   bookId: number,
   notes: readonly NoteLike[],
   fallback?: (id: number) => string | undefined,
+  idOf: (content: string | null | undefined) => number | null = bookIdOf,
 ): number | null {
   let found: number | null = null
   for (const note of notes) {
     const content = note.content ?? fallback?.(note.id)
-    if (bookIdOf(content) === bookId && (found == null || note.id > found)) found = note.id
+    if (idOf(content) === bookId && (found == null || note.id > found)) found = note.id
   }
   return found
 }
@@ -66,8 +82,9 @@ export function lookupBookNote(
   notes: readonly LookupNote[],
   folderId: number | null,
   fallback?: (id: number) => string | undefined,
+  idOf: (content: string | null | undefined) => number | null = bookIdOf,
 ): NoteLookup {
-  const id = findBookNote(bookId, notes, fallback)
+  const id = findBookNote(bookId, notes, fallback, idOf)
   if (id != null) return { status: 'found', id }
   if (folderId == null) return { status: 'missing' }
   const candidates = notes

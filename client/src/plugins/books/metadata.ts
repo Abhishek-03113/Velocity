@@ -20,6 +20,8 @@ import {
   type BookPatch,
 } from './api'
 import { useGroupStore } from '../../store/groupStore'
+import { forgetBook } from './annotations'
+import { createHighlights, type Highlights } from './highlights'
 import { bookNoteContent, findBookNote, lookupBookNote } from './note'
 import { scanNotes, useBooksStore, type UploadItem } from './store'
 import type { Book } from './types'
@@ -45,6 +47,8 @@ export interface BooksLibrary {
   rename(book: Book): void
   download(book: Book): void
   remove(book: Book): void
+  /** The book's highlights note (see highlights.ts). */
+  highlights: Highlights
   dispose(): void
 }
 
@@ -55,6 +59,7 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
   let running = 0
   let counter = 0
   let disposed = false
+  const highlights = createHighlights(ctx)
 
   const folderName = () => ctx.setting<string>('folder').trim() || 'Books'
   const fail = (message: string, err: unknown) => console.error(`[books] ${message}`, err)
@@ -311,6 +316,7 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
         void resolveNote(book.id).then((noteId) => {
           if (noteId != null) useEditorStore.getState().setTitle(noteId, title)
         })
+        // The highlights note's title and header follow the new name (see highlights.ts).
       },
     })
   }
@@ -331,7 +337,7 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
   const remove = (book: Book) => {
     useUiStore.getState().confirm({
       title: `Remove “${book.title}”?`,
-      message: 'The book file and its note are deleted from Velocity.',
+      message: 'The book file, its note and its highlights are deleted from Velocity.',
       confirmLabel: 'Remove',
       destructive: true,
       onConfirm: () => {
@@ -339,6 +345,11 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
           // Know the note before the book goes: with its content unloaded it could be left behind.
           const noteId = await resolveNote(book.id)
           if (noteId === undefined) {
+            ctx.flash(NOTE_NOT_READY)
+            return
+          }
+          const highlightsId = await highlights.resolve(book.id)
+          if (highlightsId === undefined) {
             ctx.flash(NOTE_NOT_READY)
             return
           }
@@ -351,8 +362,11 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
               return
             }
           }
+          highlights.cancel(book.id)
           store().removeBook(book.id)
+          forgetBook(book.id)
           if (noteId != null) useEditorStore.getState().deletePaste(noteId)
+          if (highlightsId != null) highlights.deleteNote(highlightsId)
           scanNotes()
           ctx.flash(`Removed “${book.title}”`)
         })()
@@ -375,8 +389,10 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
     rename,
     download,
     remove,
+    highlights,
     dispose: () => {
       disposed = true
+      highlights.dispose()
       for (const c of aborts) c.abort()
       aborts.clear()
       queue.length = 0

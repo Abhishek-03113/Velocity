@@ -52,7 +52,7 @@ function parseEnvelope<T>(text: string): Envelope<T> | null {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response
   try {
     res = await fetch(`${apiBaseUrl()}${ROOT}${path}`, init)
