@@ -1,3 +1,4 @@
+import { marked } from 'marked'
 import { describe, expect, it } from 'vitest'
 import { highlightsNoteContent, highlightsTitle } from './highlightsNote'
 import { highlightsBookIdOf, isBookLinkUrl } from './note'
@@ -108,6 +109,29 @@ describe('highlightsNoteContent', () => {
     const note = highlightsNoteContent(epub, [ann({ locator: 'epubcfi(/6/4[ch1]!/4/2/1:0)' })])
     const href = /\]\((velocity:[^)\s]+)\)/.exec(note)![1]!
     expect(parseBookLink(href)).toEqual({ bookId: 12, locator: 'epubcfi(/6/4[ch1]!/4/2/1:0)' })
+  })
+})
+
+describe('rendered links', () => {
+  const links = (md: string) => {
+    const doc = new DOMParser().parseFromString(marked(md, { async: false, gfm: true }) as string, 'text/html')
+    return Array.from(doc.querySelectorAll('a')).map((a) => [a.textContent, a.getAttribute('href')])
+  }
+
+  it('renders a PDF locator link as an anchor labelled with its place, and it round-trips', () => {
+    const locator = 'pdf:{"page":9,"rects":[[0.1174,0.0891,0.1829,0.0671],[0.1,0.2,0.3,0.04]]}'
+    const md = highlightsNoteContent(pdf, [ann({ locator, text: 'Page', page: 9, progress: 0.67, chapter: 'Part III' })])
+    const found = links(md)
+    expect(found).toHaveLength(1)
+    expect(found[0][0]).toBe('p. 9 · 67%')
+    expect(parseBookLink(found[0][1]!)).toEqual({ bookId: 7, locator })
+  })
+
+  it('renders an EPUB CFI link as an anchor too', () => {
+    const locator = 'epubcfi(/6/4!/4/2,/1:0,/1:42)'
+    const found = links(highlightsNoteContent(epub, [ann({ locator, chapter: 'One', progress: 0.2 })]))
+    expect(found).toHaveLength(1)
+    expect(parseBookLink(found[0][1]!)).toEqual({ bookId: 12, locator })
   })
 })
 

@@ -618,6 +618,10 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     let cancelled = false
     const isPaged = layout === 'paginated'
 
+    // A previous rendition whose destroy() threw half-way (epub.js does while a display is still in flight, e.g. when
+    // the tile is resized in steps) leaves its container and iframe behind, visible next to the new one.
+    mount.replaceChildren()
+
     const layers = layersRef.current
     const rendition = book.renderTo(mount, {
       width: '100%',
@@ -631,6 +635,17 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     })
     renditionRef.current = rendition
     displayingRef.current = true
+    // epub.js attaches asynchronously. A rendition that was torn down before it finished attaching still appends its
+    // container (and iframe) to the mount afterwards, next to the live one: drop every container that is not ours.
+    const liveContainer = () => (rendition as unknown as { manager?: { container?: Element } }).manager?.container
+    const strayWatch = new MutationObserver(() => {
+      const keep = liveContainer()
+      if (!keep) return
+      mount.querySelectorAll(':scope > .epub-container').forEach((el) => {
+        if (el !== keep) el.remove()
+      })
+    })
+    strayWatch.observe(mount, { childList: true })
 
     rendition.hooks.render.register((view) => enforceSandbox(view.iframe))
     rendition.hooks.content.register((contents) => {
@@ -642,7 +657,12 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       const root = doc.documentElement
       if (!root.getAttribute('lang') && !root.getAttribute('xml:lang')) root.setAttribute('lang', langRef.current)
       const frame = doc.defaultView?.frameElement as HTMLIFrameElement | null
-      if (frame) frame.style.background = 'transparent'
+      if (frame) {
+        frame.style.background = 'transparent'
+        // A transparent iframe only stays transparent when its colour scheme equals its document's (light). In a dark
+        // app the frame would otherwise inherit `dark` and be painted with an opaque white canvas.
+        frame.style.colorScheme = 'light'
+      }
 
       let layer: MarksLayer | null = null
       if (frame) {
@@ -842,6 +862,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     return () => {
       cancelled = true
       displayingRef.current = false
+      strayWatch.disconnect()
       window.removeEventListener('error', onWindowError)
       window.removeEventListener('unhandledrejection', onRejection)
       rendition.off('relocated', onRelocated as never)
@@ -897,7 +918,10 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     appearance.align,
     geometry.textWidth,
     geometry.mountWidth,
+    geometry.margin,
   ].join('|')
+  const cssRef = useRef(css)
+  cssRef.current = css
   const appliedRef = useRef<{ layoutKey: string; layout: string } | null>(null)
   useEffect(() => {
     const r = renditionRef.current
@@ -909,6 +933,23 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     if (prev.layoutKey !== layoutKey) relayout()
     else syncLayers('all') // colours only: the highlight palette follows
   }, [css, layoutKey, layout, relayout, syncLayers, book])
+
+  /**
+   * The tile is resized in steps (the zoom animation, dragging a split): once it has stopped changing, restyle every
+   * chapter with the final geometry and re-measure, so no chapter keeps the margins of an intermediate width.
+   */
+  const settleSize = useRef({ w: size.w, h: size.h })
+  useEffect(() => {
+    if (settleSize.current.w === size.w && settleSize.current.h === size.h) return
+    settleSize.current = { w: size.w, h: size.h }
+    const timer = window.setTimeout(() => {
+      const r = renditionRef.current
+      if (!r) return
+      for (const c of asContentsList(r.getContents())) applyStyle(c, cssRef.current)
+      relayout()
+    }, 220)
+    return () => window.clearTimeout(timer)
+  }, [size.w, size.h, relayout])
 
   /* ---- 5. Highlights: diff by id, never move the position. ---- */
   const annotations = props.annotations
