@@ -32,6 +32,9 @@ import { MarksLayer } from './marks'
 import { playTurn, takeGhost, type TurnEffect, type TurnEnv } from './turn'
 import styles from './EpubView.module.css'
 
+/** How long a mouse tap in a page-turn zone waits for a second click (shared with the PDF engine's value). */
+const MOUSE_TAP_DELAY_MS = 180
+
 /* ---- Narrow views of the epub.js objects we touch (its d.ts is loose / incomplete). ---- */
 
 interface LocPoint {
@@ -688,8 +691,14 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
 
       /* -- taps, highlights, links -- */
       let suppressClickUntil = 0
+      // A mouse page-turn tap waits a moment: a double or triple click selects a word / paragraph instead (as in the PDF
+      // engine), so the first click of one must not turn the page away from the text being selected.
+      let tapTimer = 0
+      doc.addEventListener('mousedown', () => window.clearTimeout(tapTimer))
       doc.addEventListener('click', (e: MouseEvent) => {
         if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return
+        window.clearTimeout(tapTimer)
+        if (e.detail > 1) return
         if (performance.now() < suppressClickUntil) return
         const sel = win.getSelection()
         if (sel && !sel.isCollapsed && sel.toString().trim()) return
@@ -711,9 +720,18 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
         if (!rootEl) return
         const rr = rootEl.getBoundingClientRect()
         const zone = tapZone(f.left + e.clientX - rr.left, rr.width, appearanceRef.current.layout === 'paginated')
-        if (zone === 'prev') turnRef.current('prev')
-        else if (zone === 'next') turnRef.current('next')
-        propsRef.current.onTap?.(zone)
+        if (zone === 'center') {
+          propsRef.current.onTap?.(zone)
+          return
+        }
+        const fire = () => {
+          const picked = win.getSelection()
+          if (picked && !picked.isCollapsed && picked.toString().trim()) return
+          turnRef.current(zone)
+          propsRef.current.onTap?.(zone)
+        }
+        if ((e as PointerEvent).pointerType === 'mouse') tapTimer = window.setTimeout(fire, MOUSE_TAP_DELAY_MS)
+        else fire()
       })
 
       // Pointer cursor over highlights.

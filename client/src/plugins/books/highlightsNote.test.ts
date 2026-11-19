@@ -28,6 +28,14 @@ const epub = { id: 12, title: 'Strange Weather in Tokyo', author: 'Hiromi Kawaka
 const pdf = { id: 7, title: 'Rust Notes', author: null, format: 'pdf' as const }
 
 describe('highlightsNoteContent', () => {
+  it('keeps a bookmark link whole when the chapter title has brackets', () => {
+    const md = highlightsNoteContent(epub, [
+      ann({ kind: 'bookmark', locator: 'epubcfi(/6/4)', text: null, color: null, style: null, chapter: 'Part [1] ] odd', progress: 0.1 }),
+    ])
+    const html = marked(md, { async: false }) as string
+    expect(html).toContain('<a href="velocity://book/12?at=epubcfi%28%2F6%2F4%29">Part [1] ] odd · 10%</a>')
+  })
+
   it('writes the EPUB note: chapters in reading order, notes, bookmarks, links', () => {
     const list = [
       ann({ locator: 'epubcfi(/6/8!/4/2)', text: 'Later passage.', chapter: 'The Moon and the Batteries', progress: 0.3, color: 'green', style: 'underline', note: 'reminds me of\nsomething', created_at: '2026-11-20 08:00:00', updated_at: '2026-11-20 08:00:00' }),

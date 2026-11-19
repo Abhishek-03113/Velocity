@@ -208,6 +208,10 @@ and reading positions follow you to every device.
 
 ![Bookshelf](screenshots/books/01-bookshelf-light.png)
 
+![Paper reader with highlights](screenshots/books-v2/06-highlights-four-styles.jpg)
+
+More: [dark](screenshots/books-v2/02-paper-dark-epub.jpg), [page curl](screenshots/books-v2/03-page-curl.jpg), [Visual Options](screenshots/books-v2/04-visual-options.jpg), [highlights note](screenshots/books-v2/08-highlights-note.jpg), [themes](screenshots/books-v2/11-themes-grid.jpg), [phone](screenshots/books-v2/12-phone.jpg).
+
 - **Add:** **Books: Add Books…** (`Ctrl+Alt+Shift+O`), the **Add Books** button on the shelf, or drop EPUB / PDF
   files onto the shelf. Title, author, page count and cover are read in the browser (epub.js, pdf.js);
   the file is stored as it is. The same file added twice is kept once. Failures (too large, not an
@@ -217,11 +221,47 @@ and reading positions follow you to every device.
   (a generated cover when a book has none) with progress bars and a Finished mark, **Sort** (recently
   opened, title, author, date added, progress), **Filter** (reading, unread, finished; EPUB, PDF) and a
   search field. Right-click a card, or use its `…` button: Open, Open Notes, Mark as Unread / Finished,
-  Rename…, Download Original, Remove from Library… (asks first; it deletes the file and the note).
-- **Reader:** a tile beside your notes. EPUB: pages or scroll, contents, text size, Serif / Sans / the book's own
-  fonts, Auto / Light / Sepia / Dark. PDF: sharp at any zoom, fit width / page, 50 to 400 %, outline, selectable
-  text. Keys with the reader focused: arrows, PageUp / PageDown, Space, Home / End. EPUB scripts never run
-  (the iframe is sandboxed).
+  Rename…, Open Highlights, Download Original, Remove from Library… (asks first; it deletes the file, its note and its highlights).
+- **Reader:** a tile beside your notes, built like a dedicated reader (Moon+ Reader is the model for behaviour,
+  Velocity for the look). Spec: `docs/specs/books-reading-experience.md`.
+  - **Layouts:** **Pages** (EPUB: one page, or a two-page spread when the tile is 900 px or wider; PDF: one fitted
+    page at a time) or **Scroll** (EPUB continuous across chapters, PDF a virtualised column). Switching layout, text
+    size, spacing or margins keeps the first visible text in view.
+  - **Page turns** (Pages only): **Curl**, **Slide** (default), **Fade** or **None**; `prefers-reduced-motion` forces
+    None. Tap zones: left 30 % previous, right 30 % next, middle shows or hides the chrome (a mouse tap in a turn
+    zone waits 180 ms so a double or triple click can select text instead). Swipe on touch, horizontal trackpad scroll, keys
+    `←` `→` `PageUp` `PageDown` `Space` / `Shift+Space` `Home` `End`. The top bar and the status line (chapter,
+    `3 / 6` or `p. 12 of 300`, percent, a seekable progress track) fade after 3 s in Pages and return on a middle tap,
+    a key press or the pointer near the top or bottom edge.
+  - **Paper:** the default reader theme is a paper stock derived from the active Velocity theme (Apple, Catppuccin,
+    Gruvbox, Everforest, Nord, Solarized, light and dark) with a soft grain and vignette, so the page reads as paper in
+    every family and never as a white sheet in a dark one. **Auto** (plain app colours), **Light**, **Sepia** and
+    **Dark** stay as fixed stocks. PDF pages are tinted to match (multiplied on light, inverted with a warm ink on dark).
+  - **Visual Options** (the `Aa` button): Theme, Layout, Page turn, Font (Serif, Sans, Original), Size, Line spacing,
+    Paragraph spacing, Margins (Narrow, Normal, Wide), Align (Left, Justify with hyphenation); for PDF Fit width / page
+    and zoom 50 to 400 %. Changes apply live; **Reset** restores the defaults. Settings are kept per browser.
+  - **Highlights:** select text and a floating toolbar offers four styles (highlight, underline, strikethrough,
+    squiggly), five colours, **Copy**, **Note** and **Quote in Notes**. Choosing a style or colour creates the
+    highlight at once and is remembered; `H` highlights the selection with the last style and colour. Click a
+    highlight to change its style or colour, edit its note (`Ctrl/⌘+Enter` saves) or delete it. Notes show a small
+    mark on the page. A press outside the tile closes the toolbar.
+  - **Bookmarks:** the ribbon button or `B` toggles a bookmark on the current page (Scroll: current position); a
+    bookmarked page shows a ribbon in its top-right corner while the chrome is hidden.
+  - **Contents drawer:** three tabs, **Contents**, **Bookmarks** and **Highlights** (colour filter, a `…` menu per row:
+    Go to, Edit Note, Copy, Delete, and **Clear All** with a confirm). Annotation text and notes are rendered as text
+    everywhere (drawer, toolbar, sheet, highlights note), never as HTML.
+  - PDF: sharp at any zoom, outline, selectable text, highlights stored as page rectangles. In Pages with Fit Page the
+    saved position is `page:N` (an in-page offset only matters when the page is taller than the tile).
+  - EPUB scripts never run: the page iframe and the page-turn snapshot iframe are sandboxed without `allow-scripts`.
+- **Highlights note and links:** every annotated book gets one more note in the Books folder, **`<Book> — Highlights`**,
+  rebuilt from its annotations (about 1 s after a change, and when opened): highlights grouped by chapter with colour
+  dot, style, place, date and your note, then the bookmarks, each with a `velocity://book/<id>?at=<locator>` link back
+  to that place (see **Links in notes** above). **Open Highlights** is in the reader's Notes menu and on the shelf card
+  menu. Click a link in Read mode, or Ctrl/⌘+click it in the editor: the reader opens at that place, whether the
+  reader tile is open or closed. The first line is a hidden marker (`<!-- velocity-book-highlights:<id> -->`).
+- **Reopen where you left off:** the saved position is the first visible text (EPUB CFI; PDF `page:12` or
+  `page:12@0.35`). After a reload, closing the tile, a layout change or opening on another device the book lands on
+  that text, and the reader never writes an earlier place over it while it restores.
 - **Notes and quotes:** every book has a note in the Books folder, made when the book is added. Its first
   line is a hidden marker (`<!-- velocity-book:<id> -->`) that the plugin owns; the editor folds it away
   and Read mode doesn't show it. Select text in the reader and choose **Quote in Notes** to append
@@ -236,7 +276,7 @@ and reading positions follow you to every device.
 ### Server
 
 `server/plugins/books/`: `index.ts` (routes), `files.ts` (streaming upload, sniffing, Range), `store.ts`
-(`plugin_books`). Files are stored as `<id>.epub` / `<id>.pdf` in `BOOKS_DIR` (default `data/books`, which the
+(`plugin_books`), `annotations.ts` (highlights and bookmarks). Files are stored as `<id>.epub` / `<id>.pdf` in `BOOKS_DIR` (default `data/books`, which the
 Docker volume covers). `POST /api/plugins/books` takes the raw file as the body with an `X-File-Name` header;
 the format is sniffed from the bytes (an upload that is neither a PDF nor an EPUB is a 415), the body is
 hashed while it streams to disk, and anything over `BOOKS_MAX_BYTES` (200 MB) is a 413. `GET /:id/file` supports
@@ -335,3 +375,12 @@ engine, durationMs }`. `LATEX_ENGINE` picks the default engine, `LATEX_BIN_DIR` 
 
 Images: `\includegraphics` with an `https://` URL or a Velocity asset (`/api/assets/<id>`) shows in
 the live preview; the TeX engine only sees the note, so the PDF shows images it can find itself.
+
+**Annotations API** (`server/plugins/books/annotations.ts`, table `plugin_book_annotations`, deleted with the book):
+`GET /api/plugins/books/:id/annotations` (ordered by progress), `POST` (Zod: `kind` highlight or bookmark, `locator`
+1 to 4000 chars, `text` up to 10 000 and required for highlights, `note` up to 10 000, `color` yellow / green / blue /
+pink / orange and `style` highlight / underline / strike / squiggle required for highlights and null for bookmarks,
+`chapter` up to 300, `progress` 0 to 1, `page` integer; a bookmark at an existing locator returns the existing row),
+`PATCH /:id/annotations/:aid` (`color`, `style`, `note`), `DELETE /:id/annotations/:aid` and
+`DELETE /:id/annotations?kind=highlight|bookmark` (clear all of a kind). The client store (`annotations.ts`) is
+local-first: changes show at once and a background queue writes them with the same retry rules as reading position.
