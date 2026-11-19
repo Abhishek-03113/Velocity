@@ -524,5 +524,71 @@
         "min": 234.2
       }
     }
+  },
+  "docker_build_seconds": {
+    "machine": "same 4 vCPU VM, Docker 29.10 (BuildKit, overlayfs)",
+    "method": "docker build of Dockerfile.server and Dockerfile.client from main (Node) and chore/bun-runtime (Bun); base images pre-pulled; 3 rounds, alternating",
+    "cold": {
+      "server": {
+        "node": [
+          28.7,
+          34.3,
+          28.5
+        ],
+        "bun": [
+          3.0,
+          2.9,
+          3.1
+        ]
+      },
+      "client": {
+        "node": [
+          89.7,
+          85.5,
+          87.7
+        ],
+        "bun": [
+          26.5,
+          25.3,
+          25.6
+        ]
+      }
+    },
+    "edit": {
+      "server": {
+        "node": [
+          2.0,
+          2.2,
+          2.1
+        ],
+        "bun": [
+          0.4,
+          0.5,
+          0.5
+        ]
+      },
+      "client": {
+        "node": [
+          24.8,
+          25.3,
+          24.4
+        ],
+        "bun": [
+          17.6,
+          18.3,
+          17.6
+        ]
+      }
+    },
+    "image_mb": {
+      "server": {
+        "node": 704,
+        "bun": 187
+      },
+      "client": {
+        "node": 115,
+        "bun": 115
+      }
+    }
   }
 }

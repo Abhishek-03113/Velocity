@@ -13,3 +13,8 @@ export const db = new Database(DB_PATH, { create: true, strict: true })
 
 db.exec('PRAGMA journal_mode = WAL')
 db.exec('PRAGMA foreign_keys = ON')
+// better-sqlite3 set these two by default and bun:sqlite does not. Keep them so another
+// process writing the file (a backup, a `sqlite3` shell) makes us wait instead of failing
+// with SQLITE_BUSY, and so the page cache stays at 16 MB rather than SQLite's 2 MB.
+db.exec('PRAGMA busy_timeout = 5000')
+db.exec('PRAGMA cache_size = -16000')
