@@ -29,6 +29,7 @@ import {
 } from '../lib/tiling'
 import * as slide from '../lib/sliding'
 import { contentForNote, isPrimaryContent, primaryLeafFor } from '../lib/noteViews'
+import { splitFor, type DropZone } from '../lib/dropPlan'
 
 const STORAGE_KEY = 'velocity.layout.v3'
 const LEGACY_KEY = 'velocity.layout.v2'
@@ -65,7 +66,7 @@ interface LayoutState {
    * Pick a tile up and drop it on another: `center` swaps their places, an edge moves it beside the target on that
    * side. The tile keeps its id, so its editor or reader is moved, never remounted.
    */
-  moveTile: (sourceId: string, targetId: string, zone: 'left' | 'right' | 'top' | 'bottom' | 'center') => void
+  moveTile: (sourceId: string, targetId: string, zone: DropZone) => void
   setMode: (id: string, mode: TileMode) => void
   setRatio: (splitId: string, ratio: number) => void
   equalize: () => void
@@ -302,8 +303,10 @@ export const useLayoutStore = create<LayoutState>((set, get) => {
         commit({ root: swapLeaves(root, sourceId, targetId), columns: nextColumns, focusedId: sourceId, zoomedId: null })
         return
       }
-      const placement = zone === 'left' || zone === 'top' ? 'before' : 'after'
-      const dir: SplitDir = zone === 'left' || zone === 'right' ? 'row' : 'column'
+      const rects = mode === 'sliding' ? slide.geometry(columns).tiles : computeGeometry(root).tiles
+      const split = splitFor(zone, rects[targetId] ?? { x: 0, y: 0, w: 1, h: 1 }, get().aspect)
+      if (!split) return
+      const { dir, placement } = split
       const without = removeLeaf(root, sourceId)
       if (!without) return
       const nextRoot = splitLeaf(without, targetId, mode === 'sliding' ? 'row' : dir, source, placement)

@@ -19,14 +19,12 @@ const Whiteboard = lazy(() => import('../Whiteboard'))
 // Read mode pulls in marked + DOMPurify — only load them when someone reads.
 const MarkdownPreview = lazy(() => import('../MarkdownPreview'))
 
-export type DropZone = 'left' | 'right' | 'top' | 'bottom' | 'center'
 
 interface TileProps {
   leaf: LeafNode
   focused: boolean
   tiled: boolean
   zoomed: boolean
-  dropZone: DropZone | null
 }
 
 function TileTitle({ noteId, suffix, icon = 'doc.text' }: { noteId: number; suffix?: string; icon?: IconName }) {
@@ -146,7 +144,7 @@ function NoteSkeleton() {
   )
 }
 
-function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
+function TileImpl({ leaf, focused, tiled, zoomed }: TileProps) {
   const { content } = leaf
   const showHeader = tiled || zoomed
 
@@ -237,7 +235,6 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
         {content.kind === 'empty' && <EmptyTile tileId={leaf.id} focused={focused} />}
       </div>
 
-      {dropZone && <div className={`${styles.dropZone} ${styles[`drop_${dropZone}`]}`} aria-hidden="true" />}
     </section>
   )
 }
