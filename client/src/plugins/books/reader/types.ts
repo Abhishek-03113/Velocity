@@ -64,7 +64,7 @@ export interface ReaderAppearance {
 }
 
 export const DEFAULT_APPEARANCE: Required<ReaderAppearance> = {
-  theme: 'auto', // ACC-38 switches the default to 'paper' once the paper stock exists
+  theme: 'paper',
   fontScale: 1,
   fontFamily: 'serif',
   layout: 'paginated',

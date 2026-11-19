@@ -1,0 +1,274 @@
+/* Floating selection toolbar and the note sheet. */
+.toolbar {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  width: 248px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  color: var(--label);
+  animation: tb-pop var(--dur-fast) var(--ease-out);
+  user-select: none;
+}
+
+.above {
+  transform-origin: bottom center;
+}
+
+.below {
+  transform-origin: top center;
+}
+
+@keyframes tb-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* A small notch pointing at the selection. */
+.toolbar::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--notch, 124px) - 6px);
+  width: 12px;
+  height: 12px;
+  background: var(--bg-elevated);
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+.above::after {
+  bottom: -5px;
+}
+
+.below::after {
+  top: -5px;
+}
+
+.styles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.styleButton {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--label-secondary);
+  cursor: pointer;
+}
+
+.styleButton:hover:not(:disabled) {
+  background: var(--fill-tertiary);
+  color: var(--label);
+}
+
+.styleButton[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.styleButton:disabled,
+.dot:disabled,
+.action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.styleButton:focus-visible,
+.dot:focus-visible,
+.action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.colors {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+}
+
+.dot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.dot:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.dot[aria-pressed='true'] {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.14),
+    0 0 0 2px var(--bg-elevated),
+    0 0 0 4px var(--accent);
+}
+
+.rule {
+  height: 1px;
+  margin: 2px 4px;
+  background: var(--separator);
+}
+
+.actions {
+  display: flex;
+  gap: 2px;
+}
+
+.action {
+  display: inline-flex;
+  min-width: 0;
+  height: 28px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  color: var(--label);
+  font-size: var(--text-subheadline);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.action:hover:not(:disabled) {
+  background: var(--fill-tertiary);
+}
+
+.action:active:not(:disabled) {
+  background: var(--fill-secondary);
+}
+
+.actionDanger {
+  color: var(--system-red);
+}
+
+/* ---- Note sheet --------------------------------------------------------- */
+.noteScrim {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  background: color-mix(in srgb, var(--label) 14%, transparent);
+  animation: tb-fade var(--dur-base) var(--ease-out);
+}
+
+@keyframes tb-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.noteSheet {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  z-index: 12;
+  display: flex;
+  width: min(420px, calc(100% - 24px));
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  color: var(--label);
+  transform: translateX(-50%);
+  animation: sheet-in var(--dur-base) var(--ease-out);
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
+
+.noteTitle {
+  margin: 0;
+  font-size: var(--text-headline);
+  font-weight: 600;
+}
+
+.noteQuote {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  padding: 0 0 0 10px;
+  border-left: 3px solid var(--mark, var(--accent));
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--label-secondary);
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: var(--text-callout);
+  line-height: 1.4;
+}
+
+.noteField {
+  min-height: 96px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--fill-tertiary);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--text-body);
+  line-height: 1.45;
+  outline: none;
+}
+
+.noteField:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.noteActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.noteHint {
+  color: var(--label-tertiary);
+  font-size: var(--text-footnote);
+}
+
+.noteButtons {
+  display: flex;
+  gap: 8px;
+}
+
+@container (max-width: 520px) {
+  .noteSheet {
+    bottom: 0;
+    width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar,
+  .noteScrim,
+  .noteSheet {
+    animation: none;
+  }
+
+  .dot {
+    transition: none;
+  }
+}
