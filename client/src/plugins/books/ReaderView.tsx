@@ -202,13 +202,15 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
   // A velocity://book link (highlights note, Read mode) asked for a place: it beats the saved position.
   const pending = usePendingGoTo(book.id)
   const pendingLocator = pending.locator
+  const hasLocation = location !== null
   const consumePending = pending.consume
   useEffect(() => {
-    if (!pendingLocator || !ready || error !== null) return
+    // Wait for the engine's first location: it is still restoring the saved place before that, and would undo the jump.
+    if (!pendingLocator || !ready || error !== null || !hasLocation) return
     guardRef.current?.release()
     handleRef.current?.goTo(pendingLocator)
     consumePending()
-  }, [pendingLocator, ready, error, consumePending])
+  }, [pendingLocator, ready, error, hasLocation, consumePending])
 
   const chrome = useChrome({ autoHide: paged, ready, hold: drawer || options || !!menu || !!toolbar || !!noteSheet })
 
@@ -640,9 +642,10 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
         </>
       )}
 
-      {bookmarked && (
-        <svg className={styles.ribbon} viewBox="0 0 18 30" aria-hidden="true" data-testid="bookmark-ribbon">
-          <path d="M0 0h18v30l-9-6.5L0 30z" fill="currentColor" />
+      {/* The ribbon shows while the chrome is hidden; with the chrome up, the filled bookmark button says the same. */}
+      {bookmarked && !chrome.visible && (
+        <svg className={styles.ribbon} viewBox="0 0 22 40" aria-hidden="true" data-testid="bookmark-ribbon">
+          <path d="M0 0h22v40l-11-8.5L0 40z" fill="currentColor" />
         </svg>
       )}
 

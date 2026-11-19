@@ -15,15 +15,15 @@ function probe(dark: boolean) {
 }
 
 describe('paper expressions', () => {
-  it('light themes mix --bg-content 80% with the warm paper tint and --label 92% with warm ink', () => {
+  it('light themes mix --bg-content 55% with the warm paper tint and --label 92% with warm ink', () => {
     const e = paperExpressions(false)
-    expect(e.paper).toBe('color-mix(in oklab, var(--bg-content) 80%, #f3e7cf)')
+    expect(e.paper).toBe('color-mix(in oklab, var(--bg-content) 55%, #f3e7cf)')
     expect(e.ink).toBe('color-mix(in oklab, var(--label) 92%, #2b2118)')
   })
 
   it('dark themes use the dark paper tint and light ink', () => {
     const e = paperExpressions(true)
-    expect(e.paper).toBe('color-mix(in oklab, var(--bg-content) 88%, #2a2420)')
+    expect(e.paper).toBe('color-mix(in oklab, var(--bg-content) 80%, #2a2420)')
     expect(e.ink).toBe('color-mix(in oklab, var(--label) 92%, #efe4d2)')
   })
 

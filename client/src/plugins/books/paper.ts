@@ -10,8 +10,9 @@ export const PAPER_STOCK = {
   light: {
     /** Warm tint mixed into `--bg-content`, and the share of the app background kept. */
     paperTint: '#f3e7cf',
-    // The spec says 88%; on pure-white app backgrounds that is barely warmer than Light, so light stocks keep 80%.
-    paperKeep: 80,
+    // The spec says 88%. Measured on the real engines that reads as app white (Apple) or cool grey (Nord), not paper,
+    // so light stocks keep 55% of the app background and take 45% warm tint; the family still shows through.
+    paperKeep: 55,
     inkTint: '#2b2118',
     inkKeep: 92,
     /** Grain: speck colour (0..1 rgb), noise alpha, vignette edge colour. */
@@ -22,7 +23,7 @@ export const PAPER_STOCK = {
   },
   dark: {
     paperTint: '#2a2420',
-    paperKeep: 88,
+    paperKeep: 80,
     inkTint: '#efe4d2',
     inkKeep: 92,
     grainRgb: [1, 0.95, 0.88],
