@@ -1,5 +1,6 @@
 import { db } from '../../db/client.ts'
 import type { BookFormat } from './files.ts'
+import { migrateAnnotations } from './annotations.ts'
 
 export type BookStatus = 'unread' | 'reading' | 'finished'
 
@@ -38,6 +39,7 @@ export function migrate() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `)
+  migrateAnnotations()
 }
 
 export function toBook(row: BookRow): Book {

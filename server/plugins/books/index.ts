@@ -3,6 +3,7 @@ import { Readable } from 'stream'
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import type { ServerPlugin } from '../types.ts'
+import { annotationsRouter } from './annotations.ts'
 import {
   bookPath,
   formatLimit,
@@ -191,5 +192,7 @@ router.get('/:id/file', (c) => {
   if (size === 0) return new Response(null, { status: 200, headers: { ...headers, 'Content-Length': '0' } })
   return new Response(slice(0, size - 1), { status: 200, headers: { ...headers, 'Content-Length': String(size) } })
 })
+
+router.route('/', annotationsRouter)
 
 export const booksPlugin: ServerPlugin = { id: 'books', name: 'Books', router, migrate }
