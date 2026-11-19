@@ -284,6 +284,32 @@
   }
 }
 
+.continue {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-content) 78%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--label);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--dur-fast) ease-out, transform var(--dur-fast) ease-out;
+}
+
+.bookCard:hover .continue,
+.bookCard:focus-visible .continue {
+  opacity: 1;
+  transform: none;
+}
+
 .cardTitle {
   display: -webkit-box;
   overflow: hidden;
@@ -508,7 +534,8 @@
   .cover,
   .barButton,
   .add,
-  .more {
+  .more,
+  .continue {
     transition: none;
   }
 

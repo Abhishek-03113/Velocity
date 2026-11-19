@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Icon } from '../../components/Icon'
 import { ContextMenu, type MenuItem, type MenuState } from '../../components/ui/ContextMenu'
+import { useAnnotationsStore } from './annotations'
 import { BookCover } from './BookCover'
 import styles from './Bookshelf.module.css'
 import type { BooksLibrary } from './metadata'
@@ -129,8 +130,12 @@ export default function Bookshelf({ library, pickFiles }: Props) {
     const items: MenuItem[] = [
       { label: 'Open', icon: 'book', onSelect: () => library.openBook(book.id) },
       { label: 'Open Notes', icon: 'square.and.pencil', onSelect: () => library.openNotes(book.id) },
-      { separator: true },
     ]
+    // Counts come from the card's hover/focus prefetch; an existing highlights note counts too.
+    if ((useAnnotationsStore.getState().byBook[book.id]?.length ?? 0) > 0 || library.highlights.noteIdFor(book.id) != null) {
+      items.push({ label: 'Open Highlights', icon: 'quote.bubble', onSelect: () => library.highlights.open(book.id) })
+    }
+    items.push({ separator: true })
     if (book.status !== 'unread') items.push({ label: 'Mark as Unread', onSelect: () => library.markUnread(book) })
     if (book.status !== 'finished') items.push({ label: 'Mark as Finished', icon: 'checkmark.circle', onSelect: () => library.markFinished(book) })
     items.push(
@@ -292,7 +297,11 @@ export default function Bookshelf({ library, pickFiles }: Props) {
                 book={book}
                 tabbable={(activeId ?? visible[0]?.id) === book.id}
                 flash={flashId === book.id}
-                onActive={() => setActiveId(book.id)}
+                onActive={() => {
+                  setActiveId(book.id)
+                  library.highlights.prefetch(book.id)
+                }}
+                onHover={() => library.highlights.prefetch(book.id)}
                 onOpen={() => library.openBook(book.id)}
                 onMenu={(x, y) => bookMenu(book, x, y)}
               />
@@ -332,6 +341,7 @@ function BookCard({
   tabbable,
   flash,
   onActive,
+  onHover,
   onOpen,
   onMenu,
 }: {
@@ -339,6 +349,7 @@ function BookCard({
   tabbable: boolean
   flash: boolean
   onActive: () => void
+  onHover: () => void
   onOpen: () => void
   onMenu: (x: number, y: number) => void
 }) {
@@ -354,6 +365,7 @@ function BookCard({
       aria-label={label}
       className={`${styles.card} ${styles.bookCard} ${flash ? styles.flash : ''}`}
       onFocus={onActive}
+      onPointerEnter={onHover}
       onClick={onOpen}
       onContextMenu={(e) => {
         e.preventDefault()
@@ -362,6 +374,11 @@ function BookCard({
     >
       <div className={styles.coverWrap}>
         <BookCover book={book} />
+        {book.status === 'reading' && (
+          <span className={styles.continue} aria-hidden="true">
+            Continue · {percent}%
+          </span>
+        )}
         <button
           type="button"
           tabIndex={-1}
