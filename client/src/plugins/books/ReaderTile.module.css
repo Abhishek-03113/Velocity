@@ -34,12 +34,29 @@
   height: 100%;
 }
 
+/* Edge hot zones: the book iframe swallows pointer events, so hidden chrome is brought back from these strips. */
+.edge {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  height: 48px;
+}
+
+.edgeTop {
+  top: 0;
+}
+
+.edgeBottom {
+  bottom: 0;
+}
+
 /* Bookmark ribbon in the top-right corner of the page. */
 .ribbon {
   position: absolute;
   top: 0;
   right: 22px;
-  z-index: 6;
+  z-index: 3;
   width: 18px;
   height: 30px;
   color: var(--system-red);

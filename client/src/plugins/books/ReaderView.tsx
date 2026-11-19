@@ -633,6 +633,13 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
         </div>
       </div>
 
+      {paged && !chrome.visible && error === null && (
+        <>
+          <div className={`${styles.edge} ${styles.edgeTop}`} onPointerEnter={chrome.show} aria-hidden="true" />
+          <div className={`${styles.edge} ${styles.edgeBottom}`} onPointerEnter={chrome.show} aria-hidden="true" />
+        </>
+      )}
+
       {bookmarked && (
         <svg className={styles.ribbon} viewBox="0 0 18 30" aria-hidden="true" data-testid="bookmark-ribbon">
           <path d="M0 0h18v30l-9-6.5L0 30z" fill="currentColor" />

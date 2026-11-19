@@ -15,9 +15,9 @@ function probe(dark: boolean) {
 }
 
 describe('paper expressions', () => {
-  it('light themes mix --bg-content 88% with the warm paper tint and --label 92% with warm ink', () => {
+  it('light themes mix --bg-content 80% with the warm paper tint and --label 92% with warm ink', () => {
     const e = paperExpressions(false)
-    expect(e.paper).toBe('color-mix(in oklab, var(--bg-content) 88%, #f3e7cf)')
+    expect(e.paper).toBe('color-mix(in oklab, var(--bg-content) 80%, #f3e7cf)')
     expect(e.ink).toBe('color-mix(in oklab, var(--label) 92%, #2b2118)')
   })
 

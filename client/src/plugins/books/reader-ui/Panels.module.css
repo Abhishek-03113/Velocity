@@ -202,8 +202,17 @@
     animation: sheet-up var(--dur-base) var(--ease-out);
   }
 
+}
+
+/* Narrow tiles (several readers side by side): label above the control. */
+@container (max-width: 440px) {
   .row {
-    grid-template-columns: 84px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .panelBody {
+    gap: 10px;
   }
 }
 

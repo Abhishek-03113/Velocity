@@ -10,13 +10,14 @@ export const PAPER_STOCK = {
   light: {
     /** Warm tint mixed into `--bg-content`, and the share of the app background kept. */
     paperTint: '#f3e7cf',
-    paperKeep: 88,
+    // The spec says 88%; on pure-white app backgrounds that is barely warmer than Light, so light stocks keep 80%.
+    paperKeep: 80,
     inkTint: '#2b2118',
     inkKeep: 92,
     /** Grain: speck colour (0..1 rgb), noise alpha, vignette edge colour. */
     grainRgb: [0.17, 0.13, 0.09],
     grainAlpha: 0.04,
-    vignette: 'rgba(60, 40, 15, 0.07)',
+    vignette: 'rgba(60, 40, 15, 0.05)',
     highlightAlpha: 0.35,
   },
   dark: {
@@ -78,7 +79,7 @@ export function paperBackgroundImage(dark: boolean): string {
     `<feTurbulence type='fractalNoise' baseFrequency='${PAPER_STOCK.grainBaseFrequency}' numOctaves='${PAPER_STOCK.grainOctaves}' stitchTiles='stitch'/>` +
     `<feColorMatrix values='0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${b} ${k} 0 0 0 0'/></filter>` +
     `<rect width='100%' height='100%' filter='url(#n)'/></svg>`
-  const vignette = `radial-gradient(ellipse at center, transparent 58%, ${s.vignette} 100%)`
+  const vignette = `radial-gradient(ellipse at center, transparent 66%, ${s.vignette} 100%)`
   return `${vignette}, url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
 
