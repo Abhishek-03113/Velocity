@@ -3,13 +3,15 @@ import { useShallow } from 'zustand/react/shallow'
 import { COMPACT_QUERY, useMediaQuery } from '../../hooks/useMediaQuery'
 import { NOTE_DRAG_TYPE, TILE_DRAG_TYPE } from '../../lib/groupColors'
 import { contentForNote, primaryLeafFor } from '../../lib/noteViews'
+import { planDrop, zoneAt, type DropPlan, type DropSource, type DropZone } from '../../lib/dropPlan'
+import { clampScroll } from '../../lib/sliding'
 import { geometry as slidingGeometry } from '../../lib/sliding'
 import { computeGeometry, leaves, type Rect, type SplitGeometry } from '../../lib/tiling'
 import { useLayoutStore } from '../../store/layoutStore'
 import { useEditorStore } from '../../store/editorStore'
 import { placeNoteInTile } from '../../lib/workspace'
 import { ColumnMap } from './ColumnMap'
-import { Tile, type DropZone } from './Tile'
+import { Tile } from './Tile'
 import styles from './Workspace.module.css'
 
 const FULL: Rect = { x: 0, y: 0, w: 1, h: 1 }
@@ -42,19 +44,10 @@ function dividerStyle(s: SplitGeometry): React.CSSProperties {
   return { top: `calc(${y * 100}% - 4px)`, left: `${rect.x * 100}%`, height: '8px', width: `${rect.w * 100}%` }
 }
 
-function zoneFor(e: DragEvent, el: HTMLElement): DropZone {
+/** Zone of the slot under a drag event. */
+function zoneFor(e: { clientX: number; clientY: number }, el: HTMLElement): DropZone {
   const r = el.getBoundingClientRect()
-  const fx = (e.clientX - r.left) / r.width
-  const fy = (e.clientY - r.top) / r.height
-  const edge = 0.24
-  const distances: Array<[DropZone, number]> = [
-    ['left', fx],
-    ['right', 1 - fx],
-    ['top', fy],
-    ['bottom', 1 - fy],
-  ]
-  const [zone, d] = distances.sort((a, b) => a[1] - b[1])[0]!
-  return d < edge ? zone : 'center'
+  return zoneAt((e.clientX - r.left) / (r.width || 1), (e.clientY - r.top) / (r.height || 1))
 }
 
 /**
@@ -82,8 +75,12 @@ export default function Workspace() {
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const [resizing, setResizing] = useState<string | null>(null)
-  const [drop, setDrop] = useState<{ tileId: string; zone: DropZone } | null>(null)
+  const [drop, setDrop] = useState<{ tileId: string; zone: DropZone; tile: boolean } | null>(null)
   const draggedTile = useRef<string | null>(null)
+  const draggedNote = useRef<number | null>(null)
+  // Sliding mode: the strip offset while a pan gesture runs (written straight to the DOM), null otherwise.
+  const panning = useRef<number | null>(null)
+  const stripRef = useRef<HTMLDivElement>(null)
   const slotRefs = useRef(new Map<string, HTMLDivElement>())
   const lastBoxes = useRef(new Map<string, { x: number; y: number; w: number; h: number }>())
   const lastStage = useRef({ w: 0, h: 0 })
@@ -220,21 +217,44 @@ export default function Workspace() {
     [setColumnWidth],
   )
 
+  /** Show a strip offset without touching the store (see the wheel handler). */
+  const showPan = useCallback((x: number) => {
+    panning.current = x
+    if (stripRef.current) stripRef.current.style.transform = `translateX(${-x * 100}%)`
+    if (containerRef.current) containerRef.current.dataset.scroll = x.toFixed(3)
+  }, [])
+  /** Hand the gesture's final offset to the store (persisted, drives edges and the column map). */
+  const commitPan = useCallback(() => {
+    const x = panning.current
+    panning.current = null
+    if (x != null) scrollTo(x)
+  }, [scrollTo])
+
   // Horizontal wheel / trackpad scroll pans the strip (vertical scroll stays with the notes).
   useEffect(() => {
     const el = containerRef.current
     if (!el || !strip) return
+    // The pan is written straight to the strip's transform while the gesture runs and committed to the store once
+    // it settles, so a trackpad flick does not re-render the whole workspace on every wheel event.
+    let settle: ReturnType<typeof setTimeout> | null = null
     const onWheel = (e: WheelEvent) => {
       const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey
       if (!horizontal) return
       e.preventDefault()
       const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
       const width = el.clientWidth || 1
-      scrollTo(useLayoutStore.getState().scrollX + delta / width)
+      const from = panning.current ?? useLayoutStore.getState().scrollX
+      showPan(clampScroll(useLayoutStore.getState().columns, from + delta / width))
+      if (settle) clearTimeout(settle)
+      settle = setTimeout(commitPan, 120)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [strip, scrollTo])
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      if (settle) clearTimeout(settle)
+      commitPan()
+    }
+  }, [strip, showPan, commitPan])
 
   // While a note is dragged, frames inside tiles (the EPUB reader, previews) would swallow the drag events and the
   // tile under them could never become a drop target: make them transparent to the pointer until the drag ends.
@@ -248,10 +268,14 @@ export default function Workspace() {
       draggedTile.current = types.includes(TILE_DRAG_TYPE)
         ? ((e.target as Element | null)?.closest?.('[data-tile-id]')?.getAttribute('data-tile-id') ?? null)
         : null
+      // The data store is readable during dragstart (not during dragover): note which note is carried for previews.
+      const note = Number(e.dataTransfer?.getData(NOTE_DRAG_TYPE))
+      draggedNote.current = Number.isFinite(note) && note !== 0 ? note : null
     }
     const end = () => {
       delete root.dataset.noteDrag
       draggedTile.current = null
+      draggedNote.current = null
       setDrop(null)
     }
     window.addEventListener('dragstart', start)
@@ -277,8 +301,9 @@ export default function Workspace() {
     target.setPointerCapture(e.pointerId)
     setResizing('pan')
     const onMove = (ev: globalThis.PointerEvent) =>
-      scrollTo(startScroll - (ev.clientX - startX) / (el.clientWidth || 1))
+      showPan(clampScroll(useLayoutStore.getState().columns, startScroll - (ev.clientX - startX) / (el.clientWidth || 1)))
     const onUp = () => {
+      commitPan()
       setResizing(null)
       target.removeEventListener('pointermove', onMove)
       target.removeEventListener('pointerup', onUp)
@@ -289,29 +314,53 @@ export default function Workspace() {
     target.addEventListener('pointercancel', onUp)
   }
 
-  const onDragOver = (tileId: string) => (e: DragEvent<HTMLDivElement>) => {
+  // Drag and drop, delegated to the strip: one set of handlers finds the slot under the pointer.
+  const slotAt = (e: DragEvent<HTMLDivElement>): HTMLElement | null =>
+    (e.target as Element | null)?.closest?.<HTMLElement>('[data-slot-id]') ?? null
+
+  const snapshot = () => {
+    const s = useLayoutStore.getState()
+    return { root: s.root, columns: s.columns, mode: s.mode, aspect: s.aspect }
+  }
+
+  const sourceOf = (tile: boolean, noteId: number | null): DropSource | null => {
+    if (tile) return draggedTile.current ? { kind: 'tile', tileId: draggedTile.current } : null
+    const layout = useLayoutStore.getState()
+    return { kind: 'note', showingIn: noteId != null ? (primaryLeafFor(layout.root, noteId)?.id ?? null) : null }
+  }
+
+  const onStripDragOver = (e: DragEvent<HTMLDivElement>) => {
     const tile = e.dataTransfer.types.includes(TILE_DRAG_TYPE)
     if (!tile && !e.dataTransfer.types.includes(NOTE_DRAG_TYPE)) return
+    const slot = slotAt(e)
+    const tileId = slot?.dataset.slotId
     // A tile cannot be dropped on itself.
-    if (tile && draggedTile.current === tileId) {
+    if (!slot || !tileId || (tile && draggedTile.current === tileId)) {
       setDrop(null)
       return
     }
     e.preventDefault()
+    e.stopPropagation()
     e.dataTransfer.dropEffect = tile ? 'move' : 'copy'
-    const zone = zoneFor(e, e.currentTarget)
-    setDrop((d) => (d?.tileId === tileId && d.zone === zone ? d : { tileId, zone }))
+    const zone = zoneFor(e, slot)
+    setDrop((d) => (d?.tileId === tileId && d.zone === zone && d.tile === tile ? d : { tileId, zone, tile }))
   }
 
-  const onDragLeave = (e: DragEvent<HTMLDivElement>) => {
+  const onStripDragLeave = (e: DragEvent<HTMLDivElement>) => {
     if (e.currentTarget.contains(e.relatedTarget as Node)) return
     setDrop(null)
   }
 
-  const onDrop = (tileId: string) => (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    const zone = zoneFor(e, e.currentTarget)
+  const onStripDrop = (e: DragEvent<HTMLDivElement>) => {
+    const types = e.dataTransfer.types
+    if (!types.includes(TILE_DRAG_TYPE) && !types.includes(NOTE_DRAG_TYPE)) return
+    const slot = slotAt(e)
+    const tileId = slot?.dataset.slotId
     setDrop(null)
+    if (!slot || !tileId) return
+    e.preventDefault()
+    e.stopPropagation()
+    const zone = zoneFor(e, slot)
     const tileSource = e.dataTransfer.getData(TILE_DRAG_TYPE)
     if (tileSource) {
       useLayoutStore.getState().moveTile(tileSource, tileId, zone)
@@ -319,23 +368,27 @@ export default function Workspace() {
     }
     const noteId = Number(e.dataTransfer.getData(NOTE_DRAG_TYPE))
     if (!Number.isFinite(noteId) || noteId === 0) return
-    const layout = useLayoutStore.getState()
-    const visible = primaryLeafFor(layout.root, noteId)
-    if (zone === 'center') {
+    const plan = planDrop(snapshot(), sourceOf(false, noteId)!, tileId, zone)
+    if (!plan) return
+    if (plan.action !== 'split') {
       placeNoteInTile(tileId, noteId)
       return
     }
     // Dragging a visible note to another tile's edge moves it there.
+    const layout = useLayoutStore.getState()
+    const visible = primaryLeafFor(layout.root, noteId)
     if (visible && visible.id !== tileId && leaves(layout.root).length > 1) layout.close(visible.id)
-    else if (visible?.id === tileId) return
-    const dir = zone === 'left' || zone === 'right' ? 'row' : 'column'
-    useLayoutStore.getState().split(
-      dir,
-      contentForNote(noteId),
-      { targetId: tileId, placement: zone === 'left' || zone === 'top' ? 'before' : 'after' },
-    )
+    useLayoutStore.getState().split(plan.dir!, contentForNote(noteId), { targetId: tileId, placement: plan.placement })
     useEditorStore.getState().activateNote(noteId)
   }
+
+  // The preview: exactly where the drop will put the tile or note (the plan is the one the drop performs).
+  const plan: DropPlan | null = useMemo(() => {
+    if (!drop) return null
+    const source = sourceOf(drop.tile, draggedNote.current)
+    return source ? planDrop(snapshot(), source, drop.tileId, drop.zone) : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drop, root, columns])
 
   return (
     <div
@@ -354,9 +407,16 @@ export default function Workspace() {
     >
       <div ref={stageRef} className={styles.stage}>
       <div
+        ref={stripRef}
         className={`${styles.strip} ${strip ? styles.stripSliding : ''}`}
-        style={strip ? { transform: `translateX(${-stripScroll * 100}%)` } : undefined}
+        style={strip ? { transform: `translateX(${-(panning.current ?? stripScroll) * 100}%)` } : undefined}
         onPointerDown={onStripPointerDown}
+        // Capture phase: a note or tile dropped on an editor must be placed by the workspace, not inserted as text by
+        // CodeMirror (which would see the drop first while bubbling). Other drags (text, files) pass through.
+        onDragOverCapture={onStripDragOver}
+        onDragEnterCapture={onStripDragOver}
+        onDragLeave={onStripDragLeave}
+        onDropCapture={onStripDrop}
         data-strip
       >
       {ordered.map((leaf) => {
@@ -371,21 +431,23 @@ export default function Workspace() {
             }}
             className={`${styles.slot} ${hidden ? styles.hidden : ''}`}
             style={tileStyle(rect, tiled)}
-            onDragOver={onDragOver(leaf.id)}
-            onDragEnter={onDragOver(leaf.id)}
-            onDragLeave={onDragLeave}
-            onDrop={onDrop(leaf.id)}
+            data-slot-id={leaf.id}
           >
-            <Tile
-              leaf={leaf}
-              focused={leaf.id === focusedId}
-              tiled={tiled}
-              zoomed={zoomedId === leaf.id}
-              dropZone={drop?.tileId === leaf.id ? drop.zone : null}
-            />
+            <Tile leaf={leaf} focused={leaf.id === focusedId} tiled={tiled} zoomed={zoomedId === leaf.id} />
           </div>
         )
       })}
+
+      {plan && (
+        <div
+          className={`${styles.dropPreview} ${plan.action !== 'split' ? styles.dropPreviewWhole : ''}`}
+          style={tileStyle(monocleId ? FULL : plan.rect, true)}
+          data-drop-preview={plan.action}
+          aria-hidden="true"
+        >
+          <span className={styles.dropLabel}>{plan.label}</span>
+        </div>
+      )}
 
       {tiled &&
         geometry.splits.map((split) => (
