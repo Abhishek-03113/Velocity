@@ -109,7 +109,7 @@ export function highlightsNoteContent(
     out.push('', '## Bookmarks', '')
     for (const b of bookmarks) {
       const chapter = oneLine(b.chapter ?? '')
-      const label = [chapter || null, place(book, b)].filter(Boolean).join(' · ')
+      const label = [chapter ? chapter.replace(/[[\]]/g, '\\$&') : null, place(book, b)].filter(Boolean).join(' · ')
       out.push(`- ${[`[${label}](${safeLink(book.id, b.locator)})`, dateOf(b.created_at)].filter(Boolean).join(' · ')}`)
     }
   }
