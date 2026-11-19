@@ -18,17 +18,49 @@ export interface Size {
   height: number
 }
 
-/** 'page:12' -> 12; anything else -> null. */
-export function parsePosition(position: string | null | undefined): number | null {
-  if (!position) return null
-  const m = /^page:(\d+)$/.exec(position.trim())
-  if (!m) return null
-  const n = Number(m[1])
-  return Number.isSafeInteger(n) && n >= 1 ? n : null
+export interface PdfPosition {
+  /** 1-based page. */
+  page: number
+  /** 0..1: fraction of the page scrolled past the top of the viewport. */
+  frac: number
 }
 
-export function formatPosition(page: number): string {
+export function roundFrac(frac: number): number {
+  if (!Number.isFinite(frac)) return 0
+  return Math.round(Math.min(1, Math.max(0, frac)) * 100) / 100
+}
+
+/** 'page:12' or 'page:12@0.35' -> { page, frac }; anything else -> null. */
+export function parsePdfPosition(position: string | null | undefined): PdfPosition | null {
+  if (!position) return null
+  const m = /^page:(\d+)(?:@(\d*\.?\d+))?$/.exec(position.trim())
+  if (!m) return null
+  const page = Number(m[1])
+  if (!Number.isSafeInteger(page) || page < 1) return null
+  const frac = m[2] === undefined ? 0 : Number(m[2])
+  if (!Number.isFinite(frac)) return null
+  return { page, frac: roundFrac(frac) }
+}
+
+/** 'page:12' / 'page:12@0.35' -> 12; anything else -> null. */
+export function parsePosition(position: string | null | undefined): number | null {
+  return parsePdfPosition(position)?.page ?? null
+}
+
+/** The persisted position: 'page:<n>@<fraction>' (fraction with at most two decimals). */
+export function formatPosition(page: number, frac = 0): string {
+  return `page:${Math.max(1, Math.floor(page))}@${roundFrac(frac)}`
+}
+
+/** A plain page target (outline entries): 'page:<n>'. */
+export function formatPage(page: number): string {
   return `page:${Math.max(1, Math.floor(page))}`
+}
+
+/** Negative when a is before b. Fractions compare at their persisted precision. */
+export function comparePosition(a: PdfPosition, b: PdfPosition): number {
+  if (a.page !== b.page) return a.page - b.page
+  return roundFrac(a.frac) - roundFrac(b.frac)
 }
 
 export function clampZoom(zoom: number): number {
@@ -141,28 +173,22 @@ export function scrollTopForProgress(layout: PageLayout, progress: number, viewH
   return layout.tops[i] + (x - i) * layout.heights[i]
 }
 
-/** CSS filter for the page canvas. Dark: invert (keeps hue); warm / non-white background: sepia tint; else none. */
-export function pageFilter(colors: Pick<ReaderColors, 'background' | 'dark'>): string {
-  if (colors.dark) return 'invert(0.88) hue-rotate(180deg)'
-  const rgb = parseColor(colors.background)
-  if (!rgb) return 'none'
-  const whiteish = rgb[0] >= 245 && rgb[1] >= 245 && rgb[2] >= 245
-  return whiteish ? 'none' : 'sepia(0.25) brightness(0.98)'
+/**
+ * CSS filter for the page canvas. Light stocks (paper, light, sepia, auto): none, the canvas is multiplied onto the paper
+ * (see `pageBlend`). Dark: invert with hue kept, ink tinted warm.
+ */
+export function pageFilter(colors: Pick<ReaderColors, 'dark'>): string {
+  return colors.dark ? 'invert(0.9) hue-rotate(180deg) sepia(0.15)' : 'none'
 }
 
-function parseColor(input: string): [number, number, number] | null {
-  const s = input.trim().toLowerCase()
-  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})([0-9a-f]{2})?$/.exec(s)
-  if (hex) {
-    let h = hex[1]
-    if (h.length === 3) h = h.split('').map((c) => c + c).join('')
-    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
-  }
-  const rgb = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(s)
-  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
-  if (s === 'white') return [255, 255, 255]
-  return null
+/**
+ * Blend mode of the page canvas over the paper-coloured page box. Light: multiply (white page becomes paper, black stays ink).
+ * Dark: lighten (the inverted page background becomes the dark paper, the inverted ink stays).
+ */
+export function pageBlend(colors: Pick<ReaderColors, 'dark'>): 'multiply' | 'lighten' {
+  return colors.dark ? 'lighten' : 'multiply'
 }
+
 
 /** Shape of a pdf.js outline node (kept structural so this file does not import pdf.js). */
 export interface OutlineNode {
@@ -188,7 +214,7 @@ export async function flattenOutline(
       }
       let childLevel = level
       if (page && label) {
-        out.push({ id: `outline-${out.length}`, label, target: formatPosition(page), level })
+        out.push({ id: `outline-${out.length}`, label, target: formatPage(page), level })
         childLevel = level + 1
       }
       if (node.items?.length) await walk(node.items, childLevel)
