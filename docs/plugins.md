@@ -88,6 +88,7 @@ the settings rows. Built-in shortcuts always win over plugin shortcuts.
 | `files.download(name, data, mime?)` | Hand the user a file (`Blob` or string) as a browser download |
 | `boards.has / exportPng` | Whether the note has a whiteboard; render it to a PNG data URL with Excalidraw |
 | `folders.ensure(name)` | Existing folder (case-insensitive) or a new one |
+| `linkHandler` (instance field, not a ctx member) | Open `velocity://` links clicked in notes (see Links in notes) |
 | `refreshBadges()` | Re-read this plugin's note badges after their state changes |
 
 A `text` setting with `secret: true` is masked in Settings.
@@ -136,6 +137,19 @@ CodeMirror language instead of Markdown and its live preview. `matches` sees the
 characters and runs as the user types, so keep it to a regex. The editor swaps modes in place
 when the answer changes (no remount) and when plugins are switched on or off. The first running
 plugin whose `matches` returns true wins.
+
+### Links in notes
+
+Return `linkHandler: { match(url: URL): boolean, open(url: URL, opts: { split: boolean }): void }`
+to own in-app `velocity://` links, e.g. the Books highlights note links back with
+`velocity://book/<id>?at=<locator>`. `match` sees the parsed URL (only `velocity:` links are ever
+offered) and must be cheap; the first running plugin that matches wins, and nothing is offered while
+the plugin is off. In **Read mode** a plain click opens the link (Mod/Ctrl+click passes
+`split: true`) and never navigates the page. In the **editor** a link opens on Mod/Ctrl+click
+(plain click just places the cursor); the same gesture opens http(s) links in a new tab. A
+`velocity://` link nobody handles flashes "Nothing can open this link". Use `open` to do what the
+link says (open a tile, jump to a position); honour `split` the way `ctx.tiles` / `ctx.views` do.
+The host side is `linkHandlerFor(href)` in `host.ts`.
 
 ### Switching plugins off and on
 
