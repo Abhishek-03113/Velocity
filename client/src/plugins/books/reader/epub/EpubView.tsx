@@ -237,6 +237,12 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
   const annotationsRef = useRef(new Map<string, ReaderAnnotation>())
   const queueRef = useRef(new TurnQueue())
   const wheelRef = useRef(createWheelTurner())
+  const [rebuilds, setRebuilds] = useState(0)
+  const rebuiltAtRef = useRef(0)
+  /** Where a rebuilt rendition opens (a goTo target that never arrived); otherwise the last good CFI. */
+  const rebuildTargetRef = useRef<string | null>(null)
+  const scrollWheelRef = useRef({ dy: 0, raf: 0 })
+  const coalesceWheelRef = useRef<(e: WheelEvent) => void>(() => undefined)
   const turnRef = useRef<(dir: TurnDir) => void>(() => undefined)
   const [book, setBook] = useState<EpubBook | null>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
@@ -256,6 +262,29 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
   }, [])
 
   const scroller = useCallback((): HTMLElement | null => mountRef.current?.querySelector<HTMLElement>('.epub-container') ?? null, [])
+
+  /**
+   * Continuous scroll: epub.js adds and trims chapter views on every scroll event, and a burst of large wheel jumps
+   * (a fast trackpad flick, a mouse with free-spinning wheel) can remove a view while it is still being added. So
+   * wheel input is summed per animation frame and applied as one step of at most 80 % of the viewport.
+   */
+  coalesceWheelRef.current = (e: WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) return // pinch zoom
+    e.preventDefault()
+    const st = scrollWheelRef.current
+    const sc = scroller()
+    st.dy += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? (sc?.clientHeight ?? 600) : 1)
+    if (st.raf) return
+    st.raf = requestAnimationFrame(() => {
+      st.raf = 0
+      const el = scroller()
+      const dy = st.dy
+      st.dy = 0
+      if (!el) return
+      const limit = Math.max(200, el.clientHeight * 0.8)
+      el.scrollTop += Math.max(-limit, Math.min(limit, dy))
+    })
+  }
 
   const compare = useCallback((a: string, b: string): number => (cfiCompareRef.current ? cfiCompareRef.current(a, b) : 0), [])
 
@@ -702,7 +731,10 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       doc.addEventListener(
         'wheel',
         (e: WheelEvent) => {
-          if (appearanceRef.current.layout !== 'paginated') return
+          if (appearanceRef.current.layout !== 'paginated') {
+            coalesceWheelRef.current(e)
+            return
+          }
           if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) e.preventDefault()
           const dir = wheelRef.current.push(e.deltaX, e.deltaY, performance.now())
           if (dir) turnRef.current(dir)
@@ -718,7 +750,26 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     }
     const onKey = (e: KeyboardEvent) => {
       const action = keyAction(e, appearanceRef.current.layout)
-      if (!action) return
+      if (!action) {
+        // Keys the engine does not use (B, H, Esc, any key that should show the chrome) happened inside the book's
+        // iframe, where the shell cannot see them: re-dispatch them on the engine container so they bubble to it.
+        if (!e.defaultPrevented) {
+          rootRef.current?.dispatchEvent(
+            new KeyboardEvent('keydown', {
+              key: e.key,
+              code: e.code,
+              shiftKey: e.shiftKey,
+              altKey: e.altKey,
+              ctrlKey: e.ctrlKey,
+              metaKey: e.metaKey,
+              repeat: e.repeat,
+              bubbles: true,
+              cancelable: true,
+            }),
+          )
+        }
+        return
+      }
       e.preventDefault()
       if (action === 'next') turnRef.current('next')
       else if (action === 'prev') turnRef.current('prev')
@@ -743,11 +794,25 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       })
     }
 
+    // epub.js can throw from inside its scroll handler when its views get out of step (removeChild / insertBefore on a
+    // node that is no longer a child). The manager is then unusable, so rebuild the rendition at the last good place.
+    const recover = (message: string) => {
+      if (cancelled || !/removeChild|insertBefore|not a child/i.test(message)) return
+      if (Date.now() - rebuiltAtRef.current < 1500) return
+      rebuiltAtRef.current = Date.now()
+      setRebuilds((n) => n + 1)
+    }
+    const onWindowError = (e: ErrorEvent) => recover(e.message || String(e.error ?? ''))
+    const onRejection = (e: PromiseRejectionEvent) => recover(String((e.reason as Error | undefined)?.message ?? e.reason ?? ''))
+    window.addEventListener('error', onWindowError)
+    window.addEventListener('unhandledrejection', onRejection)
+
     rendition.on('relocated', onRelocated as never)
     rendition.on('keydown', onKey as never)
     rendition.on('selected', onSelected as never)
 
-    const start = lastCfiRef.current ?? propsRef.current.initialPosition ?? undefined
+    const start = rebuildTargetRef.current ?? lastCfiRef.current ?? propsRef.current.initialPosition ?? undefined
+    rebuildTargetRef.current = null
     beginRestore(start)
     void (async () => {
       try {
@@ -777,6 +842,8 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     return () => {
       cancelled = true
       displayingRef.current = false
+      window.removeEventListener('error', onWindowError)
+      window.removeEventListener('unhandledrejection', onRejection)
       rendition.off('relocated', onRelocated as never)
       rendition.off('keydown', onKey as never)
       rendition.off('selected', onSelected as never)
@@ -790,7 +857,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     }
     // The first-paint appearance reaches new chapters through propsRef; later changes go through effect 4.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [book, layout, gap, measured, url])
+  }, [book, layout, gap, measured, url, rebuilds])
 
   /* ---- 3. Reading locations (progress), cached per URL, generated in the background. ---- */
   useEffect(() => {
@@ -887,7 +954,10 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     const root = rootRef.current
     if (!root) return
     const onWheel = (e: WheelEvent) => {
-      if (appearanceRef.current.layout !== 'paginated') return
+      if (appearanceRef.current.layout !== 'paginated') {
+        coalesceWheelRef.current(e)
+        return
+      }
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) e.preventDefault()
       const dir = wheelRef.current.push(e.deltaX, e.deltaY, performance.now())
       if (dir) turnRef.current(dir)
@@ -895,6 +965,31 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
     root.addEventListener('wheel', onWheel, { passive: false })
     return () => root.removeEventListener('wheel', onWheel)
   }, [])
+
+  /**
+   * Continuous scroll only: a goTo that did not arrive (epub.js lost track of its views after a burst of scrolling)
+   * rebuilds the rendition at the target instead of leaving the reader stuck.
+   */
+  const verifyArrival = useCallback(
+    async (target: string) => {
+      await new Promise((res) => window.setTimeout(res, 900))
+      if (appearanceRef.current.layout !== 'scrolled' || !renditionRef.current) return
+      let arrived: boolean
+      if (target.startsWith('epubcfi(')) {
+        const w = whereIs(startOf(target))
+        arrived = !!w && w.step === 'here'
+      } else {
+        const base = (h: string) => h.split('#')[0].split('/').pop() ?? h
+        const at = lastLocRef.current?.start.href
+        arrived = !!at && base(at) === base(target)
+      }
+      if (arrived || Date.now() - rebuiltAtRef.current < 1500) return
+      rebuiltAtRef.current = Date.now()
+      rebuildTargetRef.current = target
+      setRebuilds((n) => n + 1)
+    },
+    [startOf, whereIs],
+  )
 
   useImperativeHandle(
     ref,
@@ -904,6 +999,8 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       goTo: (target) => {
         const r = renditionRef.current
         if (!r) return
+        // Not awaited with the display below: a wedged epub.js manager never settles that promise.
+        if (appearanceRef.current.layout === 'scrolled') void verifyArrival(target)
         void (async () => {
           try {
             if (target.startsWith('epubcfi(')) {
@@ -954,7 +1051,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
         propsRef.current.onSelection(null)
       },
     }),
-    [beginRestore, displayAt, settleRestore],
+    [beginRestore, displayAt, settleRestore, verifyArrival],
   )
 
   const stageStyle = paged ? { padding: `${geometry.padTop}px 0 ${geometry.padBottom}px` } : undefined
