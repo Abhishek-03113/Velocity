@@ -212,6 +212,18 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
     consumePending()
   }, [pendingLocator, ready, error, hasLocation, consumePending])
 
+  // A press anywhere outside this tile (another tile, the sidebar) dismisses the floating toolbar; presses inside the
+  // page are the engine's business, presses in our own chrome are handled by the root's capture handler below.
+  const toolbarOpen = toolbar !== null
+  useEffect(() => {
+    if (!toolbarOpen) return
+    const onDown = (e: PointerEvent) => {
+      if (e.target instanceof Node && !rootRef.current?.contains(e.target)) setToolbar(null)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    return () => document.removeEventListener('pointerdown', onDown, true)
+  }, [toolbarOpen, setToolbar])
+
   const chrome = useChrome({ autoHide: paged, ready, hold: drawer || options || !!menu || !!toolbar || !!noteSheet })
 
   const toggleChrome = chrome.toggle
