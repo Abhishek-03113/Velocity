@@ -274,6 +274,7 @@ Track feature development status here. Update each item as work is completed.
 - [x] Note-less workspace views and folder actions for plugins
 - [x] Layout and tab restore across reloads
 - [x] Sidebar toggle animation
+- [x] Resizable sidebar columns (drag the folders / notes edge; double-click resets; arrow keys; `prefs.foldersWidth` / `notesWidth`)
 - [x] CSS Modules applied to all components (global CSS limited to tokens + app reset/base styles)
 - [x] Responsive layout
 

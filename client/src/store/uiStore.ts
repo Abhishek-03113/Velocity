@@ -36,6 +36,20 @@ export interface Preferences {
   tileGaps: boolean
   sort: SortOrder
   spellcheck: boolean
+  /** Sidebar column widths in px (dragged at their right edge; see SIDEBAR_WIDTHS for limits). */
+  foldersWidth: number
+  notesWidth: number
+}
+
+/** Default and limits of the two resizable sidebar columns, in px. */
+export const SIDEBAR_WIDTHS = {
+  folders: { initial: 212, min: 160, max: 360 },
+  notes: { initial: 288, min: 220, max: 560 },
+} as const
+
+export function clampSidebarWidth(which: keyof typeof SIDEBAR_WIDTHS, px: number): number {
+  const { min, max, initial } = SIDEBAR_WIDTHS[which]
+  return Number.isFinite(px) ? Math.round(Math.min(max, Math.max(min, px))) : initial
 }
 
 export const DEFAULT_PREFS: Preferences = {
@@ -49,6 +63,8 @@ export const DEFAULT_PREFS: Preferences = {
   tileGaps: true,
   sort: 'updated',
   spellcheck: true,
+  foldersWidth: SIDEBAR_WIDTHS.folders.initial,
+  notesWidth: SIDEBAR_WIDTHS.notes.initial,
 }
 
 const PREFS_KEY = 'velocity.prefs.v1'
@@ -152,6 +168,8 @@ export function sanitizePrefs(raw: Partial<Preferences>): Preferences {
   if (typeof raw.tileGaps === 'boolean') p.tileGaps = raw.tileGaps
   if (raw.sort === 'updated' || raw.sort === 'title') p.sort = raw.sort
   if (typeof raw.spellcheck === 'boolean') p.spellcheck = raw.spellcheck
+  if (typeof raw.foldersWidth === 'number') p.foldersWidth = clampSidebarWidth('folders', raw.foldersWidth)
+  if (typeof raw.notesWidth === 'number') p.notesWidth = clampSidebarWidth('notes', raw.notesWidth)
   return p
 }
 
