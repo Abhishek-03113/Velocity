@@ -19,7 +19,9 @@ import {
   uploadCover,
   type BookPatch,
 } from './api'
+import { findLeaf, leaves, pluginLeafFor } from '../../lib/tiling'
 import { useGroupStore } from '../../store/groupStore'
+import { useLayoutStore } from '../../store/layoutStore'
 import { forgetBook } from './annotations'
 import { createHighlights, type Highlights } from './highlights'
 import { bookNoteContent, findBookNote, lookupBookNote } from './note'
@@ -40,7 +42,8 @@ export interface BooksLibrary {
   noteIdFor(bookId: number): number | null
   /** The note for a book, created in the Books folder (without opening it) when missing. */
   ensureNote(book: Book): number
-  openBook(bookId: number): void
+  /** `fit`: a link opened it (not the user choosing a tile), so keep the reader readable by not adding yet another narrow split. */
+  openBook(bookId: number, opts?: { fit?: boolean }): void
   openNotes(bookId: number): void
   markUnread(book: Book): void
   markFinished(book: Book): void
@@ -268,13 +271,44 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  const openBook = (bookId: number) => {
+  /** A split would leave every tile narrower than this, which makes a reader unreadable (one word per line). */
+  const MIN_READER_WIDTH = 420
+
+  /**
+   * Opening from a link in a crowded workspace: instead of splitting again (every tile would get narrower), put the
+   * reader in place of an existing tile, the Bookshelf first, then the focused note, then the widest other note, and
+   * only one that is wide enough to read in (else the widest there is). Returns false when a normal split is fine
+   * (few tiles, or plenty of room).
+   */
+  const openReaderInPlace = (noteId: number): boolean => {
+    const layout = useLayoutStore.getState()
+    const all = leaves(layout.root)
+    if (all.length < 2 || pluginLeafFor(layout.root, ctx.id, READER_VIEW, noteId)) return false
+    const widthOf = (id: string) => document.querySelector<HTMLElement>(`[data-tile-id="${id}"]`)?.getBoundingClientRect().width ?? 0
+    const focused = findLeaf(layout.root, layout.focusedId)
+    if (!focused) return false
+    const focusedWidth = widthOf(focused.id)
+    if (focusedWidth === 0 || focusedWidth / 2 >= MIN_READER_WIDTH) return false
+    const isShelf = (l: (typeof all)[number]) => l.content.kind === 'view' && l.content.pluginId === ctx.id
+    const rank = (l: (typeof all)[number]) => (isShelf(l) ? 0 : l.id === focused.id ? 1 : 2)
+    const candidates = all
+      .filter((l) => isShelf(l) || l.content.kind === 'note')
+      .sort((a, b) => rank(a) - rank(b) || widthOf(b.id) - widthOf(a.id))
+    const target = candidates.find((l) => widthOf(l.id) >= MIN_READER_WIDTH) ?? [...candidates].sort((a, b) => widthOf(b.id) - widthOf(a.id))[0]
+    if (!target) return false
+    layout.setContent(target.id, { kind: 'plugin', pluginId: ctx.id, view: READER_VIEW, noteId })
+    layout.focus(target.id)
+    return true
+  }
+
+  const openBook = (bookId: number, opts: { fit?: boolean } = {}) => {
     void noteForBook(bookId).then((noteId) => {
       if (disposed) return
       if (noteId == null) {
         if (store().books[bookId]) ctx.flash(NOTE_NOT_READY)
         return
       }
+      if (opts.fit && openReaderInPlace(noteId)) return
       ctx.tiles.open(READER_VIEW, noteId, { focus: true })
     })
   }

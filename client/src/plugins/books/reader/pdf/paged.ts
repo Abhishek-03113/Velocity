@@ -35,7 +35,8 @@ export function firstVisible(layout: PageLayout, scrollTop: number): PdfPosition
   const n = layout.tops.length
   if (n === 0) return { page: 1, frac: 0 }
   let i = indexAt(layout.tops, scrollTop)
-  if (layout.tops[i] + layout.heights[i] < scrollTop && i < n - 1) i++
+  // The gap between pages belongs to the next one; the 1px slack absorbs float / device-pixel rounding at the boundary.
+  if (layout.tops[i] + layout.heights[i] <= scrollTop + 1 && i < n - 1) i++
   return { page: i + 1, frac: fractionInPage(scrollTop, layout.tops[i], layout.heights[i]) }
 }
 

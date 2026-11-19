@@ -99,6 +99,11 @@ describe('first visible text in the scroll layout', () => {
     const inGap = layout.tops[1] - 8
     expect(firstVisible(layout, inGap)).toEqual({ page: 2, frac: 0 })
   })
+  it('treats the padding above a page as that page, despite float rounding at the page boundary', () => {
+    const edge = layout.tops[8] - 16 + 1e-9
+    expect(firstVisible(layout, edge).page).toBe(9)
+    expect(firstVisible(layout, layout.tops[7] + layout.heights[7] - 0.5).page).toBe(9)
+  })
   it('round-trips exact positions', () => {
     for (const [page, frac] of [[1, 0], [4, 0.25], [12, 0.99]] as const) {
       const pos = firstVisible(layout, scrollTopForPosition(layout, page, frac))

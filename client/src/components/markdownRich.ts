@@ -468,6 +468,13 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
           return
         }
 
+        if (name === 'URL' && node.node.parent?.name === 'Link') {
+          // `[label](destination)` reads as the label alone off the cursor line (the brackets are hidden below); the
+          // Books highlights note has long `velocity://book/..?at=..` destinations that would otherwise show as raw text.
+          if (!isActive(node.from, node.to)) widgets.push(hiddenMark.range(node.from, node.to))
+          return false
+        }
+
         if (MARK_NODES.has(name)) {
           // keep ``` fences visible — hiding them makes code blocks confusing
           if (node.node.parent?.name === 'FencedCode') return

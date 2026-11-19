@@ -120,7 +120,7 @@ const plugin: VelocityPlugin = {
       }
       // Set before the tile opens: a reader that is already open reacts to the change, a new one finds it on mount.
       if (link.locator) state().setPendingGoTo(link.bookId, link.locator)
-      library.openBook(link.bookId)
+      library.openBook(link.bookId, { fit: true })
     }
     const openShelf = () => {
       ctx.views.open(SHELF_VIEW, { focus: true })

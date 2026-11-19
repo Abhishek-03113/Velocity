@@ -121,6 +121,11 @@ describe('computeGeometry', () => {
     expect(computeGeometry(1000, 800, { fontScale: 1, margins: 'wide' }).margin).toBe(88)
     expect(computeGeometry(500, 800, { fontScale: 1, margins: 'wide' }).margin).toBe(44)
   })
+  it('caps margins at 7% of the width on very narrow tiles', () => {
+    expect(computeGeometry(300, 800, { fontScale: 1, margins: 'wide' }).margin).toBe(21)
+    expect(computeGeometry(150, 800, { fontScale: 1, margins: 'normal' }).margin).toBe(11)
+    expect(computeGeometry(419, 800, { fontScale: 1, margins: 'narrow' }).margin).toBe(12)
+  })
   it('gap is twice the margin and spreads start at 900px', () => {
     const g = computeGeometry(899, 800, { fontScale: 1, margins: 'normal' })
     expect(g.gap).toBe(96)

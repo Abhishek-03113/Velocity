@@ -70,7 +70,10 @@ export function computeGeometry(
   appearance: Pick<ReaderAppearance, 'fontScale' | 'margins'>,
 ): PageGeometry {
   const narrow = width < 600
-  const margin = Math.round(MARGIN_PX[appearance.margins ?? 'normal'] * (narrow ? 0.5 : 1))
+  // Narrow tiles halve the margins, and the very narrow ones (under 420px, a reader squeezed between other tiles) never give more
+  // than 7 % of their width to each side.
+  const scaled = Math.round(MARGIN_PX[appearance.margins ?? 'normal'] * (narrow ? 0.5 : 1))
+  const margin = width < 420 ? Math.min(scaled, Math.max(8, Math.round(width * 0.07))) : scaled
   const textWidth = Math.round(MEASURE_EM * BASE_FONT_PX * clampFontScale(appearance.fontScale))
   const spread = width >= SPREAD_MIN_WIDTH
   const needed = spread ? 2 * textWidth + 4 * margin : textWidth + 2 * margin
