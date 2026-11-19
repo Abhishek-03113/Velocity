@@ -462,6 +462,36 @@
   text-underline-offset: 3px;
 }
 
+.styleSketch {
+  text-decoration: underline wavy var(--mark);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-skip-ink: none;
+}
+
+.styleDouble {
+  text-decoration: underline double var(--mark);
+  text-underline-offset: 3px;
+}
+
+.styleDotted {
+  text-decoration: underline dotted var(--mark);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.styleDashed {
+  text-decoration: underline dashed var(--mark);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.styleCurly {
+  text-decoration: underline wavy var(--mark);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
 .annMeta {
   color: var(--label-tertiary);
   font-size: var(--text-footnote);

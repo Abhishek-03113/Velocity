@@ -199,6 +199,14 @@ export function splitLeaf(
   )
 }
 
+/** Swap two leaves' places in the tree, keeping their ids (and so their live tiles) — unlike `swapContents`. */
+export function swapLeaves(root: LayoutNode, aId: string, bId: string): LayoutNode {
+  const a = findLeaf(root, aId)
+  const b = findLeaf(root, bId)
+  if (!a || !b || a === b) return root
+  return mapNode(root, (n) => (n.type !== 'leaf' ? n : n.id === aId ? b : n.id === bId ? a : n)) ?? root
+}
+
 /** Remove a leaf; its sibling takes over the parent's space. Returns null if nothing remains. */
 export function removeLeaf(root: LayoutNode, id: string): LayoutNode | null {
   return mapNode(root, (n) => (n.type === 'leaf' && n.id === id ? null : n))

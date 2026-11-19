@@ -205,10 +205,9 @@ export function NotesColumn({
       setActiveGroupId: s.setActiveGroupId,
     })),
   )
-  const { sort, setPref, toggleSidebar, toggleFolders } = useUiStore(
+  const { sort, toggleSidebar, toggleFolders } = useUiStore(
     useShallow((s) => ({
       sort: s.prefs.sort,
-      setPref: s.setPref,
       toggleSidebar: s.toggleSidebar,
       toggleFolders: s.toggleFolders,
     })),
@@ -339,21 +338,9 @@ export function NotesColumn({
           onSelect: () => setActiveGroupId('ungrouped'),
         },
         { separator: true },
+        { label: 'Sort Notes…', icon: 'arrow.up.arrow.down', onSelect: () => useUiStore.getState().setSettingsOpen(true) },
         { label: 'New Folder', icon: 'folder.badge.plus', onSelect: () => useGroupStore.getState().addGroup() },
         { label: 'Settings…', icon: 'gearshape', onSelect: () => useUiStore.getState().setSettingsOpen(true) },
-      ],
-    })
-  }
-
-  const sortMenu = (e: MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    onMenu({
-      x: rect.left,
-      y: rect.bottom + 4,
-      items: [
-        { heading: 'Sort by' },
-        { label: 'Date Edited', checked: sort === 'updated', onSelect: () => setPref('sort', 'updated') },
-        { label: 'Title', checked: sort === 'title', onSelect: () => setPref('sort', 'title') },
       ],
     })
   }
@@ -368,22 +355,10 @@ export function NotesColumn({
   return (
     <section className={styles.notes} aria-label="Notes">
       <header className={styles.notesHeader}>
-        {showFolderPicker ? (
-          <button type="button" className={styles.folderPicker} onClick={folderPicker} aria-haspopup="menu">
-            <span className={styles.notesTitle}>{title}</span>
-            <Icon name="chevron.down" size={12} strokeWidth={2.2} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={styles.folderPicker}
-            onClick={sortMenu}
-            aria-haspopup="menu"
-            title="Sort notes"
-          >
-            <span className={styles.notesTitle}>{title}</span>
-          </button>
-        )}
+        <button type="button" className={styles.folderPicker} onClick={folderPicker} aria-haspopup="menu" title="Switch folder">
+          <span className={styles.notesTitle}>{title}</span>
+          <Icon name="chevron.down" size={12} strokeWidth={2.2} />
+        </button>
         <span className={styles.notesCount}>{rows.length}</span>
         {folderActions.map((a) => (
           <button key={a.pluginId} type="button" className={styles.folderAction} title={a.label} aria-label={a.label} onClick={a.run}>

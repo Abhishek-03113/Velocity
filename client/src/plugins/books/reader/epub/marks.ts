@@ -6,7 +6,7 @@
  * `pointer-events: none`); the engine hit-tests the click it receives inside the iframe with `hit()`.
  */
 import type { HighlightColor, ReaderAnnotation, ReaderColors } from '../types'
-import { fullStrength, mergeLineRects, pointInRects, squigglePath, strikeY, underlineY, type RectLike } from './helpers'
+import { curlyPath, fullStrength, mergeLineRects, pointInRects, seedOf, sketchPaths, squigglePath, strikeY, underlineY, type RectLike } from './helpers'
 
 const NS = 'http://www.w3.org/2000/svg'
 
@@ -129,6 +129,24 @@ export class MarksLayer {
       } else if (a.style === 'strike') {
         const y = strikeY(r)
         front.appendChild(el('line', { x1: r.left, x2: r.left + r.width, y1: y, y2: y, stroke, 'stroke-width': 2, 'stroke-linecap': 'round' }))
+      } else if (a.style === 'double') {
+        const y = underlineY(r) - 0.5
+        for (const dy of [0, 3]) {
+          front.appendChild(el('line', { x1: r.left, x2: r.left + r.width, y1: y + dy, y2: y + dy, stroke, 'stroke-width': 1.3, 'stroke-linecap': 'round' }))
+        }
+      } else if (a.style === 'dotted' || a.style === 'dashed') {
+        const y = underlineY(r)
+        const dash = a.style === 'dotted' ? '0.1 4' : '6 4'
+        front.appendChild(el('line', { x1: r.left, x2: r.left + r.width, y1: y, y2: y, stroke, 'stroke-width': a.style === 'dotted' ? 2.2 : 1.8, 'stroke-linecap': 'round', 'stroke-dasharray': dash }))
+      } else if (a.style === 'sketch') {
+        const y = underlineY(r) + 0.5
+        const seed = seedOf(`${a.id}:${Math.round(r.top)}`)
+        sketchPaths(r.left, y, r.width, seed).forEach((d, i) => {
+          front.appendChild(el('path', { d, stroke, 'stroke-width': i === 0 ? 1.7 : 1.1, opacity: i === 0 ? 1 : 0.75, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }))
+        })
+      } else if (a.style === 'curly') {
+        const y = underlineY(r) + 3
+        front.appendChild(el('path', { d: curlyPath(r.left, y, r.width, 6), stroke, 'stroke-width': 1.2, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }))
       } else {
         const y = underlineY(r) + 0.5
         front.appendChild(el('path', { d: squigglePath(r.left, y, r.width, 1.4, 5), stroke, 'stroke-width': 1.6, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }))

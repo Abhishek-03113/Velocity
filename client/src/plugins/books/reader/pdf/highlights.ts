@@ -171,3 +171,33 @@ export function squiggleImage(color: string): string {
     `<path d='M0 3 Q2 0.2 4 2 T8 2' fill='none' stroke='${color.replace(/'/g, '')}' stroke-width='1.4' stroke-linecap='round'/></svg>`
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }
+
+const svgUrl = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+
+/** A tiling SVG of cursive loops (as a CSS url()) for curly underlines. */
+export function curlyImage(color: string): string {
+  const c = color.replace(/'/g, '')
+  return svgUrl(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='7' height='7' viewBox='0 0 7 7'>` +
+      `<path d='M0 5.5C7.3 4.6 6.3 0 3.8 1.3 1.4 2.6 3.2 6.9 7 5.5' fill='none' stroke='${c}' stroke-width='1.1' stroke-linecap='round'/></svg>`,
+  )
+}
+
+/**
+ * Excalidraw-style hand-drawn underline (as a CSS url()), stretched to the line's width: two rough strokes that
+ * wander and overshoot. `seed` picks one of a few shapes so neighbouring lines do not look stamped.
+ */
+export function sketchImage(color: string, seed = 0): string {
+  const c = color.replace(/'/g, '')
+  const shapes = [
+    ['M1 3.2Q22 1.9 47 3.4T99 2.8', 'M2 5.1Q30 4.2 55 5.4T98 4.6'],
+    ['M0.5 2.6Q28 3.9 52 2.7T99.5 3.3', 'M3 4.9Q26 5.6 49 4.5T97 5.2'],
+    ['M1.5 3.5Q19 2.4 41 3.1T99 3', 'M1 5.3Q35 4.4 63 5.5T99 4.8'],
+  ]
+  const [a, b] = shapes[Math.abs(seed) % shapes.length]!
+  return svgUrl(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='100' height='7' viewBox='0 0 100 7' preserveAspectRatio='none'>` +
+      `<path d='${a}' fill='none' stroke='${c}' stroke-width='1.6' stroke-linecap='round' vector-effect='non-scaling-stroke'/>` +
+      `<path d='${b}' fill='none' stroke='${c}' stroke-width='1.05' stroke-opacity='0.75' stroke-linecap='round' vector-effect='non-scaling-stroke'/></svg>`,
+  )
+}

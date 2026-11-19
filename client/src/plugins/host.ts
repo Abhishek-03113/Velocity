@@ -11,6 +11,7 @@ import { getEditor } from '../lib/editorRegistry'
 import { displayTitle } from '../lib/noteMeta'
 import type { Command } from '../lib/commands'
 import { currentNoteId, focusTile, openNote } from '../lib/workspace'
+import { setNoteViewResolver } from '../lib/noteViews'
 import { findLeaf, leaves, noteLeafFor, pluginLeafFor, viewLeafFor } from '../lib/tiling'
 import { useEditorStore } from '../store/editorStore'
 import { useGroupStore } from '../store/groupStore'
@@ -241,7 +242,7 @@ export function createContext(id: string): PluginContext {
       },
       open: (noteId, opts = {}) => {
         const mode = opts.mode ?? 'edit'
-        openNote(noteId, { split: opts.split ? 'auto' : false, focus: mode === 'edit' })
+        openNote(noteId, { split: opts.split ? 'auto' : false, focus: mode === 'edit', raw: opts.raw })
         applyMode(noteId, mode)
       },
       exists: (noteId) => useEditorStore.getState().pastes.some((p) => p.id === noteId),
@@ -418,6 +419,21 @@ export function editorModeFor(content: string): { key: string; extension: Extens
   }
   return null
 }
+
+/** The running plugin view a note opens in instead of the editor (see `PluginInstance.noteView`). */
+export function noteViewOf(noteId: number): { pluginId: string; view: string } | null {
+  for (const [id, { instance }] of active) {
+    const nv = instance.noteView
+    if (!nv || !instance.tiles?.[nv.view]) continue
+    try {
+      if (nv.match(noteId)) return { pluginId: id, view: nv.view }
+    } catch (err) {
+      console.error(`[plugins] ${id} noteView failed:`, err)
+    }
+  }
+  return null
+}
+setNoteViewResolver(noteViewOf)
 
 /** A registered plugin's display name (also for plugins that are switched off). */
 export function pluginName(pluginId: string): string {

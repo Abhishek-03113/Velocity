@@ -194,6 +194,9 @@ const plugin: VelocityPlugin = {
 
       tiles: { [READER_VIEW]: readerTileView(ctx, host) },
 
+      // A book's note opens the reader everywhere a note opens; its Markdown opens from the reader (Open Notes).
+      noteView: { view: READER_VIEW, match: (noteId) => bookIdForNote(noteId) != null },
+
       folderAction: (folder) =>
         folder.name.trim().toLowerCase() === (ctx.setting<string>('folder').trim() || 'Books').toLowerCase()
           ? { label: 'Open Bookshelf', short: 'Bookshelf', icon: 'books.vertical', run: openShelf }

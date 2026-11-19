@@ -1,7 +1,8 @@
 import { lazy, memo, Suspense, useCallback } from 'react'
 import { primaryKey } from '../../lib/commands'
 import { displayTitle } from '../../lib/noteMeta'
-import type { LeafNode } from '../../lib/tiling'
+import { tileNoteId, type LeafNode } from '../../lib/tiling'
+import { NOTE_DRAG_TYPE, TILE_DRAG_TYPE } from '../../lib/groupColors'
 import { closeTile, focusTile, toggleReadMode } from '../../lib/workspace'
 import { pluginName, pluginTileView, pluginWorkspaceView, usePluginsVersion } from '../../plugins/host'
 import { useEditorStore } from '../../store/editorStore'
@@ -163,7 +164,21 @@ function TileImpl({ leaf, focused, tiled, zoomed, dropZone }: TileProps) {
       }}
     >
       {showHeader && (
-        <header className={styles.tileHeader}>
+        <header
+          className={styles.tileHeader}
+          draggable
+          title="Drag to move this tile"
+          onDragStart={(e) => {
+            // Pick the tile up: drop it on another tile's edge to move it there, or its centre to swap places.
+            e.dataTransfer.effectAllowed = 'move'
+            e.dataTransfer.setData(TILE_DRAG_TYPE, leaf.id)
+            const noteId = tileNoteId(content)
+            // Carrying the note too lets the folders column file it, like a note dragged from the list.
+            if (noteId != null) e.dataTransfer.setData(NOTE_DRAG_TYPE, String(noteId))
+            const section = e.currentTarget.closest('section')
+            if (section) e.dataTransfer.setDragImage(section, Math.min(120, e.nativeEvent.offsetX + 12), 14)
+          }}
+        >
           {content.kind === 'empty' ? (
             <span className={styles.tileTitle}>
               <Icon name="plus.circle" size={14} className={styles.tileTitleIcon} />

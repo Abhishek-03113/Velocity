@@ -304,8 +304,9 @@ export interface WheelTurner {
 }
 
 /**
- * Trackpad horizontal scrolling → page turns. Deltas accumulate until a threshold, one turn fires, and further
- * deltas (the inertia tail of the same gesture) are ignored until a quiet gap.
+ * Wheel and trackpad scrolling → page turns, on either axis (a mouse wheel scrolls vertically, a trackpad swipe
+ * horizontally; down / right go forward). Deltas on the dominant axis accumulate until a threshold, one turn fires,
+ * and further deltas (the inertia tail of the same gesture) are ignored until a quiet gap.
  */
 export function createWheelTurner(threshold = 60, quietMs = 140, lockMs = 380): WheelTurner {
   let acc = 0
@@ -313,7 +314,8 @@ export function createWheelTurner(threshold = 60, quietMs = 140, lockMs = 380): 
   let lockUntil = 0
   return {
     push(dx, dy, now) {
-      if (Math.abs(dx) <= Math.abs(dy)) return null
+      const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy
+      if (delta === 0) return null
       if (now - last > quietMs) acc = 0
       last = now
       if (now < lockUntil) {
@@ -321,7 +323,8 @@ export function createWheelTurner(threshold = 60, quietMs = 140, lockMs = 380): 
         lockUntil = Math.max(lockUntil, now + 60)
         return null
       }
-      acc += dx
+      // A notched mouse wheel sends one large delta per click: one click, one page.
+      acc += delta
       if (Math.abs(acc) < threshold) return null
       const dir = acc > 0 ? 'next' : 'prev'
       acc = 0
@@ -544,4 +547,55 @@ export function fullStrength(css: string): string {
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])[0-9a-f]$/i.exec(c)
   if (short) return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`
   return c
+}
+
+/** Deterministic noise in [-1, 1] for a seed and step, so a hand-drawn line is the same on every redraw. */
+function wobble(seed: number, i: number): number {
+  const v = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453
+  return (v - Math.floor(v)) * 2 - 1
+}
+
+/** A numeric seed for a string (annotation id + line), for `sketchPaths`. */
+export function seedOf(text: string): number {
+  let h = 0
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0
+  return (Math.abs(h) % 997) + 1
+}
+
+/**
+ * Excalidraw-style hand-drawn underline: two rough strokes that wander a little and overshoot the ends,
+ * as SVG paths. Deterministic for a seed.
+ */
+export function sketchPaths(x: number, y: number, width: number, seed = 1): [string, string] {
+  const stroke = (pass: number) => {
+    const segments = Math.max(2, Math.round(width / 28))
+    const step = width / segments
+    const over = Math.min(3, width * 0.04)
+    const sx = x - over * (0.4 + 0.6 * Math.abs(wobble(seed, pass * 50)))
+    const sy = y + wobble(seed, pass * 50 + 1) * 0.9 + pass * 1.3
+    let d = `M${r2(sx)} ${r2(sy)}`
+    for (let i = 0; i < segments; i++) {
+      const ex = i === segments - 1 ? x + width + over * (0.4 + 0.6 * Math.abs(wobble(seed, pass * 50 + 2))) : x + step * (i + 1)
+      const ey = y + wobble(seed, pass * 50 + 3 + i) * 1.1 + pass * 1.3
+      const cx = x + step * (i + 0.5) + wobble(seed, pass * 50 + 20 + i) * step * 0.15
+      const cy = y + wobble(seed, pass * 50 + 30 + i) * 1.6 + pass * 1.3
+      d += `Q${r2(cx)} ${r2(cy)} ${r2(ex)} ${r2(ey)}`
+    }
+    return d
+  }
+  return [stroke(0), stroke(1)]
+}
+
+/** Curly (cursive loops, like a row of handwritten "l"s) underline as an SVG path, loops `size` px wide. */
+export function curlyPath(x: number, y: number, width: number, size = 6): string {
+  const n = Math.max(1, Math.round(width / size))
+  const step = width / n
+  let d = `M${r2(x)} ${r2(y)}`
+  for (let i = 0; i < n; i++) {
+    const x0 = x + step * i
+    // Up and back over itself, then down past the start: one loop per step.
+    d += `C${r2(x0 + step * 1.05)} ${r2(y - size * 0.15)} ${r2(x0 + step * 0.9)} ${r2(y - size * 0.95)} ${r2(x0 + step * 0.55)} ${r2(y - size * 0.75)}`
+    d += `C${r2(x0 + step * 0.2)} ${r2(y - size * 0.55)} ${r2(x0 + step * 0.45)} ${r2(y + size * 0.2)} ${r2(x0 + step)} ${r2(y)}`
+  }
+  return d
 }

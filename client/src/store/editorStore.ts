@@ -6,6 +6,7 @@ import { UNTITLED } from '../lib/noteMeta'
 import { welcomeNote } from '../lib/welcome'
 import type { Paste, CreatePastePayload, UpdatePastePayload } from '../types'
 import { focusedNoteId, markLayoutRestored, useLayoutStore, visibleNoteIds } from './layoutStore'
+import { contentForNote, primaryLeafFor } from '../lib/noteViews'
 import type { SplitRequest } from './layoutStore'
 import { cachedContent, useSearchStore } from './searchStore'
 import { migrateLocalBoards, remapBoard, removeBoardScene, seedBoardFlags } from './whiteboardStore'
@@ -25,6 +26,8 @@ export interface OpenOptions {
   focus?: boolean
   /** addPaste only: false creates the note without opening a tab or touching the workspace (default true). */
   reveal?: boolean
+  /** Open the note in the editor even when a plugin opens it in its own view (e.g. a book's attached note). */
+  raw?: boolean
 }
 
 interface EditorState {
@@ -438,12 +441,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       openTabIds: state.openTabIds.includes(id) ? state.openTabIds : [...state.openTabIds, id],
     }))
     const layout = useLayoutStore.getState()
+    const raw = opts.raw === true
     if (opts.split) {
-      const existing = layout.root && visibleNoteIds(layout.root).includes(id)
-      if (existing) layout.revealNote(id)
-      else layout.split(opts.split, { kind: 'note', noteId: id, mode: 'edit' })
+      const existing = layout.root && primaryLeafFor(layout.root, id, raw)
+      if (existing) layout.revealNote(id, { raw })
+      else layout.split(opts.split, contentForNote(id, 'edit', raw))
     } else {
-      layout.revealNote(id)
+      layout.revealNote(id, { raw })
     }
     persistTabs()
     if (opts.focus !== false) focusEditor(id)

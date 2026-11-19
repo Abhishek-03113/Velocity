@@ -349,7 +349,7 @@ function restoreQueue(saved: unknown): Op[] {
     if (o.type === 'create') return typeof o.row === 'object' && o.row != null && typeof (o.row as BookAnnotation).id === 'number'
     if (o.type === 'patch') return typeof o.id === 'number' && typeof o.patch === 'object'
     if (o.type === 'delete') return typeof o.id === 'number'
-    return o.type === 'clear' && (o.kind === 'highlight' || o.kind === 'bookmark')
+    return o.type === 'clear' && (o.kind === 'highlight' || o.kind === 'bookmark' || o.kind === 'quote')
   })
 }
 

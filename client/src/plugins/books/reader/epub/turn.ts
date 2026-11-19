@@ -7,6 +7,10 @@
  * animates away to reveal it. Only transform and opacity are animated, through the Web Animations API, so the
  * work stays on the compositor.
  *
+ * The cloned chapter is kept, hidden, between turns (and prepared ahead with `warmGhost` while the reader is idle):
+ * a turn inside the same chapter only moves the copy to the current page, so it starts in the same frame, with the
+ * book's fonts already loaded in the copy (a fresh copy would first paint in a fallback font: the glitch).
+ *
  *  - slide: the outgoing page drifts 30% (capped) and fades while the incoming page drifts in, 220 ms
  *  - fade:  the ghost cross-fades out, 140 ms
  *  - curl:  the outgoing page swings about its left edge in 3D (perspective) with a shade on its face and a
@@ -27,6 +31,8 @@ export interface TurnEnv {
   mount: HTMLElement
   background: string
   backgroundImage: string | null
+  /** Changes whenever the page's look changes (appearance, colours); a kept copy with another key is rebuilt. */
+  key?: string
 }
 
 export interface Ghost {
@@ -55,62 +61,113 @@ function collectCss(doc: Document): string {
   return out.join('\n')
 }
 
-/** Copy the visible page into an overlay that sits exactly over it. Null when there is nothing to copy. */
-export function takeGhost(env: TurnEnv): Ghost | null {
+interface Kept {
+  doc: Document
+  key: string | undefined
+  ghost: HTMLDivElement
+  clip: HTMLDivElement
+  copy: HTMLIFrameElement
+}
+
+/** The kept copy per ghost layer (one per reader). */
+const kept = new WeakMap<HTMLElement, Kept>()
+
+const GHOST_CSS = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:3;will-change:transform,opacity;'
+
+function liveFrame(env: TurnEnv): { frame: HTMLIFrameElement; doc: Document } | null {
   const frame = env.mount.querySelector<HTMLIFrameElement>('iframe')
   const doc = frame?.contentDocument
-  if (!frame || !doc?.documentElement) return null
+  return frame && doc?.documentElement ? { frame, doc } : null
+}
+
+/** Build the hidden copy of the live chapter. */
+function build(env: TurnEnv, doc: Document): Kept | null {
+  const ghost = document.createElement('div')
+  ghost.setAttribute('aria-hidden', 'true')
+  ghost.style.cssText = `${GHOST_CSS}visibility:hidden;${paper(env)}`
+  const clip = document.createElement('div')
+  const copy = document.createElement('iframe')
+  copy.setAttribute('sandbox', 'allow-same-origin')
+  copy.setAttribute('tabindex', '-1')
+  clip.appendChild(copy)
+  ghost.appendChild(clip)
+  env.layer.appendChild(ghost)
+
+  const d = copy.contentDocument
+  if (!d) {
+    ghost.remove()
+    return null
+  }
+  d.open()
+  d.write('<!doctype html><html><head></head><body></body></html>')
+  d.close()
+  const clone = d.importNode(doc.documentElement, true) as HTMLElement
+  clone.querySelectorAll('script, link[rel~="stylesheet"], style, base').forEach((n) => n.remove())
+  const style = d.createElement('style')
+  style.textContent = collectCss(doc)
+  let head = clone.querySelector('head')
+  if (!head) {
+    head = d.createElement('head')
+    clone.insertBefore(head, clone.firstChild)
+  }
+  head.appendChild(style)
+  d.replaceChild(clone, d.documentElement)
+  return { doc, key: env.key, ghost, clip, copy }
+}
+
+/** The kept copy for the live chapter, (re)built when the chapter or the look changed. */
+function keptFor(env: TurnEnv): Kept | null {
+  const live = liveFrame(env)
+  if (!live) return null
+  const k = kept.get(env.layer)
+  if (k && k.doc === live.doc && k.key === env.key && k.ghost.parentNode === env.layer) return k
+  k?.ghost.remove()
+  const next = build(env, live.doc)
+  if (next) kept.set(env.layer, next)
+  else kept.delete(env.layer)
+  return next
+}
+
+/** Prepare the copy for the page on screen ahead of the next turn (call while idle). */
+export function warmGhost(env: TurnEnv): void {
   try {
+    keptFor(env)
+  } catch {
+    /* best effort: the turn builds it */
+  }
+}
+
+/** Show the copy exactly over the live page. Null when there is nothing to copy. */
+export function takeGhost(env: TurnEnv): Ghost | null {
+  try {
+    const k = keptFor(env)
+    const live = liveFrame(env)
+    if (!k || !live) return null
     const rootRect = env.root.getBoundingClientRect()
     const mountRect = env.mount.getBoundingClientRect()
-    const frameRect = frame.getBoundingClientRect()
+    const frameRect = live.frame.getBoundingClientRect()
+    k.clip.style.cssText = `position:absolute;overflow:hidden;left:${mountRect.left - rootRect.left}px;top:${mountRect.top - rootRect.top}px;width:${mountRect.width}px;height:${mountRect.height}px;`
+    k.copy.style.cssText = `position:absolute;left:${frameRect.left - mountRect.left}px;top:${frameRect.top - mountRect.top}px;width:${frameRect.width}px;height:${frameRect.height}px;border:0;background:transparent;z-index:1;pointer-events:none;`
 
-    const ghost = document.createElement('div')
-    ghost.setAttribute('aria-hidden', 'true')
-    ghost.style.cssText = `position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:3;will-change:transform,opacity;${paper(env)}`
-    const clip = document.createElement('div')
-    clip.style.cssText = `position:absolute;overflow:hidden;left:${mountRect.left - rootRect.left}px;top:${mountRect.top - rootRect.top}px;width:${mountRect.width}px;height:${mountRect.height}px;`
-    const left = frameRect.left - mountRect.left
-    const top = frameRect.top - mountRect.top
-    const place = `position:absolute;left:${left}px;top:${top}px;width:${frameRect.width}px;height:${frameRect.height}px;`
-
-    const copy = document.createElement('iframe')
-    copy.setAttribute('sandbox', 'allow-same-origin')
-    copy.setAttribute('tabindex', '-1')
-    copy.style.cssText = `${place}border:0;background:transparent;z-index:1;pointer-events:none;`
-
-    // Highlights drawn over the live page come along.
+    // Highlights drawn over the live page come along (they change between turns, so they are copied each time).
+    k.clip.querySelectorAll('svg').forEach((n) => n.remove())
     const back = env.mount.querySelector<SVGElement>('svg[data-vel-marks="back"]')?.cloneNode(true) as SVGElement | undefined
     const front = env.mount.querySelector<SVGElement>('svg[data-vel-marks="front"]')?.cloneNode(true) as SVGElement | undefined
-    if (back) clip.appendChild(back)
-    clip.appendChild(copy)
-    if (front) clip.appendChild(front)
-    ghost.appendChild(clip)
-    env.layer.appendChild(ghost)
+    if (back) k.clip.insertBefore(back, k.copy)
+    if (front) k.clip.appendChild(front)
 
-    const d = copy.contentDocument
-    if (!d) {
-      ghost.remove()
-      return null
-    }
-    d.open()
-    d.write('<!doctype html><html><head></head><body></body></html>')
-    d.close()
-    const clone = d.importNode(doc.documentElement, true) as HTMLElement
-    clone.querySelectorAll('script, link[rel~="stylesheet"], style, base').forEach((n) => n.remove())
-    const style = d.createElement('style')
-    style.textContent = collectCss(doc)
-    let head = clone.querySelector('head')
-    if (!head) {
-      head = d.createElement('head')
-      clone.insertBefore(head, clone.firstChild)
-    }
-    head.appendChild(style)
-    d.replaceChild(clone, d.documentElement)
+    k.ghost.getAnimations().forEach((a) => a.cancel())
+    k.ghost.style.cssText = `${GHOST_CSS}${paper(env)}`
     // Force layout now so the first painted frame already matches the live page.
-    void clone.getBoundingClientRect()
-
-    return { el: ghost, dispose: () => ghost.remove() }
+    void k.copy.contentDocument?.documentElement.getBoundingClientRect()
+    const ghost = k.ghost
+    return {
+      el: ghost,
+      dispose: () => {
+        ghost.getAnimations().forEach((a) => a.cancel())
+        ghost.style.cssText = `${GHOST_CSS}visibility:hidden;${paper(env)}`
+      },
+    }
   } catch {
     return null
   }

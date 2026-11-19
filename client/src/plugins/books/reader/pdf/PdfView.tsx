@@ -2,7 +2,8 @@
  * PDF reading surface (pdf.js). Pure engine that fills its parent; the shell draws toolbar, contents and progress.
  * Two layouts share one page machinery (docs/specs/books-reading-experience.md §3.1):
  *  - scrolled: a virtualised column of lazily rendered pages,
- *  - paginated: one fitted page, turned with Curl / Slide / Fade / None, current ±1 pages prefetched.
+ *  - paginated: one fitted page, turned with Curl / Slide / Fade / None; the next two and previous page prefetched,
+ *    and a turn waits for its destination's paint so it never reveals a blank page.
  * Highlights are drawn as an overlay between canvas and text layer from `pdf:` locators.
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
@@ -43,6 +44,8 @@ import {
   selectionRects,
   solidColor,
   squiggleImage,
+  sketchImage,
+  curlyImage,
   type Rect,
 } from './highlights'
 import {
@@ -86,6 +89,8 @@ interface Slot {
   text: HTMLDivElement | null
   task: RenderTask | null
   textLayer: TextLayer | null
+  /** Settles once the latest render put its canvas on the page (or gave up). */
+  painted: Promise<void> | null
 }
 
 interface DrawnAnnotation {
@@ -336,6 +341,10 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
       s.key = keyFor(i, dpr)
       s.task?.cancel()
       s.textLayer?.cancel()
+      let markPainted: () => void = () => undefined
+      s.painted = new Promise<void>((resolve) => {
+        markPainted = resolve
+      })
       try {
         const page = s.page ?? (await doc.getPage(i + 1))
         if (disposed || gen !== s.gen) return
@@ -388,6 +397,7 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
         }
         s.el.insertBefore(canvas, s.el.firstChild)
         s.canvas = canvas
+        markPainted()
 
         const textDiv = document.createElement('div')
         textDiv.className = 'textLayer'
@@ -400,6 +410,8 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
         s.text = textDiv
       } catch {
         /* a cancelled or failed page render is not user-facing */
+      } finally {
+        markPainted()
       }
     }
 
@@ -408,7 +420,8 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
       const dpr = window.devicePixelRatio || 1
       if (paged()) {
         const wanted: number[] = []
-        for (const i of [pageIdx, pageIdx + 1, pageIdx - 1, turnFrom]) if (i >= 0 && i < slots.length && !wanted.includes(i)) wanted.push(i)
+        // The page, then the next two (reading forward) and the previous one: a turn reveals a page already painted.
+        for (const i of [pageIdx, pageIdx + 1, pageIdx - 1, pageIdx + 2, turnFrom]) if (i >= 0 && i < slots.length && !wanted.includes(i)) wanted.push(i)
         slots.forEach((s, i) => {
           if (!wanted.includes(i) && s.key !== '') release(s)
         })
@@ -516,6 +529,7 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
       emitLocation()
     }
 
+    let waitToken = 0
     function turnBy(dir: -1 | 1) {
       if (!ready || !paged()) return
       const step = enqueueTurn(queue, dir)
@@ -523,12 +537,24 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
       if (step.run) startTurn(step.run)
     }
 
-    function startTurn(dir: -1 | 1) {
+    function startTurn(dir: -1 | 1, waited = false) {
       const target = pageIdx + dir
       if (target < 0 || target >= count()) {
         const next = finishTurn(queue)
         queue = next.queue
         if (next.run) startTurn(next.run)
+        return
+      }
+      // Never animate onto a blank page: when the destination has no canvas yet (a fast run of turns outran the
+      // prefetch), wait for its paint, at most a quarter second, then turn.
+      const dest = slots[target]
+      if (!waited && dest && !dest.canvas) {
+        const dpr = window.devicePixelRatio || 1
+        if (dest.key !== keyFor(target, dpr)) void renderSlot(target, dpr)
+        const token = waitToken
+        void Promise.race([dest.painted ?? Promise.resolve(), new Promise((r) => setTimeout(r, 260))]).then(() => {
+          if (!disposed && token === waitToken) startTurn(dir, true)
+        })
         return
       }
       const from = pageIdx
@@ -569,6 +595,7 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
 
     /** Finish a running turn immediately and drop the queue. */
     function endTurnNow() {
+      waitToken++
       queue = IDLE_QUEUE
       if (!turning) return
       endTurn(turnToken)
@@ -823,6 +850,19 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
             case 'squiggle':
               set(styles.squiggle, { left, width, top: `calc(${pct(r[1] + r[3])} - 3px)`, backgroundImage: squiggleImage(solid) })
               break
+            case 'double':
+              set(styles.double, { left, width, top: `calc(${pct(r[1] + r[3])} - 3px)`, borderColor: solid })
+              break
+            case 'dotted':
+            case 'dashed':
+              set(styles.dashed, { left, width, top: `calc(${pct(r[1] + r[3])} - 2px)`, borderColor: solid, borderTopStyle: ann.style })
+              break
+            case 'sketch':
+              set(styles.sketch, { left, width, top: `calc(${pct(r[1] + r[3])} - 4px)`, backgroundImage: sketchImage(solid, k + ann.id.length) })
+              break
+            case 'curly':
+              set(styles.curly, { left, width, top: `calc(${pct(r[1] + r[3])} - 2px)`, backgroundImage: curlyImage(solid) })
+              break
             default:
               set(styles.hl, { left, top: pct(r[1]), width, height: pct(r[3]), background: fill })
           }
@@ -958,7 +998,12 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
         return
       }
       const horizontal = isHorizontalWheel(e.deltaX, e.deltaY)
-      if (!horizontal && scrollablePage()) return
+      if (!horizontal && scrollablePage()) {
+        // A zoomed page scrolls first; past its top or bottom edge, the wheel turns the page.
+        const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1
+        const atTop = scroller.scrollTop <= 0
+        if (!((e.deltaY > 0 && atBottom) || (e.deltaY < 0 && atTop))) return
+      }
       if (e.ctrlKey) return
       e.preventDefault()
       const now = performance.now()
@@ -1144,7 +1189,7 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
           annots.className = styles.annots
           el.appendChild(annots)
           sheet.appendChild(el)
-          return { el, annots, key: '', gen: 0, page: null, canvas: null, text: null, task: null, textLayer: null }
+          return { el, annots, key: '', gen: 0, page: null, canvas: null, text: null, task: null, textLayer: null, painted: null }
         })
 
         mode = modeOf()

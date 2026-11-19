@@ -1,4 +1,4 @@
-/** The reader drawer: Contents · Bookmarks · Highlights (Moon+ style lists, spec §4). */
+/** The reader drawer: Contents · Bookmarks · Highlights · Quotes (Moon+ style lists, spec §4), all from the database. */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { Icon } from '../../../components/Icon'
 import { ContextMenu, type MenuState } from '../../../components/ui/ContextMenu'
@@ -10,13 +10,18 @@ import { parseServerTime, type BookAnnotation } from '../types'
 import { byPosition } from './bookmarks'
 import styles from './Panels.module.css'
 
-export type DrawerTab = 'contents' | 'bookmarks' | 'highlights'
+export type DrawerTab = 'contents' | 'bookmarks' | 'highlights' | 'quotes'
 
 const STYLE_CLASS = {
   highlight: styles.styleHighlight,
   underline: styles.styleUnderline,
   strike: styles.styleStrike,
   squiggle: styles.styleSquiggle,
+  sketch: styles.styleSketch,
+  double: styles.styleDouble,
+  dotted: styles.styleDotted,
+  dashed: styles.styleDashed,
+  curly: styles.styleCurly,
 } as const
 
 const COLOR_LABEL: Record<HighlightColor, string> = { yellow: 'Yellow', green: 'Green', blue: 'Blue', pink: 'Pink', orange: 'Orange' }
@@ -28,6 +33,10 @@ interface Props {
   current: number
   bookmarks: BookAnnotation[]
   highlights: BookAnnotation[]
+  /** Passages sent to the book's note with Quote in Notes. */
+  quotes: BookAnnotation[]
+  /** Open the book's attached Markdown note. */
+  onOpenNotes: () => void
   /** Highlight actions need the annotations host (ACC-39). */
   canEdit: boolean
   onPickToc: (item: TocItem) => void
@@ -35,7 +44,7 @@ interface Props {
   onEditNote: (annotation: BookAnnotation) => void
   onCopy: (annotation: BookAnnotation) => void
   onDelete: (annotation: BookAnnotation) => void
-  onClearAll: (kind: 'bookmark' | 'highlight') => void
+  onClearAll: (kind: 'bookmark' | 'highlight' | 'quote') => void
   onClose: () => void
 }
 
@@ -46,6 +55,7 @@ export function Drawer(p: Props) {
 
   const bookmarks = useMemo(() => byPosition(p.bookmarks), [p.bookmarks])
   const highlights = useMemo(() => byPosition(p.highlights), [p.highlights])
+  const quotes = useMemo(() => byPosition(p.quotes), [p.quotes])
   const shownHighlights = filter ? highlights.filter((h) => h.color === filter) : highlights
 
   // Focus moves into the list (the current contents entry, else the first row); the shell puts it back on close.
@@ -81,6 +91,7 @@ export function Drawer(p: Props) {
       y,
       items: [
         { label: 'Go to', icon: 'arrow.right.square', onSelect: () => p.onGoTo(a) },
+        ...(a.kind === 'quote' ? ([{ label: 'Copy', icon: 'doc.on.doc', onSelect: () => p.onCopy(a) }] as const) : []),
         ...(a.kind === 'highlight'
           ? ([
               { label: a.note ? 'Edit Note' : 'Add Note', icon: 'note.text', disabled: !p.canEdit, onSelect: () => p.onEditNote(a) },
@@ -92,12 +103,14 @@ export function Drawer(p: Props) {
       ],
     })
 
-  const count = p.tab === 'bookmarks' ? bookmarks.length : p.tab === 'highlights' ? highlights.length : 0
+  const count =
+    p.tab === 'bookmarks' ? bookmarks.length : p.tab === 'highlights' ? highlights.length : p.tab === 'quotes' ? quotes.length : 0
+  const noun = p.tab === 'bookmarks' ? 'bookmark' : p.tab === 'quotes' ? 'quote' : 'highlight'
 
   return (
     <>
       <div className={styles.scrim} onClick={p.onClose} aria-hidden="true" />
-      <aside className={styles.drawer} aria-label="Contents, bookmarks and highlights" onKeyDown={onKeyDown}>
+      <aside className={styles.drawer} aria-label="Contents, bookmarks, highlights and quotes" onKeyDown={onKeyDown}>
         <div className={styles.tabs}>
           <Segmented<DrawerTab>
             size="small"
@@ -108,6 +121,7 @@ export function Drawer(p: Props) {
               { value: 'contents', label: 'Contents' },
               { value: 'bookmarks', label: bookmarks.length ? `Bookmarks ${bookmarks.length}` : 'Bookmarks' },
               { value: 'highlights', label: highlights.length ? `Highlights ${highlights.length}` : 'Highlights' },
+              { value: 'quotes', label: quotes.length ? `Quotes ${quotes.length}` : 'Quotes' },
             ]}
           />
         </div>
@@ -171,21 +185,38 @@ export function Drawer(p: Props) {
             ) : (
               shownHighlights.map((a) => <AnnotationRow key={a.id} a={a} onGoTo={p.onGoTo} onMenu={rowMenu} />)
             ))}
+
+          {p.tab === 'quotes' &&
+            (quotes.length === 0 ? (
+              <p className={styles.empty}>
+                <span className={styles.emptyTitle}>No quotes yet</span>
+                Select text and choose Quote to send it to this book’s notes.
+              </p>
+            ) : (
+              quotes.map((a) => <AnnotationRow key={a.id} a={a} onGoTo={p.onGoTo} onMenu={rowMenu} />)
+            ))}
         </div>
 
-        {p.tab !== 'contents' && count > 0 && (
+        {p.tab !== 'contents' && (
           <div className={styles.drawerFoot}>
-            <span>
-              {count} {p.tab === 'bookmarks' ? (count === 1 ? 'bookmark' : 'bookmarks') : count === 1 ? 'highlight' : 'highlights'}
-            </span>
-            <button
-              type="button"
-              className={`${styles.linkButton} ${styles.danger}`}
-              disabled={!p.canEdit}
-              onClick={() => p.onClearAll(p.tab === 'bookmarks' ? 'bookmark' : 'highlight')}
-            >
-              Clear All
+            <button type="button" className={styles.linkButton} onClick={p.onOpenNotes}>
+              Open Notes
             </button>
+            {count > 0 && (
+              <>
+                <span>
+                  {count} {count === 1 ? noun : `${noun}s`}
+                </span>
+                <button
+                  type="button"
+                  className={`${styles.linkButton} ${styles.danger}`}
+                  disabled={!p.canEdit}
+                  onClick={() => p.onClearAll(p.tab === 'bookmarks' ? 'bookmark' : p.tab === 'quotes' ? 'quote' : 'highlight')}
+                >
+                  Clear All
+                </button>
+              </>
+            )}
           </div>
         )}
       </aside>
@@ -206,7 +237,7 @@ function AnnotationRow({
   const where = a.page != null ? `p. ${a.page}` : percentLabel(a.progress)
   const time = parseServerTime(a.created_at)
   const dateText = time ? new Date(time).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null
-  const meta = [a.kind === 'highlight' ? a.chapter : null, where, dateText].filter(Boolean).join(' · ')
+  const meta = [a.kind !== 'bookmark' ? a.chapter : null, where, dateText].filter(Boolean).join(' · ')
   const base = a.color ? PAPER_STOCK.highlightBase[a.color] : undefined
   const vars = base ? ({ '--mark': base, '--fill': hexToRgba(base, 0.35) } as CSSProperties) : undefined
 
@@ -215,6 +246,8 @@ function AnnotationRow({
       <button type="button" data-nav className={styles.annMain} onClick={() => onGoTo(a)}>
         {a.kind === 'bookmark' ? (
           <Icon name="bookmark.fill" size={15} className={styles.annBookmarkIcon} />
+        ) : a.kind === 'quote' ? (
+          <Icon name="quote.bubble" size={15} className={styles.annBookmarkIcon} />
         ) : (
           <span className={styles.annMark} aria-hidden="true" />
         )}

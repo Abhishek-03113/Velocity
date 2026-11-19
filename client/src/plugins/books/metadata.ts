@@ -320,7 +320,7 @@ export function createLibrary(ctx: PluginContext): BooksLibrary {
         if (store().books[bookId]) ctx.flash(NOTE_NOT_READY)
         return
       }
-      ctx.notes.open(noteId, { split: true })
+      ctx.notes.open(noteId, { split: true, raw: true })
     })
   }
 

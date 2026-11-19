@@ -84,7 +84,7 @@ export function withAppearanceDefaults(a: ReaderAppearance): Required<ReaderAppe
 /** Highlight colours and styles (Moon+ Reader style). */
 export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange'
 export const HIGHLIGHT_COLORS: readonly HighlightColor[] = ['yellow', 'green', 'blue', 'pink', 'orange']
-export type HighlightStyle = 'highlight' | 'underline' | 'strike' | 'squiggle'
+export type HighlightStyle = 'highlight' | 'underline' | 'strike' | 'squiggle' | 'sketch' | 'double' | 'dotted' | 'dashed' | 'curly'
 
 /**
  * A highlight the engine draws (bookmarks are not drawn by engines; the shell shows a ribbon).

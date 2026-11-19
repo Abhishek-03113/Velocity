@@ -19,6 +19,7 @@ import { useLayoutStore } from '../../store/layoutStore'
 import { useUiStore } from '../../store/uiStore'
 import type { PluginContext } from '../types'
 import { loadAppearance, saveAppearance } from './appearance'
+import { flushBookSettings, readBookSettings, saveBookSettings } from './bookSettings'
 import { currentTocIndex, progressLabel, statusParts } from './labels'
 import {
   createPositionSync,
@@ -125,7 +126,9 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
   const bookRef = useRef(book)
   bookRef.current = book
 
-  const [appearance, setAppearance] = useState<ReaderAppearance>(() => loadAppearance(ctx.storage))
+  // This book's own settings (saved on the book row) win over the browser-wide defaults.
+  const [appearance, setAppearance] = useState<ReaderAppearance>(() => readBookSettings(book).appearance ?? loadAppearance(ctx.storage))
+  useEffect(() => () => flushBookSettings(book.id), [book.id])
   const colors = useReaderColors(appearance.theme)
   const paged = appearance.layout === 'paginated'
 
@@ -152,7 +155,7 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
     toolbarRef.current = next
     setToolbarState(next)
   }, [])
-  const defaultsRef = useRef<HighlightDefaults>(loadHighlightDefaults(ctx.storage))
+  const defaultsRef = useRef<HighlightDefaults>(readBookSettings(book).highlight ?? loadHighlightDefaults(ctx.storage))
   const [defaults, setDefaultsState] = useState(defaultsRef.current)
   const openedRef = useRef(false)
   const lastPositionRef = useRef<string | null>(null)
@@ -163,6 +166,7 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
   const annotations = useAnnotations(book.id)
   const highlights = useMemo(() => annotations.filter((a) => a.kind === 'highlight'), [annotations])
   const bookmarks = useMemo(() => annotations.filter((a) => a.kind === 'bookmark'), [annotations])
+  const quotes = useMemo(() => annotations.filter((a) => a.kind === 'quote'), [annotations])
   const highlightsRef = useRef(highlights)
   highlightsRef.current = highlights
   const canEdit = typeof host.addAnnotation === 'function'
@@ -319,6 +323,7 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
     setAppearance((prev) => {
       const next = { ...prev, ...patch }
       saveAppearance(ctx.storage, next)
+      saveBookSettings(book.id, { appearance: next })
       return next
     })
     setToolbar(null)
@@ -395,6 +400,7 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
     defaultsRef.current = next
     setDefaultsState(next)
     saveHighlightDefaults(ctx.storage, next)
+    saveBookSettings(book.id, { highlight: next })
     const t = toolbarRef.current
     const existing = annotationFor(t)
     if (existing) host.updateAnnotation?.(book.id, existing.id, patch)
@@ -434,6 +440,22 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
       format: book.format,
       progress: ann?.progress ?? t?.selection?.progress ?? loc?.progress ?? bookRef.current.progress,
     })
+    const progress = ann?.progress ?? t?.selection?.progress ?? loc?.progress ?? bookRef.current.progress
+    const locator = t?.selection?.locator ?? ann?.locator ?? t?.locator ?? null
+    // The quote is stored with the book (drawer, other devices); the note gets the Markdown.
+    if (host.addAnnotation && locator) {
+      host.addAnnotation(book.id, {
+        kind: 'quote',
+        locator,
+        text,
+        note: null,
+        color: null,
+        style: null,
+        chapter: where || loc?.chapter || null,
+        progress,
+        page: t?.selection?.page ?? ann?.page ?? null,
+      })
+    }
     setToolbar(null)
     afterAction()
     ctx.notes
@@ -491,10 +513,10 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
     handleRef.current?.focus()
   }
 
-  const clearAll = (kind: 'bookmark' | 'highlight') => {
-    const list = kind === 'bookmark' ? bookmarks : highlights
+  const clearAll = (kind: 'bookmark' | 'highlight' | 'quote') => {
+    const list = kind === 'bookmark' ? bookmarks : kind === 'quote' ? quotes : highlights
     if (list.length === 0) return
-    const noun = kind === 'bookmark' ? 'bookmark' : 'highlight'
+    const noun = kind
     useUiStore.getState().confirm({
       title: `Clear all ${noun}s?`,
       message: `${list.length} ${list.length === 1 ? noun : `${noun}s`} in “${book.title}” will be deleted. This can’t be undone.`,
@@ -512,7 +534,7 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
       x: r ? r.right - 190 : 0,
       y: r ? r.bottom + 4 : 0,
       items: [
-        { label: 'Open Notes', icon: 'square.and.pencil', onSelect: () => ctx.notes.open(noteId, { split: true }) },
+        { label: 'Open Notes', icon: 'square.and.pencil', onSelect: () => ctx.notes.open(noteId, { split: true, raw: true }) },
         ...(host.openHighlightsNote
           ? [
               {
@@ -710,6 +732,11 @@ function BookReader({ book, noteId, ctx, host }: Props & { book: Book }) {
           current={currentTocIndex(toc, book.format, location)}
           bookmarks={bookmarks}
           highlights={highlights}
+          quotes={quotes}
+          onOpenNotes={() => {
+            closeDrawer()
+            ctx.notes.open(noteId, { split: true, raw: true })
+          }}
           canEdit={canEdit}
           onClose={closeDrawer}
           onPickToc={(item) => goTo(item.target)}
