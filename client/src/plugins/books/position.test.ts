@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPositionSync, pickStartPosition, posKey, type StoredPosition } from './position'
+import {
+  clearSessionPositions,
+  createPositionSync,
+  createRestoreGuard,
+  getSessionPosition,
+  pickStart,
+  pickStartPosition,
+  posKey,
+  type StoredPosition,
+} from './position'
 import type { ProgressPatch } from './types'
 
 function setup(opts: { finished?: boolean; startPosition?: string | null; fail?: boolean } = {}) {
@@ -151,5 +160,84 @@ describe('pickStartPosition', () => {
 
   it('uses the local entry when the server has none', () => {
     expect(pickStartPosition({ position: null, updated_at: book.updated_at }, { position: 'local', progress: 0.1, at: 1 })).toBe('local')
+  })
+})
+
+describe('session cache and newest wins', () => {
+  const book = { position: 'server-cfi', progress: 0.1, updated_at: '2026-11-18 10:00:00' }
+  const serverMs = Date.parse('2026-11-18T10:00:00Z')
+
+  beforeEach(() => clearSessionPositions())
+
+  it('records every position of the session, including the synced marker', async () => {
+    vi.useFakeTimers()
+    const { sync } = setup()
+    sync.update({ position: 'cfi-9', progress: 0.9 })
+    expect(getSessionPosition(7)).toMatchObject({ position: 'cfi-9', progress: 0.9, unsynced: true })
+    await sync.flush()
+    expect(getSessionPosition(7)).toMatchObject({ position: 'cfi-9' })
+    expect(getSessionPosition(7)!.unsynced).toBeUndefined()
+    sync.dispose()
+    vi.useRealTimers()
+  })
+
+  it('opens at the session position without the server or storage', () => {
+    const session: StoredPosition = { position: 'session', progress: 0.5, at: serverMs + 10 }
+    expect(pickStartPosition(book, undefined, session)).toBe('session')
+  })
+
+  it('the newer of session and local wins; an unconfirmed one beats the server', () => {
+    const local: StoredPosition = { position: 'local', progress: 0.4, at: serverMs + 5 }
+    expect(pickStartPosition(book, local, { position: 'session', progress: 0.5, at: serverMs + 9 })).toBe('session')
+    expect(pickStartPosition(book, { ...local, at: serverMs + 20 }, { position: 'session', progress: 0.5, at: serverMs + 9 })).toBe('local')
+    expect(pickStartPosition(book, undefined, { position: 'session', progress: 0.5, at: serverMs - 99, unsynced: true })).toBe('session')
+  })
+
+  it('a newer server row (another device) beats a stale synced session entry', () => {
+    expect(pickStartPosition(book, undefined, { position: 'session', progress: 0.5, at: serverMs - 1000 })).toBe('server-cfi')
+  })
+
+  it('pickStart returns the progress of the winning source', () => {
+    expect(pickStart(book, undefined, { position: 's', progress: 0.77, at: serverMs + 1 })).toEqual({ position: 's', progress: 0.77 })
+    expect(pickStart(book, undefined)).toEqual({ position: 'server-cfi', progress: 0.1 })
+    expect(pickStart({ position: null, progress: 0, updated_at: book.updated_at }, undefined)).toBeNull()
+  })
+})
+
+describe('createRestoreGuard (no drift on reopen)', () => {
+  it('saves nothing before the engine is ready, nor a location earlier than the target', () => {
+    const g = createRestoreGuard({ position: 'cfi-target', progress: 0.5 })
+    expect(g.accept({ position: 'cfi-early', progress: 0.01 })).toBe(false)
+    g.ready()
+    expect(g.accept({ position: 'cfi-early', progress: 0.01 })).toBe(false)
+    expect(g.accept({ position: 'cfi-target', progress: 0.5 })).toBe(true)
+    // latched: the reader may now go back
+    expect(g.accept({ position: 'cfi-early', progress: 0.01 })).toBe(true)
+  })
+
+  it('accepts a location at or after the target progress', () => {
+    const g = createRestoreGuard({ position: 'cfi-target', progress: 0.5 })
+    g.ready()
+    expect(g.accept({ position: 'cfi-other', progress: 0.5 })).toBe(true)
+  })
+
+  it('has nothing to guard without a target', () => {
+    expect(createRestoreGuard(null).accept({ position: 'x', progress: 0 })).toBe(true)
+  })
+
+  it('releases on user navigation and after the timeout', () => {
+    const a = createRestoreGuard({ position: 't', progress: 0.9 })
+    a.ready()
+    expect(a.accept({ position: 'p', progress: 0.1 })).toBe(false)
+    a.release()
+    expect(a.accept({ position: 'p', progress: 0.1 })).toBe(true)
+
+    let t = 1000
+    const b = createRestoreGuard({ position: 't', progress: 0.9 }, 4000, () => t)
+    b.ready()
+    t += 3000
+    expect(b.accept({ position: 'p', progress: 0.1 })).toBe(false)
+    t += 1500
+    expect(b.accept({ position: 'p', progress: 0.1 })).toBe(true)
   })
 })

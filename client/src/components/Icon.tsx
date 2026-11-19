@@ -231,6 +231,34 @@ const PATHS = {
       <path d="M9.6 8.4c-1 .5-1.5 1.3-1.5 2.4h1.7v1.7H8.1M14.6 8.4c-1 .5-1.5 1.3-1.5 2.4h1.7v1.7h-1.7" />
     </>
   ),
+  /* Books reader v2: bookmarks, highlights, annotations. */
+  bookmark: <path d="M7 4.5h10a1 1 0 0 1 1 1V20l-6-4.2L6 20V5.5a1 1 0 0 1 1-1Z" />,
+  'bookmark.fill': <path d="M7 4.5h10a1 1 0 0 1 1 1V20l-6-4.2L6 20V5.5a1 1 0 0 1 1-1Z" fill="currentColor" />,
+  highlighter: (
+    <>
+      <path d="m14.5 5.5 4 4-7 7-4.2.8.8-4.2 6.4-7.6Z" />
+      <path d="m7.1 13.1 3.8 3.8M4 20h8" />
+    </>
+  ),
+  underline: <path d="M7 4.5v7a5 5 0 0 0 10 0v-7M5 20h14" />,
+  strikethrough: (
+    <path d="M5 12h14M16.5 7.5c-.6-1.8-2.4-3-4.7-3-2.6 0-4.3 1.3-4.3 3.2 0 1.3.8 2.2 2.3 2.8M7.5 16.5c.6 1.9 2.5 3 4.8 3 2.7 0 4.2-1.3 4.2-3 0-.6-.2-1.1-.6-1.6" />
+  ),
+  squiggle: (
+    <>
+      <path d="M7 4.5v7a5 5 0 0 0 10 0v-7" />
+      <path d="M3.5 20c1-1.2 1.9-1.2 2.9 0s1.9 1.2 2.9 0 1.9-1.2 2.9 0 1.9 1.2 2.9 0 1.9-1.2 2.9 0 1.9 1.2 2.9 0" />
+    </>
+  ),
+  'note.text': (
+    <>
+      <path d="M6.5 3.5h11a2 2 0 0 1 2 2v9l-5 5h-8a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2Z" />
+      <path d="M8.5 8.5h7M8.5 12h4M14.5 19.5v-3a2 2 0 0 1 2-2h3" />
+    </>
+  ),
+  textformat: <path d="M3.5 18.5 9 5.5l5.5 13M5.4 14h7.2M16 10.5h4.5M18.25 10.5v8" />,
+  'line.3.horizontal': <path d="M4.5 7h15M4.5 12h15M4.5 17h15" />,
+  'arrow.uturn.backward': <path d="M9 6.5 4.5 11 9 15.5M5 11h9.5a5 5 0 0 1 0 10H11" />,
 } as const
 
 export type IconName = keyof typeof PATHS

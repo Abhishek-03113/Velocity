@@ -21,6 +21,15 @@ export interface StoredPosition {
 export const FINISHED_AT = 0.98
 export const posKey = (bookId: number) => `pos.${bookId}`
 
+/**
+ * In-memory positions of this session, by book. Checked first when a reader opens, so closing and reopening the
+ * tile lands on the exact same spot without waiting for storage or the server (spec §6).
+ */
+const sessionPositions = new Map<number, StoredPosition>()
+export const getSessionPosition = (bookId: number) => sessionPositions.get(bookId)
+export const rememberSessionPosition = (bookId: number, value: StoredPosition) => void sessionPositions.set(bookId, value)
+export const clearSessionPositions = () => sessionPositions.clear()
+
 export interface LocationUpdate {
   position: string
   progress: number
@@ -60,6 +69,7 @@ export function createPositionSync(options: Options): PositionSync {
   }
 
   const writeLocal = (value: StoredPosition) => {
+    rememberSessionPosition(bookId, value)
     try {
       storage.set(posKey(bookId), value)
     } catch (err) {
@@ -144,11 +154,72 @@ export function createPositionSync(options: Options): PositionSync {
   }
 }
 
-/** The position to open at: the newest of the server row and this browser's local entry. */
-export function pickStartPosition(book: Pick<Book, 'position' | 'updated_at'>, local: StoredPosition | undefined): string | null {
-  const serverPosition = book.position || null
-  if (!local || typeof local.position !== 'string' || !local.position) return serverPosition
-  if (!serverPosition) return local.position
-  if (local.unsynced) return local.position
-  return local.at > parseServerTime(book.updated_at) ? local.position : serverPosition
+export interface StartPosition {
+  position: string
+  /** 0..1 of the source it came from (0 when unknown), for the restore guard. */
+  progress: number
+}
+
+/**
+ * Where to open: session cache and this browser's entry first (newest of the two), then the server row. A local
+ * entry the server never confirmed wins; otherwise the newest timestamp wins.
+ */
+export function pickStart(
+  book: Pick<Book, 'position' | 'progress' | 'updated_at'>,
+  local: StoredPosition | undefined,
+  session?: StoredPosition,
+): StartPosition | null {
+  const valid = (p: StoredPosition | undefined): p is StoredPosition => !!p && typeof p.position === 'string' && p.position !== ''
+  const best = [session, local].filter(valid).sort((a, b) => b.at - a.at)[0]
+  const server = book.position ? { position: book.position, progress: book.progress ?? 0 } : null
+  if (!best) return server
+  const mine = { position: best.position, progress: best.progress ?? 0 }
+  if (!server) return mine
+  if (best.unsynced) return mine
+  return best.at > parseServerTime(book.updated_at) ? mine : server
+}
+
+/** The position to open at (see `pickStart`). */
+export function pickStartPosition(
+  book: Pick<Book, 'position' | 'updated_at'> & { progress?: number },
+  local: StoredPosition | undefined,
+  session?: StoredPosition,
+): string | null {
+  return pickStart({ progress: 0, ...book }, local, session)?.position ?? null
+}
+
+/**
+ * Keeps a freshly opened reader from saving a position before it has finished restoring: until the engine is
+ * ready and has reported a location at or after the target, nothing is written (a stray early location would
+ * otherwise overwrite the saved place, the "drift on reopen" bug). It releases on any user navigation, or
+ * `timeoutMs` after ready, so an unreachable target can never block saving for good.
+ */
+export interface RestoreGuard {
+  ready(): void
+  /** The user navigated: stop guarding. */
+  release(): void
+  /** True when this location may be saved. */
+  accept(loc: { position: string; progress: number }): boolean
+}
+
+export function createRestoreGuard(target: StartPosition | null, timeoutMs = 4000, now: () => number = Date.now): RestoreGuard {
+  let open = target === null
+  let readyAt: number | null = null
+  return {
+    ready() {
+      if (readyAt === null) readyAt = now()
+    },
+    release() {
+      open = true
+    },
+    accept(loc) {
+      if (open) return true
+      if (readyAt === null) return false
+      if (loc.position === target!.position || loc.progress >= target!.progress - 0.0005 || now() - readyAt > timeoutMs) {
+        open = true
+        return true
+      }
+      return false
+    },
+  }
 }

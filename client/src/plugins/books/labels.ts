@@ -49,3 +49,29 @@ export function currentTocIndex(toc: TocItem[], format: BookFormat, loc: ReaderL
   if (!loc.chapter) return -1
   return toc.findIndex((item) => item.label === loc.chapter)
 }
+
+export interface StatusParts {
+  /** Chapter title (left). */
+  chapter: string
+  /** `5 / 18` (EPUB paged, page in chapter) or `p. 12 of 300` (PDF); empty when unknown (centre). */
+  page: string
+  /** `42%` (right). */
+  percent: string
+}
+
+/** The three parts of the status line (spec §3.3). */
+export function statusParts(
+  format: BookFormat,
+  layout: 'paginated' | 'scrolled',
+  loc: ReaderLocation | null,
+  fallbackChapter: string,
+): StatusParts {
+  if (!loc) return { chapter: fallbackChapter, page: '', percent: '' }
+  let page = ''
+  if (format === 'pdf') {
+    if (loc.page != null) page = loc.pageCount ? `p. ${loc.page} of ${loc.pageCount}` : `p. ${loc.page}`
+  } else if (layout === 'paginated' && loc.chapterPage != null && loc.chapterPages) {
+    page = `${loc.chapterPage} / ${loc.chapterPages}`
+  }
+  return { chapter: loc.chapter || fallbackChapter, page, percent: percentLabel(loc.progress) }
+}

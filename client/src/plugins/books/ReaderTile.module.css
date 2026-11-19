@@ -1,68 +1,57 @@
-/* Books reader tile chrome. The book itself is drawn by the engines; everything here uses tokens. */
+/* Books reader tile shell. The book is drawn by the engines; chrome lives in reader-ui/*.module.css. Tokens only. */
 .root {
   position: relative;
   display: flex;
   height: 100%;
   min-height: 0;
   flex-direction: column;
+  overflow: hidden;
   container-type: inline-size;
   background: var(--bg-content);
   outline: none;
 }
 
-.bar {
-  display: flex;
-  min-height: 38px;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px 4px 10px;
-  border-bottom: 1px solid var(--separator);
-}
-
-.label {
-  overflow: hidden;
-  min-width: 0;
-  margin-left: 6px;
-  color: var(--label-secondary);
-  font-size: var(--text-subheadline);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.spacer {
-  flex: 1;
-}
-
-.progressLabel {
-  flex-shrink: 0;
-  margin: 0 6px;
-  color: var(--label-secondary);
-  font-size: var(--text-footnote);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-@container (max-width: 420px) {
-  .progressLabel {
-    display: none;
-  }
-}
-
-/* ---- Reading stage ------------------------------------------------------ */
+/* The reading surface fills the tile; in paged layout the chrome floats over it. */
 .stage {
-  position: relative;
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-  background: var(--reader-bg, var(--bg-content));
+  position: absolute;
+  inset: 0;
+  background-color: var(--reader-bg, var(--bg-content));
+  background-image: var(--reader-bg-image, none);
+  transition:
+    top var(--dur-base) var(--ease-out),
+    bottom var(--dur-base) var(--ease-out);
+}
+
+/* Scroll layout keeps the chrome visible, so the surface sits between the bars. */
+.stageInset {
+  top: 40px;
+  bottom: 34px;
 }
 
 .surface {
   position: relative;
-  flex: 1;
-  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Bookmark ribbon in the top-right corner of the page. */
+.ribbon {
+  position: absolute;
+  top: 0;
+  right: 22px;
+  z-index: 6;
+  width: 18px;
+  height: 30px;
+  color: var(--system-red);
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+  animation: ribbon-in var(--dur-base) var(--ease-spring);
+}
+
+@keyframes ribbon-in {
+  from {
+    transform: translateY(-100%);
+  }
 }
 
 .loading {
@@ -190,334 +179,13 @@
   box-shadow: var(--focus-ring);
 }
 
-/* ---- Progress track ----------------------------------------------------- */
-.track {
-  position: relative;
-  height: 3px;
-  flex-shrink: 0;
-  background: color-mix(in srgb, var(--reader-fg, var(--label)) 14%, transparent);
-  cursor: pointer;
-  touch-action: none;
-}
-
-/* A taller hit area than the 3px line. */
-.track::before {
-  content: '';
-  position: absolute;
-  inset: -9px 0 0;
-}
-
-.trackFill {
-  height: 100%;
-  background: var(--accent);
-  transition: width var(--dur-fast) var(--ease-out);
-}
-
-.track:hover {
-  height: 5px;
-  margin-top: -2px;
-}
-
-.track:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-/* ---- Contents drawer ---------------------------------------------------- */
-.scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  background: color-mix(in srgb, var(--label) 18%, transparent);
-  animation: reader-fade var(--dur-base) var(--ease-out);
-}
-
-.drawer {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 4;
-  display: flex;
-  width: min(280px, calc(100% - 40px));
-  flex-direction: column;
-  border-right: 1px solid var(--separator);
-  background: var(--bg-sheet);
-  backdrop-filter: saturate(180%) blur(30px);
-  -webkit-backdrop-filter: saturate(180%) blur(30px);
-  box-shadow: var(--shadow-md);
-  color: var(--label);
-  animation: reader-drawer-in var(--dur-base) var(--ease-out);
-}
-
-.drawerTitle {
-  flex-shrink: 0;
-  padding: 12px 14px 6px;
-  color: var(--label-secondary);
-  font-size: var(--text-footnote);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.toc {
-  flex: 1;
-  min-height: 0;
-  padding: 2px 6px 10px;
-  overflow-y: auto;
-  outline: none;
-}
-
-.tocItem {
-  display: block;
-  width: 100%;
-  padding: 5px 10px 5px 12px;
-  border-radius: var(--radius-sm);
-  color: var(--label);
-  font-size: var(--text-callout);
-  line-height: 1.35;
-  text-align: left;
-  cursor: pointer;
-}
-
-.tocItem:hover {
-  background: var(--fill-tertiary);
-}
-
-.tocItem:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.tocItemCurrent,
-.tocItemCurrent:hover {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.tocLabel {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.tocEmpty {
-  margin: 0;
-  padding: 18px 12px;
-  color: var(--label-tertiary);
-  font-size: var(--text-callout);
-}
-
-@keyframes reader-fade {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes reader-drawer-in {
-  from {
-    transform: translateX(-24px);
-    opacity: 0;
-  }
-}
-
-/* ---- Appearance popover ------------------------------------------------- */
-.popover {
-  position: absolute;
-  top: 40px;
-  right: 8px;
-  z-index: 6;
-  display: flex;
-  width: min(312px, calc(100% - 16px));
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  border-radius: var(--radius-lg);
-  background: var(--bg-sheet);
-  backdrop-filter: saturate(180%) blur(30px);
-  -webkit-backdrop-filter: saturate(180%) blur(30px);
-  box-shadow: var(--shadow-lg);
-  color: var(--label);
-  font-size: var(--text-callout);
-  animation: reader-pop var(--dur-fast) var(--ease-out);
-  transform-origin: top right;
-}
-
-@keyframes reader-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-}
-
-.row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rowLabel {
-  color: var(--label-secondary);
-  font-size: var(--text-footnote);
-  font-weight: 600;
-}
-
-.chips {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 2px 5px;
-  border-radius: var(--radius-md);
-  color: var(--label-secondary);
-  font-size: var(--text-footnote);
-  cursor: pointer;
-}
-
-.chip:hover {
-  background: var(--fill-tertiary);
-}
-
-.chip:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.chipSelected,
-.chipSelected:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.swatch {
-  display: grid;
-  width: 100%;
-  max-width: 52px;
-  height: 30px;
-  place-items: center;
-  border-radius: var(--radius-sm);
-  box-shadow: inset 0 0 0 1px var(--separator);
-  font-family: var(--font-serif, Georgia, serif);
-  font-size: var(--text-callout);
-  font-weight: 600;
-}
-
-.chipSelected .swatch {
-  box-shadow:
-    inset 0 0 0 1px var(--separator),
-    0 0 0 2px var(--accent);
-}
-
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px;
-  border-radius: 7px;
-  background: var(--fill-tertiary);
-}
-
-.stepButton {
-  display: inline-flex;
-  width: 36px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 5px;
-  color: var(--label);
-  cursor: pointer;
-}
-
-.stepButton:hover:not(:disabled) {
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-sm);
-}
-
-.stepButton:disabled {
-  color: var(--label-quaternary);
-  cursor: default;
-}
-
-.stepButton:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.stepValue {
-  flex: 1;
-  color: var(--label);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
-/* ---- Selection bar ------------------------------------------------------ */
-.selectionBar {
-  position: absolute;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  padding: 3px;
-  border-radius: var(--radius-lg);
-  background: var(--bg-sheet);
-  backdrop-filter: saturate(180%) blur(30px);
-  -webkit-backdrop-filter: saturate(180%) blur(30px);
-  box-shadow: var(--shadow-md);
-  transform: translateX(-50%);
-  animation: reader-pop var(--dur-fast) var(--ease-out);
-  white-space: nowrap;
-}
-
-.selectionButton {
-  display: inline-flex;
-  height: 26px;
-  align-items: center;
-  gap: 5px;
-  padding: 0 9px;
-  border-radius: var(--radius-sm);
-  color: var(--label);
-  font-size: var(--text-subheadline);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.selectionButton:hover {
-  background: var(--fill-tertiary);
-}
-
-.selectionButton:active {
-  background: var(--fill-secondary);
-}
-
-.selectionButton:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.selectionDivider {
-  width: 1px;
-  height: 16px;
-  background: var(--separator);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .scrim,
-  .drawer,
-  .popover,
-  .selectionBar {
-    animation: none;
+  .stage {
+    transition: none;
   }
 
-  .trackFill {
-    transition: none;
+  .ribbon {
+    animation: none;
   }
 
   .spinner {
