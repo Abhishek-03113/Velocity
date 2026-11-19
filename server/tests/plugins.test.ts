@@ -55,6 +55,7 @@ test('GET /api/plugins lists blog-reader', async () => {
     { id: 'blog-reader', name: 'Blog Reader' },
     { id: 'herdr', name: 'Herdr' },
     { id: 'latex', name: 'LaTeX' },
+    { id: 'books', name: 'Books' },
   ])
 })
 

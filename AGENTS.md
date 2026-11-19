@@ -16,34 +16,34 @@ All commands run from the project root unless noted.
 
 ```bash
 # Install all dependencies (root + client + server)
-npm run install:all
+bun run install:all
 
 # Start both client and server in development (concurrently)
-npm run dev
+bun run dev
 
 # Start only the server
-npm run dev:server
+bun run dev:server
 
 # Start only the client
-npm run dev:client
+bun run dev:client
 
 # Build the client for production
-npm run build
+bun run build
 
 # Lint the client
-cd client && npm run lint
+cd client && bun run lint
 
 # Tests
-cd client && npm test          # Vitest unit tests
-cd server && npm test          # node:test API + export worker tests
-cd client && npm run test:e2e  # Playwright E2E — CI only, see below
+cd client && bun run test         # Vitest unit tests
+cd server && bun run test         # bun test (node:test API) — API + export worker tests
+cd client && bun run test:e2e  # Playwright E2E — CI only, see below
 ```
 
 **Testing in agent sessions.** The full suites are slow, so they run in CI (`.github/workflows/ci.yml`), not in local agent sessions:
 
-- **Never run Playwright E2E locally** (`npm run test:e2e`, `npx playwright test`, `npm run test:landing`). CI runs the whole E2E suite on every PR. Write or update the spec, and let CI run it. If the user explicitly asks for screenshots, run only the single spec that produces them.
-- **Never run the full unit/API suites.** Run only the test files your change touches, e.g. `cd client && npx vitest run src/lib/foo.test.ts` or `cd server && node --import tsx --test tests/foo.test.ts`.
-- Lint and typecheck are cheap: `cd client && npm run lint && npx tsc --noEmit`.
+- **Never run Playwright E2E locally** (`bun run test:e2e`, `bunx playwright test`, `bun run test:landing`). CI runs the whole E2E suite on every PR. Write or update the spec, and let CI run it. If the user explicitly asks for screenshots, run only the single spec that produces them.
+- **Never run the full unit/API suites.** Run only the test files your change touches, e.g. `cd client && bun --bun vitest run src/lib/foo.test.ts` or `cd server && bun test tests/foo.test.ts`.
+- Lint and typecheck are cheap: `cd client && bun run lint && bun run typecheck`.
 
 Server runs on `http://localhost:3000`, client on `http://localhost:5173`.
 
@@ -62,10 +62,10 @@ Velocity/
 │       ├── components/   # UI components
 │       ├── store/        # Zustand state slices
 │       └── lib/          # API client, utilities
-├── server/          # Hono + Node.js backend
+├── server/          # Hono + Bun backend
 │   ├── index.ts
 │   ├── routes/
-│   ├── db/              # SQLite client (better-sqlite3)
+│   ├── db/              # SQLite client (bun:sqlite)
 │   └── middleware/
 └── data/            # SQLite database file lives here
 ```
@@ -88,8 +88,8 @@ The entire UX interaction loop is client-side. Writes to the backend are **async
 
 ### Backend (server/)
 
-- **Hono** on Node.js — thin REST API
-- **better-sqlite3** — synchronous SQLite driver
+- **Hono** on Bun (`Bun.serve`) — thin REST API
+- **bun:sqlite** — Bun's built-in synchronous SQLite driver (no native addon)
 - The server is a **persistence layer only** — no business logic in the critical path
 - **Whiteboard routes** — `GET/PUT/DELETE /api/pastes/:id/whiteboard`, 10 MB cap (413). `GET /api/pastes` rows include `has_whiteboard`, `is_empty` and `content_length`
 - **Empty-note sweep** — `workers/emptyNoteCleanup.ts` runs at startup and hourly, never touches notes edited in the last 10 minutes, and is disabled with `EMPTY_NOTE_CLEANUP=off`. `DELETE /api/pastes/:id?only_if_empty=1` returns 409 if the note gained content
@@ -164,7 +164,7 @@ Track feature development status here. Update each item as work is completed.
 - [x] Monorepo scaffold (root `package.json` with `concurrently`)
 - [x] Vite + React client bootstrap
 - [x] Hono server with CORS and logger middleware
-- [x] SQLite client (better-sqlite3) wired up
+- [x] SQLite client (bun:sqlite) wired up
 - [x] `.env` / `.env.example` configuration
 - [x] Docker Compose setup (client + server + nginx proxy)
 - [x] Makefile (`up`, `down`, `restart`)

@@ -1,5 +1,5 @@
 // Generates sample.pdf by hand (no dependencies): 12 pages, Helvetica text, document info and a 3-entry outline.
-// Usage: `npm run fixtures:books` (from client/), or `tsx e2e/fixtures/books/make-pdf.ts`; output lands beside this script.
+// Usage: `bun run fixtures:books` (from client/), or `bun e2e/fixtures/books/make-pdf.ts`; output lands beside this script.
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'

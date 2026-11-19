@@ -31,14 +31,14 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
   webServer: [
     {
-      command: 'node e2e/start-server.mjs',
+      command: 'bun e2e/start-server.mjs',
       port: API_PORT,
       reuseExistingServer: false,
       env: { PORT: String(API_PORT), CLIENT_URL: `http://localhost:${WEB_PORT}` },
       timeout: 60_000,
     },
     {
-      command: `npx vite --port ${WEB_PORT} --strictPort`,
+      command: `bun --bun vite --port ${WEB_PORT} --strictPort`,
       port: WEB_PORT,
       reuseExistingServer: false,
       env: { VITE_API_URL: `http://localhost:${API_PORT}`, PORT: String(API_PORT) },
