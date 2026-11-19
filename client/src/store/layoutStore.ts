@@ -16,17 +16,19 @@ import {
   sanitize,
   setRatio,
   splitLeaf,
-  swapContents,
+  swapLeaves,
   tileKey,
   tileNoteId,
   updateLeaf,
   type Direction,
   type LayoutNode,
+  type LeafNode,
   type SplitDir,
   type TileContent,
   type TileMode,
 } from '../lib/tiling'
 import * as slide from '../lib/sliding'
+import { contentForNote, isPrimaryContent, primaryLeafFor } from '../lib/noteViews'
 
 const STORAGE_KEY = 'velocity.layout.v3'
 const LEGACY_KEY = 'velocity.layout.v2'
@@ -59,13 +61,19 @@ interface LayoutState {
   ) => string
   close: (id: string) => void
   setContent: (id: string, content: TileContent) => void
+  /**
+   * Pick a tile up and drop it on another: `center` swaps their places, an edge moves it beside the target on that
+   * side. The tile keeps its id, so its editor or reader is moved, never remounted.
+   */
+  moveTile: (sourceId: string, targetId: string, zone: 'left' | 'right' | 'top' | 'bottom' | 'center') => void
   setMode: (id: string, mode: TileMode) => void
   setRatio: (splitId: string, ratio: number) => void
   equalize: () => void
   rotate: (id?: string) => void
   toggleZoom: () => void
   setAspect: (aspect: number) => void
-  revealNote: (noteId: number) => void
+  /** Show a note in the focused tile (or focus the tile already showing it). `raw` forces the editor over a plugin's note view. */
+  revealNote: (noteId: number, opts?: { raw?: boolean }) => void
   toggleBoard: (noteId: number) => void
   dropNote: (noteId: number) => void
   remapNote: (from: number, to: number) => void
@@ -96,8 +104,9 @@ const dwindleStrategy: Strategy = {
   swap: (s, dir) => {
     const target = neighbor(computeGeometry(s.root).tiles, s.focusedId, dir)
     if (!target) return null
-    // Swap contents; focus follows the content the user is "carrying".
-    return { root: swapContents(s.root, s.focusedId, target), focusedId: target }
+    // Swap the tiles' places (ids travel with them, so editors and readers move instead of remounting); focus stays
+    // on the tile the user is carrying.
+    return { root: swapLeaves(s.root, s.focusedId, target), focusedId: s.focusedId }
   },
   split: (s, request, content, opts) => {
     const targetId = opts.targetId ?? s.focusedId
@@ -281,6 +290,34 @@ export const useLayoutStore = create<LayoutState>((set, get) => {
       commit({ ...patch, focusedId: pickFocus(nextRoot, nextFocus), zoomedId: null })
     },
 
+    moveTile: (sourceId, targetId, zone) => {
+      const { root, columns, mode } = get()
+      const source = findLeaf(root, sourceId)
+      if (!source || sourceId === targetId || !findLeaf(root, targetId)) return
+      if (zone === 'center') {
+        const nextColumns =
+          mode === 'sliding'
+            ? columns.map((c) => ({ ...c, tiles: c.tiles.map((t) => (t === sourceId ? targetId : t === targetId ? sourceId : t)) }))
+            : columns
+        commit({ root: swapLeaves(root, sourceId, targetId), columns: nextColumns, focusedId: sourceId, zoomedId: null })
+        return
+      }
+      const placement = zone === 'left' || zone === 'top' ? 'before' : 'after'
+      const dir: SplitDir = zone === 'left' || zone === 'right' ? 'row' : 'column'
+      const without = removeLeaf(root, sourceId)
+      if (!without) return
+      const nextRoot = splitLeaf(without, targetId, mode === 'sliding' ? 'row' : dir, source, placement)
+      let nextColumns = columns
+      if (mode === 'sliding') {
+        const rest = slide.removeTile(columns, sourceId)
+        nextColumns =
+          dir === 'column'
+            ? slide.stackTile(rest, targetId, sourceId, placement)
+            : slide.insertColumn(rest, targetId, sourceId, placement)
+      }
+      commit({ root: nextRoot, columns: nextColumns, focusedId: sourceId, zoomedId: null })
+    },
+
     setContent: (id, content) => {
       set((s) => ({ root: updateLeaf(s.root, id, () => content) }))
     },
@@ -323,9 +360,10 @@ export const useLayoutStore = create<LayoutState>((set, get) => {
       }
     },
 
-    revealNote: (noteId) => {
+    revealNote: (noteId, opts = {}) => {
+      const raw = opts.raw === true
       const { root, focusedId } = get()
-      const existing = noteLeafFor(root, noteId)
+      const existing = primaryLeafFor(root, noteId, raw)
       if (existing) {
         if (existing.id !== focusedId) {
           commit({ focusedId: existing.id, zoomedId: get().zoomedId ? existing.id : null })
@@ -334,20 +372,23 @@ export const useLayoutStore = create<LayoutState>((set, get) => {
       }
       const focused = findLeaf(root, focusedId)
       const mode: TileMode = focused?.content.kind === 'note' ? focused.content.mode : 'edit'
-      let target = focused && (focused.content.kind === 'note' || focused.content.kind === 'empty') ? focused : null
+      const content = contentForNote(noteId, mode, raw)
+      // A tile showing a note (editor or the note's own plugin view, e.g. a book reader) or nothing can be reused.
+      const reusable = (l: LeafNode) => l.content.kind === 'empty' || isPrimaryContent(l.content)
+      let target = focused && reusable(focused) ? focused : null
       if (!target) {
-        // Focused tile is a whiteboard or plugin view — reuse an empty tile, else any note tile.
+        // Focused tile is a whiteboard or a side view (preview, shelf) — reuse an empty tile, else any note tile.
         target =
           leaves(root).find((l) => l.content.kind === 'empty') ??
-          leaves(root).find((l) => l.content.kind === 'note') ??
+          leaves(root).find((l) => isPrimaryContent(l.content)) ??
           null
       }
       if (!target) {
-        get().split('auto', { kind: 'note', noteId, mode: 'edit' }, { placement: 'before' })
+        get().split('auto', content, { placement: 'before' })
         return
       }
       commit({
-        root: updateLeaf(root, target.id, () => ({ kind: 'note', noteId, mode })),
+        root: updateLeaf(root, target.id, () => content),
         focusedId: target.id,
       })
     },

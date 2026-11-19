@@ -46,6 +46,18 @@ const patchSchema = z
     progress: z.number().min(0, 'progress must be between 0 and 1').max(1, 'progress must be between 0 and 1'),
     status: z.enum(['unread', 'reading', 'finished']),
     page_count: z.number().int().min(0, 'page_count must be 0 or more').nullable(),
+    settings: z
+      .string()
+      .max(16000, 'settings are too long')
+      .refine((v) => {
+        try {
+          const parsed: unknown = JSON.parse(v)
+          return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        } catch {
+          return false
+        }
+      }, 'settings must be a JSON object')
+      .nullable(),
     opened: z.literal(true),
   })
   .partial()

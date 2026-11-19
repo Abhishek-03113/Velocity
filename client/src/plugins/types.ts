@@ -164,7 +164,8 @@ export interface PluginContext {
   panel: { open(spec: PanelSpec): void; close(): void; isOpen(): boolean }
   notes: {
     create(input: { title: string; content: string; folder?: string; split?: boolean; mode?: 'read' | 'edit' }): number
-    open(id: number, opts?: { split?: boolean; mode?: 'read' | 'edit' }): void
+    /** `raw`: open in the editor even when a plugin's `noteView` claims the note (e.g. a book's attached notes). */
+    open(id: number, opts?: { split?: boolean; mode?: 'read' | 'edit'; raw?: boolean }): void
     exists(id: number): boolean
     current(): number | null
     title(id: number): string
@@ -226,6 +227,11 @@ export interface PluginInstance {
   noteBadge?: (noteId: number) => NoteBadge | null
   /** Editor language for matching notes, in place of Markdown. The first matching plugin wins. */
   editorMode?: EditorMode
+  /**
+   * Notes this plugin opens in one of its `tiles` views instead of the editor, everywhere a note opens (notes list,
+   * tabs, drag to a tile, links). `ctx.notes.open(id, { raw: true })` still opens the editor. Keep `match` cheap.
+   */
+  noteView?: { view: string; match: (noteId: number) => boolean }
   /** Views this plugin can show in a workspace tile, keyed by view id (see `ctx.tiles`). */
   tiles?: Record<string, TileView>
   /** Note-less workspace views, keyed by view id (see `ctx.views`). */

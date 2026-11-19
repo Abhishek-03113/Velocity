@@ -6,7 +6,7 @@ export interface HighlightDefaults {
 }
 
 export const HIGHLIGHT_DEFAULTS_KEY = 'highlightDefaults'
-export const HIGHLIGHT_STYLES: readonly HighlightStyle[] = ['highlight', 'underline', 'strike', 'squiggle']
+export const HIGHLIGHT_STYLES: readonly HighlightStyle[] = ['highlight', 'underline', 'strike', 'squiggle', 'sketch', 'curly', 'double', 'dotted', 'dashed']
 export const FALLBACK_DEFAULTS: HighlightDefaults = { style: 'highlight', color: 'yellow' }
 
 interface Storage {

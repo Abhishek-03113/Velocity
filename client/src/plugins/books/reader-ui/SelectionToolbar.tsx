@@ -11,6 +11,11 @@ const STYLE_BUTTONS: { value: HighlightStyle; label: string; icon: IconName }[] 
   { value: 'underline', label: 'Underline', icon: 'underline' },
   { value: 'strike', label: 'Strikethrough', icon: 'strikethrough' },
   { value: 'squiggle', label: 'Squiggly underline', icon: 'squiggle' },
+  { value: 'sketch', label: 'Hand-drawn underline', icon: 'underline.sketch' },
+  { value: 'curly', label: 'Curly underline', icon: 'curly' },
+  { value: 'double', label: 'Double underline', icon: 'underline.double' },
+  { value: 'dotted', label: 'Dotted underline', icon: 'underline.dotted' },
+  { value: 'dashed', label: 'Dashed underline', icon: 'underline.dashed' },
 ]
 
 const COLOR_LABEL: Record<HighlightColor, string> = { yellow: 'Yellow', green: 'Green', blue: 'Blue', pink: 'Pink', orange: 'Orange' }

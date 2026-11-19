@@ -5,7 +5,7 @@ import { getBookRow } from './store.ts'
 
 type ApiResponse<T> = { success: true; data: T } | { success: false; error: string }
 
-export type AnnotationKind = 'highlight' | 'bookmark'
+export type AnnotationKind = 'highlight' | 'bookmark' | 'quote'
 
 export interface AnnotationRow {
   id: number
@@ -15,7 +15,7 @@ export interface AnnotationRow {
   text: string | null
   note: string | null
   color: 'yellow' | 'green' | 'blue' | 'pink' | 'orange' | null
-  style: 'highlight' | 'underline' | 'strike' | 'squiggle' | null
+  style: (typeof STYLES)[number] | null
   chapter: string | null
   progress: number
   page: number | null
@@ -23,24 +23,41 @@ export interface AnnotationRow {
   updated_at: string
 }
 
-export function migrateAnnotations() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS plugin_book_annotations (
+const KINDS = ['highlight', 'bookmark', 'quote'] as const
+const COLORS = ['yellow', 'green', 'blue', 'pink', 'orange'] as const
+/** squiggle = wavy underline; sketch = hand-drawn double stroke; curly = loopy cursive underline. */
+const STYLES = ['highlight', 'underline', 'strike', 'squiggle', 'sketch', 'double', 'dotted', 'dashed', 'curly'] as const
+
+const TABLE_SQL = (name: string) => `
+    CREATE TABLE IF NOT EXISTS ${name} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       book_id INTEGER NOT NULL REFERENCES plugin_books(id) ON DELETE CASCADE,
-      kind TEXT NOT NULL CHECK (kind IN ('highlight','bookmark')),
+      kind TEXT NOT NULL CHECK (kind IN (${KINDS.map((k) => `'${k}'`).join(',')})),
       locator TEXT NOT NULL, text TEXT, note TEXT,
-      color TEXT CHECK (color IN ('yellow','green','blue','pink','orange')),
-      style TEXT CHECK (style IN ('highlight','underline','strike','squiggle')),
+      color TEXT CHECK (color IN (${COLORS.map((k) => `'${k}'`).join(',')})),
+      style TEXT CHECK (style IN (${STYLES.map((k) => `'${k}'`).join(',')})),
       chapter TEXT, progress REAL NOT NULL DEFAULT 0, page INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE INDEX IF NOT EXISTS plugin_book_annotations_book ON plugin_book_annotations(book_id, progress);
-  `)
+    )`
+
+export function migrateAnnotations() {
+  const existing = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'plugin_book_annotations'")
+    .get() as { sql: string } | undefined
+  if (existing && !(existing.sql.includes("'quote'") && existing.sql.includes("'sketch'"))) {
+    // SQLite cannot change a CHECK constraint: rebuild the table with the wider kinds and styles, keeping every row.
+    db.transaction(() => {
+      db.exec(TABLE_SQL('plugin_book_annotations_next'))
+      db.exec(`INSERT INTO plugin_book_annotations_next SELECT id, book_id, kind, locator, text, note, color, style,
+               chapter, progress, page, created_at, updated_at FROM plugin_book_annotations`)
+      db.exec('DROP TABLE plugin_book_annotations')
+      db.exec('ALTER TABLE plugin_book_annotations_next RENAME TO plugin_book_annotations')
+    })()
+  }
+  db.exec(`${TABLE_SQL('plugin_book_annotations')};
+    CREATE INDEX IF NOT EXISTS plugin_book_annotations_book ON plugin_book_annotations(book_id, progress);`)
 }
 
-const COLORS = ['yellow', 'green', 'blue', 'pink', 'orange'] as const
-const STYLES = ['highlight', 'underline', 'strike', 'squiggle'] as const
 
 const common = {
   locator: z.string().min(1, 'locator is required').max(4000, 'locator is too long'),
@@ -70,6 +87,17 @@ const bookmarkSchema = z
   })
   .strict()
 
+/** A passage sent to the book's note ("Quote in Notes"), kept here so quotes live with the book. */
+const quoteSchema = z
+  .object({
+    kind: z.literal('quote'),
+    ...common,
+    text: z.string().min(1, 'text is required for quotes').max(10000, 'text is too long'),
+    color: z.null({ message: 'color must be null for quotes' }).optional(),
+    style: z.null({ message: 'style must be null for quotes' }).optional(),
+  })
+  .strict()
+
 const patchSchema = z
   .object({
     color: z.enum(COLORS, { message: 'invalid color' }),
@@ -80,7 +108,7 @@ const patchSchema = z
   .strict()
 
 const idSchema = z.coerce.number().int().positive()
-const kindSchema = z.enum(['highlight', 'bookmark'])
+const kindSchema = z.enum(KINDS)
 
 const fail = (c: Context, error: string, status: 400 | 404) =>
   c.json<ApiResponse<never>>({ success: false, error }, status)
@@ -117,8 +145,14 @@ annotationsRouter.post('/:id/annotations', async (c) => {
   }
   const kind = (body as { kind?: unknown } | null)?.kind
   const parsed =
-    kind === 'highlight' ? highlightSchema.safeParse(body) : kind === 'bookmark' ? bookmarkSchema.safeParse(body) : null
-  if (!parsed) return fail(c, 'kind must be highlight or bookmark', 400)
+    kind === 'highlight'
+      ? highlightSchema.safeParse(body)
+      : kind === 'bookmark'
+        ? bookmarkSchema.safeParse(body)
+        : kind === 'quote'
+          ? quoteSchema.safeParse(body)
+          : null
+  if (!parsed) return fail(c, 'kind must be highlight, bookmark or quote', 400)
   if (!parsed.success) return fail(c, parsed.error.issues[0]?.message ?? 'Invalid body', 400)
   const a = parsed.data
 
@@ -164,8 +198,8 @@ annotationsRouter.patch('/:id/annotations/:aid', async (c) => {
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return fail(c, parsed.error.issues[0]?.message ?? 'Invalid body', 400)
   const p = parsed.data
-  if (row.kind === 'bookmark' && (p.color !== undefined || p.style !== undefined)) {
-    return fail(c, 'Bookmarks have no color or style', 400)
+  if (row.kind !== 'highlight' && (p.color !== undefined || p.style !== undefined)) {
+    return fail(c, `${row.kind === 'quote' ? 'Quotes' : 'Bookmarks'} have no color or style`, 400)
   }
   db.prepare(
     `UPDATE plugin_book_annotations SET color = ?, style = ?, note = ?, updated_at = CURRENT_TIMESTAMP
@@ -187,7 +221,7 @@ annotationsRouter.delete('/:id/annotations', (c) => {
   const bid = bookId(c)
   if (bid === null) return fail(c, 'Book not found', 404)
   const kind = kindSchema.safeParse(c.req.query('kind'))
-  if (!kind.success) return fail(c, 'kind must be highlight or bookmark', 400)
+  if (!kind.success) return fail(c, 'kind must be highlight, bookmark or quote', 400)
   const info = db.prepare('DELETE FROM plugin_book_annotations WHERE book_id = ? AND kind = ?').run(bid, kind.data)
   return c.json<ApiResponse<{ deleted: number }>>({ success: true, data: { deleted: info.changes } })
 })

@@ -29,7 +29,7 @@ import {
   type TurnDir,
 } from './helpers'
 import { MarksLayer } from './marks'
-import { playTurn, takeGhost, type TurnEffect, type TurnEnv } from './turn'
+import { playTurn, takeGhost, warmGhost, type TurnEffect, type TurnEnv } from './turn'
 import styles from './EpubView.module.css'
 
 /** How long a mouse tap in a page-turn zone waits for a second click (shared with the PDF engine's value). */
@@ -71,6 +71,8 @@ interface EpubLocations {
 interface EpubSpineItem {
   href: string
   index: number
+  /** Loads (and caches on the item) the chapter document. */
+  load?(request: unknown): Promise<unknown>
 }
 
 interface EpubSpine {
@@ -81,6 +83,7 @@ interface EpubSpine {
 
 interface EpubBook {
   ready: Promise<unknown>
+  load?(path: string): Promise<unknown>
   loaded: { navigation: Promise<{ toc: NavLike[] }>; metadata: Promise<{ language?: string }> }
   locations: EpubLocations
   spine: EpubSpine
@@ -484,6 +487,25 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
   }, [beginRestore, displayAt, settleRestore, startOf, syncLayers])
 
   /* ---- Page turns ---- */
+  // Everything the turn effects need. `key` changes whenever the page's look does, so a warm ghost is rebuilt.
+  const turnEnv = useCallback((): TurnEnv | null => {
+    const root = rootRef.current
+    const stage = stageRef.current
+    const layer = layerRef.current
+    const mount = mountRef.current
+    if (!root || !stage || !layer || !mount) return null
+    const colors = propsRef.current.colors
+    return {
+      root,
+      stage,
+      layer,
+      mount,
+      background: colors.background,
+      backgroundImage: colors.backgroundImage ?? null,
+      key: `${JSON.stringify(appearanceRef.current)}|${colors.background}|${colors.text}`,
+    }
+  }, [])
+
   const turnOnce = useCallback(
     async (dir: TurnDir): Promise<void> => {
       const r = renditionRef.current
@@ -491,14 +513,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       const loc = lastLocRef.current
       if (loc && ((dir === 'next' && loc.atEnd) || (dir === 'prev' && loc.atStart))) return
       const effect: TurnEffect = prefersReducedMotion() ? 'none' : (appearanceRef.current.pageTurn as TurnEffect)
-      const root = rootRef.current
-      const stage = stageRef.current
-      const layer = layerRef.current
-      const mount = mountRef.current
-      const env: TurnEnv | null =
-        root && stage && layer && mount
-          ? { root, stage, layer, mount, background: propsRef.current.colors.background, backgroundImage: propsRef.current.colors.backgroundImage ?? null }
-          : null
+      const env = turnEnv()
       const ghost = effect !== 'none' && env ? takeGhost(env) : null
       const before = lastCfiRef.current
       try {
@@ -514,7 +529,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       }
       await playTurn(effect, dir, ghost, env)
     },
-    [],
+    [turnEnv],
   )
 
   const turn = useCallback(
@@ -773,7 +788,9 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
             coalesceWheelRef.current(e)
             return
           }
-          if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) e.preventDefault()
+          // Paged: the wheel turns pages on either axis (nothing in a page scrolls).
+          if (e.ctrlKey) return
+          e.preventDefault()
           const dir = wheelRef.current.push(e.deltaX, e.deltaY, performance.now())
           if (dir) turnRef.current(dir)
         },
@@ -785,6 +802,26 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       if (cancelled) return
       lastLocRef.current = loc
       emitLocation()
+      scheduleWarmup()
+    }
+    // After each move, while the reader is idle: parse the neighbouring chapters (a turn across a chapter boundary
+    // then renders from memory instead of waiting on a load) and prepare the page-turn ghost for this page.
+    let warmTimer: ReturnType<typeof setTimeout> | null = null
+    const scheduleWarmup = () => {
+      if (warmTimer) clearTimeout(warmTimer)
+      warmTimer = setTimeout(() => {
+        warmTimer = null
+        if (cancelled) return
+        const env = turnEnv()
+        if (env && appearanceRef.current.layout === 'paginated' && appearanceRef.current.pageTurn !== 'none') warmGhost(env)
+        const b = bookRef.current
+        const at = lastLocRef.current?.start?.index
+        if (!b?.load || typeof at !== 'number') return
+        for (const i of [at + 1, at - 1]) {
+          const item = i >= 0 && i < b.spine.length ? b.spine.get(i) : null
+          item?.load?.(b.load.bind(b))?.catch(() => undefined)
+        }
+      }, 120)
     }
     const onKey = (e: KeyboardEvent) => {
       const action = keyAction(e, appearanceRef.current.layout)
@@ -884,6 +921,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       window.removeEventListener('error', onWindowError)
       window.removeEventListener('unhandledrejection', onRejection)
       rendition.off('relocated', onRelocated as never)
+      if (warmTimer) clearTimeout(warmTimer)
       rendition.off('keydown', onKey as never)
       rendition.off('selected', onSelected as never)
       layers.clear()
@@ -1017,7 +1055,8 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
         coalesceWheelRef.current(e)
         return
       }
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) e.preventDefault()
+      if (e.ctrlKey) return
+      e.preventDefault()
       const dir = wheelRef.current.push(e.deltaX, e.deltaY, performance.now())
       if (dir) turnRef.current(dir)
     }

@@ -77,6 +77,8 @@ export interface BookPatch {
   progress?: number
   status?: BookStatus
   page_count?: number | null
+  /** Per-book reader settings JSON (bookSettings.ts). */
+  settings?: string | null
   opened?: true
 }
 

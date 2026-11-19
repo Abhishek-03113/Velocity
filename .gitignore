@@ -8,6 +8,7 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 data/assets/
+data/books/
 .gitnexus/ 
 .claude/ 
 docs/screenshots/ci/

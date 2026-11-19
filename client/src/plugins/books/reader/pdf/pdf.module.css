@@ -84,6 +84,33 @@
   background-position: left bottom;
 }
 
+.double {
+  position: absolute;
+  height: 4px;
+  border-top: 1.2px solid;
+  border-bottom: 1.2px solid;
+}
+
+.dashed {
+  position: absolute;
+  height: 0;
+  border-top-width: 2px;
+}
+
+.sketch {
+  position: absolute;
+  height: 7px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+.curly {
+  position: absolute;
+  height: 7px;
+  background-repeat: repeat-x;
+  background-position: left top;
+}
+
 .noteMark {
   position: absolute;
   width: 9px;

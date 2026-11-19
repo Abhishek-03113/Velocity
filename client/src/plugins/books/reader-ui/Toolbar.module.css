@@ -52,8 +52,9 @@
 
 .styles {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 2px;
+  /* One row: the four classic styles, then the underline family (wavy, hand-drawn, curly, double, dotted, dashed). */
+  grid-template-columns: repeat(9, minmax(26px, 1fr));
+  gap: 1px;
 }
 
 .styleButton {

@@ -21,7 +21,12 @@ const STYLE_WORDS: Record<NonNullable<BookAnnotation['style']>, string | null> =
   highlight: null,
   underline: 'underline',
   strike: 'strikethrough',
-  squiggle: 'squiggly',
+  squiggle: 'wavy',
+  sketch: 'hand-drawn',
+  double: 'double underline',
+  dotted: 'dotted underline',
+  dashed: 'dashed underline',
+  curly: 'curly underline',
 }
 
 export const highlightsTitle = (book: Pick<Book, 'title'>): string => `${book.title} — Highlights`
@@ -80,7 +85,7 @@ export function highlightsNoteContent(
   book: Pick<Book, 'id' | 'title' | 'author' | 'format'>,
   annotations: readonly BookAnnotation[],
 ): string {
-  const highlights = annotations.filter((a) => a.kind === 'highlight').sort(byPlace)
+  const highlights = annotations.filter((a) => a.kind === 'highlight' || a.kind === 'quote').sort(byPlace)
   const bookmarks = annotations.filter((a) => a.kind === 'bookmark').sort(byPlace)
   const updated = annotations.reduce((max, a) => Math.max(max, parseServerTime(a.updated_at)), 0)
 

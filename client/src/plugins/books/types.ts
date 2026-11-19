@@ -22,6 +22,8 @@ export interface Book {
   progress: number
   status: BookStatus
   page_count: number | null
+  /** Per-book reader settings as JSON (see bookSettings.ts), saved on the book row so they follow it across devices. */
+  settings?: string | null
   /** SQLite timestamps: 'YYYY-MM-DD HH:MM:SS' in UTC. Use parseServerTime. */
   last_opened_at: string | null
   created_at: string
@@ -34,8 +36,9 @@ export interface Book {
 export interface BookAnnotation {
   id: number
   book_id: number
-  kind: 'highlight' | 'bookmark'
-  /** Highlight: ReaderAnnotation.locator. Bookmark: a ReaderLocation.position. */
+  /** quote: a passage sent to the book's note with Quote in Notes (text, locator, no colour or style). */
+  kind: 'highlight' | 'bookmark' | 'quote'
+  /** Highlight / quote: ReaderAnnotation.locator. Bookmark: a ReaderLocation.position. */
   locator: string
   /** Highlighted passage (null for bookmarks). */
   text: string | null

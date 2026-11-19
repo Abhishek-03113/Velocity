@@ -1,6 +1,7 @@
 /**
- * Keeps each book's highlights note (see highlightsNote.ts) in step with its annotations: one note per
- * book in the Books folder, created on the first annotation, rewritten (debounced) after any change.
+ * Exports a book's highlights, quotes and bookmarks as a Markdown note (see highlightsNote.ts), on request only.
+ * The database is the source of truth (the reader's drawer reads it); the note is a snapshot the user asks for,
+ * refreshed each time it is exported, never rewritten behind their back.
  */
 import { useEditorStore } from '../../store/editorStore'
 import { useGroupStore } from '../../store/groupStore'
@@ -10,8 +11,6 @@ import { loadAnnotations, NO_ANNOTATIONS, useAnnotationsStore } from './annotati
 import { highlightsNoteContent, highlightsTitle } from './highlightsNote'
 import { findBookNote, highlightsBookIdOf, lookupBookNote } from './note'
 import { useBooksStore } from './store'
-
-const DEBOUNCE_MS = 1000
 
 export interface Highlights {
   /** The highlights note id if it is known to exist (no loading). */
@@ -117,37 +116,6 @@ export function createHighlights(ctx: PluginContext): Highlights {
     return job
   }
 
-  const schedule = (bookId: number) => {
-    if (disposed) return
-    cancel(bookId)
-    timers.set(
-      bookId,
-      setTimeout(() => {
-        timers.delete(bookId)
-        void regenerate(bookId)
-      }, DEBOUNCE_MS),
-    )
-  }
-
-  // Any annotation change, and a rename of the book, rewrites the note.
-  const stopAnnotations = useAnnotationsStore.subscribe((s, prev) => {
-    if (s.byBook === prev.byBook) return
-    for (const key of Object.keys(s.byBook)) {
-      const id = Number(key)
-      if (s.byBook[id] !== prev.byBook[id] && useBooksStore.getState().books[id]) schedule(id)
-    }
-  })
-  const stopBooks = useBooksStore.subscribe((s, prev) => {
-    if (s.books === prev.books) return
-    for (const key of Object.keys(s.books)) {
-      const id = Number(key)
-      const before = prev.books[id]
-      if (before && before.title !== s.books[id]!.title && ((useAnnotationsStore.getState().byBook[id]?.length ?? 0) > 0 || noteIdFor(id) != null)) {
-        schedule(id)
-      }
-    }
-  })
-
   return {
     noteIdFor,
     resolve,
@@ -173,8 +141,6 @@ export function createHighlights(ctx: PluginContext): Highlights {
     },
     dispose: () => {
       disposed = true
-      stopAnnotations()
-      stopBooks()
       for (const t of timers.values()) clearTimeout(t)
       timers.clear()
     },

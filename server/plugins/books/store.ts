@@ -17,6 +17,8 @@ export interface BookRow {
   progress: number
   status: BookStatus
   page_count: number | null
+  /** Per-book reader settings (appearance, layout, …) as opaque JSON, owned by the client. */
+  settings: string | null
   last_opened_at: string | null
   created_at: string
   updated_at: string
@@ -39,6 +41,8 @@ export function migrate() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `)
+  const cols = db.prepare('PRAGMA table_info(plugin_books)').all() as { name: string }[]
+  if (!cols.some((c) => c.name === 'settings')) db.exec('ALTER TABLE plugin_books ADD COLUMN settings TEXT')
   migrateAnnotations()
 }
 
@@ -82,10 +86,10 @@ export function deleteBookRow(id: number) {
 }
 
 export type BookPatch = Partial<
-  Pick<BookRow, 'title' | 'author' | 'cover_url' | 'position' | 'progress' | 'status' | 'page_count'>
+  Pick<BookRow, 'title' | 'author' | 'cover_url' | 'position' | 'progress' | 'status' | 'page_count' | 'settings'>
 > & { opened?: true }
 
-const PATCH_COLUMNS = ['title', 'author', 'cover_url', 'position', 'progress', 'status', 'page_count'] as const
+const PATCH_COLUMNS = ['title', 'author', 'cover_url', 'position', 'progress', 'status', 'page_count', 'settings'] as const
 
 export function patchBook(id: number, patch: BookPatch): BookRow | undefined {
   const sets: string[] = []

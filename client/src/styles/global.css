@@ -225,3 +225,8 @@ input[data-bare]:focus-visible,
 .cm-content:focus-visible {
   box-shadow: none;
 }
+
+/* A note is being dragged (Workspace.tsx): frames must not swallow the drag, so the tile under them takes the drop. */
+:root[data-note-drag] iframe {
+  pointer-events: none;
+}
