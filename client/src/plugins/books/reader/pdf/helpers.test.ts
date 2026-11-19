@@ -8,7 +8,12 @@ import {
   fitPageScale,
   fitWidthScale,
   flattenOutline,
+  comparePosition,
+  formatPage,
   formatPosition,
+  parsePdfPosition,
+  roundFrac,
+  pageBlend,
   pageFilter,
   parsePosition,
   progressAt,
@@ -20,12 +25,35 @@ import {
 const sizes = Array.from({ length: 10 }, () => ({ width: 600, height: 800 }))
 
 describe('positions', () => {
-  it('parses and formats page positions', () => {
+  it('parses page:N and page:N@f', () => {
     expect(parsePosition('page:12')).toBe(12)
+    expect(parsePosition('page:12@0.35')).toBe(12)
+    expect(parsePdfPosition('page:9@0.4')).toEqual({ page: 9, frac: 0.4 })
+    expect(parsePdfPosition('page:9')).toEqual({ page: 9, frac: 0 })
+    expect(parsePdfPosition('page:9@.5')).toEqual({ page: 9, frac: 0.5 })
+    expect(parsePdfPosition('page:9@1.7')).toEqual({ page: 9, frac: 1 })
+    expect(parsePdfPosition('page:9@0.123')).toEqual({ page: 9, frac: 0.12 })
     expect(parsePosition('page:0')).toBeNull()
+    expect(parsePosition('page:3@')).toBeNull()
+    expect(parsePosition('page:3@-1')).toBeNull()
+    expect(parsePosition('page:x')).toBeNull()
     expect(parsePosition('epubcfi(/6/4)')).toBeNull()
     expect(parsePosition(null)).toBeNull()
-    expect(formatPosition(7)).toBe('page:7')
+  })
+  it('formats page:N@f with two decimals', () => {
+    expect(formatPosition(7)).toBe('page:7@0')
+    expect(formatPosition(9, 0.4)).toBe('page:9@0.4')
+    expect(formatPosition(9, 0.3333)).toBe('page:9@0.33')
+    expect(formatPosition(9, 2)).toBe('page:9@1')
+    expect(formatPosition(0, -1)).toBe('page:1@0')
+    expect(formatPage(5)).toBe('page:5')
+    expect(roundFrac(NaN)).toBe(0)
+  })
+  it('round-trips and compares', () => {
+    expect(parsePdfPosition(formatPosition(12, 0.35))).toEqual({ page: 12, frac: 0.35 })
+    expect(comparePosition({ page: 2, frac: 0.9 }, { page: 3, frac: 0 })).toBeLessThan(0)
+    expect(comparePosition({ page: 3, frac: 0.2 }, { page: 3, frac: 0.2001 })).toBe(0)
+    expect(comparePosition({ page: 3, frac: 0.5 }, { page: 3, frac: 0.2 })).toBeGreaterThan(0)
   })
 })
 
@@ -82,12 +110,12 @@ describe('progress', () => {
 })
 
 describe('pageFilter', () => {
-  it('inverts dark, tints non-white, leaves white', () => {
-    expect(pageFilter({ background: '#1c1c1e', dark: true })).toContain('invert')
-    expect(pageFilter({ background: '#f4ecd8', dark: false })).toContain('sepia')
-    expect(pageFilter({ background: '#ffffff', dark: false })).toBe('none')
-    expect(pageFilter({ background: 'rgb(255, 255, 255)', dark: false })).toBe('none')
-    expect(pageFilter({ background: 'weird', dark: false })).toBe('none')
+  it('inverts dark with a warm ink, leaves light stocks to the multiply blend', () => {
+    expect(pageFilter({ dark: true })).toContain('invert')
+    expect(pageFilter({ dark: true })).toContain('sepia')
+    expect(pageFilter({ dark: false })).toBe('none')
+    expect(pageBlend({ dark: false })).toBe('multiply')
+    expect(pageBlend({ dark: true })).toBe('lighten')
   })
 })
 

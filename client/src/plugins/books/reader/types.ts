@@ -28,9 +28,16 @@ export interface ReaderLocation {
   pageCount?: number
   atStart: boolean
   atEnd: boolean
+  /** v2 (EPUB paged): page within the current chapter and the chapter's page count, for the status line. */
+  chapterPage?: number
+  chapterPages?: number
 }
 
-export type ReaderTheme = 'auto' | 'light' | 'sepia' | 'dark'
+/** 'paper' (default in v2): ink on a warm paper stock derived from the active Velocity theme, with a subtle grain. */
+export type ReaderTheme = 'paper' | 'auto' | 'light' | 'sepia' | 'dark'
+
+/** How a page turn is animated in the paged layout (v2). 'none' is used whenever prefers-reduced-motion is set. */
+export type PageTurnEffect = 'curl' | 'slide' | 'fade' | 'none'
 
 export interface ReaderAppearance {
   theme: ReaderTheme
@@ -42,14 +49,56 @@ export interface ReaderAppearance {
   layout: 'paginated' | 'scrolled'
   /** PDF zoom: a preset or a scale factor (0.5..4). */
   pdfZoom: 'fit-width' | 'fit-page' | number
+  // v2 typography and paging (docs/specs/books-reading-experience.md §3). Optional so older stored
+  // preferences stay valid; read them through `withAppearanceDefaults`.
+  /** Line height, 1.2..2.2. */
+  lineHeight?: number
+  /** Space between paragraphs in em, 0..1.5. */
+  paragraphSpacing?: number
+  /** Page margins. */
+  margins?: 'narrow' | 'normal' | 'wide'
+  /** Text alignment; 'justify' always pairs with hyphenation so there are no rivers. */
+  align?: 'left' | 'justify'
+  /** Page-turn animation in the paged layout (EPUB and PDF). */
+  pageTurn?: PageTurnEffect
 }
 
-export const DEFAULT_APPEARANCE: ReaderAppearance = {
-  theme: 'auto',
+export const DEFAULT_APPEARANCE: Required<ReaderAppearance> = {
+  theme: 'paper',
   fontScale: 1,
   fontFamily: 'serif',
   layout: 'paginated',
   pdfZoom: 'fit-width',
+  lineHeight: 1.6,
+  paragraphSpacing: 0.6,
+  margins: 'normal',
+  align: 'left',
+  pageTurn: 'slide',
+}
+
+/** Fill v2 fields that older stored preferences lack. */
+export function withAppearanceDefaults(a: ReaderAppearance): Required<ReaderAppearance> {
+  return { ...DEFAULT_APPEARANCE, ...Object.fromEntries(Object.entries(a).filter(([, v]) => v !== undefined)) } as Required<ReaderAppearance>
+}
+
+/** Highlight colours and styles (Moon+ Reader style). */
+export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange'
+export const HIGHLIGHT_COLORS: readonly HighlightColor[] = ['yellow', 'green', 'blue', 'pink', 'orange']
+export type HighlightStyle = 'highlight' | 'underline' | 'strike' | 'squiggle'
+
+/**
+ * A highlight the engine draws (bookmarks are not drawn by engines; the shell shows a ribbon).
+ * `locator` is engine-specific and opaque to everyone else:
+ *  - EPUB: a CFI range, `epubcfi(/6/4!/4/2,/1:0,/1:42)`
+ *  - PDF:  `pdf:` + JSON `{"page":12,"rects":[[x,y,w,h],...]}` with rects normalised 0..1 to the page box
+ */
+export interface ReaderAnnotation {
+  id: string
+  locator: string
+  color: HighlightColor
+  style: HighlightStyle
+  /** True when the highlight carries a note (engines may show a small marker). */
+  hasNote?: boolean
 }
 
 /** Concrete colours the shell resolves from the theme (Auto = Velocity tokens). Engines never read CSS variables. */
@@ -61,6 +110,12 @@ export interface ReaderColors {
   selection: string
   /** True when the background is dark (PDF pages are then dimmed / inverted). */
   dark: boolean
+  /** v2: CSS background-image for the page (the paper grain), or null. Applied over `background`. */
+  backgroundImage?: string | null
+  /** v2: secondary text for running heads and status (muted ink). */
+  muted?: string
+  /** v2: fill colour per highlight colour, already tuned for this background (alpha included). */
+  highlights?: Record<HighlightColor, string>
 }
 
 export interface ReaderSelection {
@@ -69,6 +124,12 @@ export interface ReaderSelection {
   where: string
   /** Bounding rect of the selection in viewport coordinates, to place the floating quote bar. */
   rect: { x: number; y: number; width: number; height: number }
+  /** v2: annotation locator of the selected range (see ReaderAnnotation.locator). */
+  locator?: string
+  /** v2: progress 0..1 at the start of the selection. */
+  progress?: number
+  /** v2: PDF page of the selection. */
+  page?: number
 }
 
 export interface ReaderReadyInfo {
@@ -89,18 +150,30 @@ export interface ReaderEngineProps {
   /** Non-empty text selection, or null when it is cleared. */
   onSelection: (selection: ReaderSelection | null) => void
   onError: (error: Error) => void
+  /** v2: highlights to draw. The engine diffs by id; changes must not move the reading position. */
+  annotations?: ReaderAnnotation[]
+  /** v2: the user clicked/tapped a drawn highlight (rect in viewport coordinates). */
+  onAnnotationClick?: (id: string, rect: ReaderSelection['rect']) => void
+  /**
+   * v2: a click/tap that is not a selection, link or highlight. Paged layout: left 30% → 'prev', right 30% →
+   * 'next', middle → 'center' (the engine turns the page itself for prev/next and still reports it).
+   * Scroll layout: always 'center'. The shell toggles its chrome on 'center' (immersive reading).
+   */
+  onTap?: (zone: 'prev' | 'next' | 'center') => void
 }
 
 /** Imperative handle exposed by both engines through `forwardRef`. */
 export interface ReaderHandle {
   next(): void
   prev(): void
-  /** A `TocItem.target` or a saved `ReaderLocation.position`. */
+  /** A `TocItem.target`, a saved `ReaderLocation.position`, or an annotation locator. */
   goTo(target: string): void
   /** Jump to a fraction of the book (0..1), for the progress track. */
   goToProgress(progress: number): void
   /** Move keyboard focus into the reading surface. */
   focus(): void
+  /** v2: clear the current text selection inside the book. */
+  clearSelection?(): void
 }
 
 /** Metadata read from a file at import time (engines export `readEpubMeta` / `readPdfMeta`). */

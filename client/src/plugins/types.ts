@@ -210,6 +210,15 @@ export interface PluginContext {
   refreshBadges(): void
 }
 
+/**
+ * Opens in-app `velocity://` links clicked inside notes (Read mode and the editor), e.g. the Books
+ * highlights note's `velocity://book/<id>?at=<locator>`. Wired by the host (ACC-35).
+ */
+export interface LinkHandler {
+  match: (url: URL) => boolean
+  open: (url: URL, opts: { split: boolean }) => void
+}
+
 export interface PluginInstance {
   commands?: PluginCommand[]
   urlHandler?: UrlHandler
@@ -221,6 +230,8 @@ export interface PluginInstance {
   tiles?: Record<string, TileView>
   /** Note-less workspace views, keyed by view id (see `ctx.views`). */
   views?: Record<string, WorkspaceView>
+  /** Handles clicks on matching `velocity://` links in notes. */
+  linkHandler?: LinkHandler
   /** An action for this folder (shown on its row, in its menu and in the notes header), or null. Keep it cheap. */
   folderAction?: (folder: { id: number; name: string }) => FolderAction | null
   dispose?: () => void

@@ -35,4 +35,10 @@ describe('note metadata', () => {
     expect(derivedTitle(content)).toBe('Ada · EPUB · added 1 Jan 2026')
     expect(snippet(content, 'The Book')).not.toContain('<!--')
   })
+
+  it('hides the highlights note marker from titles and snippets', () => {
+    const content = '<!-- velocity-book-highlights:12 -->\n> **Dune** · Frank Herbert · 2 highlights\n\n## Chapter 1\n\n> Fear is the mind-killer.\n'
+    expect(derivedTitle(content)).toBe('Dune · Frank Herbert · 2 highlights')
+    expect(snippet(content, 'Dune — Highlights')).not.toContain('<!--')
+  })
 })

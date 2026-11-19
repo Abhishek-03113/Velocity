@@ -19,6 +19,7 @@ import {
   createContext,
   editorModeFor,
   folderActionsFor,
+  linkHandlerFor,
   pluginCommands,
   pluginTileView,
   pluginWorkspaceView,
@@ -159,6 +160,47 @@ describe('plugin host', () => {
       expect(useUiStore.getState().pluginPanel?.pluginId).toBe(id)
       usePluginStore.getState().setEnabled(id, false)
       expect(useUiStore.getState().pluginPanel).toBeNull()
+    })
+  })
+
+  describe('linkHandlerFor', () => {
+    const open = vi.fn()
+    const fake: VelocityPlugin = {
+      manifest: { id: 'fake-links', name: 'Fake Links', description: 'test', icon: 'folder', version: '0.0.0' },
+      activate: () => ({ linkHandler: { match: (url) => url.hostname === 'thing', open } }),
+    }
+    beforeEach(() => {
+      open.mockClear()
+      ;(PLUGINS as VelocityPlugin[]).push(fake)
+      syncPlugins()
+    })
+    afterEach(() => {
+      (PLUGINS as VelocityPlugin[]).pop()
+      syncPlugins()
+    })
+
+    it('routes a matching velocity:// link to the running plugin', () => {
+      const handler = linkHandlerFor('velocity://thing/1?at=x')
+      expect(handler?.pluginName).toBe('Fake Links')
+      handler!.open({ split: true })
+      expect(open).toHaveBeenCalledOnce()
+      const [url, opts] = open.mock.calls[0] as [URL, { split: boolean }]
+      expect(url.href).toBe('velocity://thing/1?at=x')
+      expect(opts).toEqual({ split: true })
+    })
+
+    it('ignores non-matching, non-velocity and malformed links', () => {
+      expect(linkHandlerFor('velocity://other/1')).toBeNull()
+      expect(linkHandlerFor('https://thing/1')).toBeNull()
+      expect(linkHandlerFor('not a url')).toBeNull()
+      expect(linkHandlerFor('')).toBeNull()
+    })
+
+    it('returns nothing while the plugin is off', () => {
+      usePluginStore.getState().setEnabled('fake-links', false)
+      expect(linkHandlerFor('velocity://thing/1')).toBeNull()
+      usePluginStore.getState().setEnabled('fake-links', true)
+      expect(linkHandlerFor('velocity://thing/1')).not.toBeNull()
     })
   })
 

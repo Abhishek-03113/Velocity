@@ -422,6 +422,11 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
           return false
         }
 
+        if (name === 'Link' || name === 'Autolink') {
+          widgets.push(Decoration.mark({ class: 'cm-md-link' }).range(node.from, node.to))
+          return
+        }
+
         if (name === 'Blockquote') {
           const first = state.doc.lineAt(node.from).number
           const last = state.doc.lineAt(node.to).number
@@ -461,6 +466,13 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
             widgets.push(Decoration.replace({ widget: bulletWidget }).range(node.from, node.to))
           }
           return
+        }
+
+        if (name === 'URL' && node.node.parent?.name === 'Link') {
+          // `[label](destination)` reads as the label alone off the cursor line (the brackets are hidden below); the
+          // Books highlights note has long `velocity://book/..?at=..` destinations that would otherwise show as raw text.
+          if (!isActive(node.from, node.to)) widgets.push(hiddenMark.range(node.from, node.to))
+          return false
         }
 
         if (MARK_NODES.has(name)) {

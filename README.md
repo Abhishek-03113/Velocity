@@ -54,7 +54,7 @@ Create, organize, and search notes with near-zero perceived latency. Every inter
 
 - Optional, switched on in Settings → Plugins (guide: `docs/plugins.md`)
 - **LaTeX**: a live preview tile beside a LaTeX note (KaTeX maths, numbered equations and references), PDF compile with the server's TeX engine and clickable errors, `.tex` and PDF export
-- **Books**: add EPUB and PDF files, browse them on a Bookshelf from the Books folder, read them in a tile beside your notes, resume where you left off on any device and quote passages into each book's note
+- **Books**: add EPUB and PDF files, browse them on a Bookshelf from the Books folder, read them in a tile beside your notes, resume exactly where you left off on any device, turn pages with a curl or slide effect or scroll, read on a paper-like page in every theme, highlight and bookmark, and get a per-book highlights note with links back to each place
 - **Blog Reader**: open a blog post as a Markdown note beside your notes, with read / unread status
 - **Herdr**: share a note with a coding agent running in herdr and follow it on the Agents board
 

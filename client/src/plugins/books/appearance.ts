@@ -2,7 +2,8 @@
  * Reader appearance: persisted preferences (per browser, `ctx.storage('appearance')`) and the concrete colours
  * the shell hands to the engines. Pure: the DOM is only touched through the `TokenReader` it is given.
  */
-import { DEFAULT_APPEARANCE, type ReaderAppearance, type ReaderColors, type ReaderTheme } from './reader/types'
+import { highlightFills, paperColors } from './paper'
+import { DEFAULT_APPEARANCE, type PageTurnEffect, type ReaderAppearance, type ReaderColors, type ReaderTheme } from './reader/types'
 
 export interface AppearanceStorage {
   get<T>(key: string): T | undefined
@@ -11,15 +12,19 @@ export interface AppearanceStorage {
 
 export const APPEARANCE_KEY = 'appearance'
 
-export const THEMES: readonly ReaderTheme[] = ['auto', 'light', 'sepia', 'dark']
+export const THEMES: readonly ReaderTheme[] = ['paper', 'auto', 'light', 'sepia', 'dark']
 export const FONT_SCALE = { min: 0.8, max: 1.6, step: 0.1 } as const
+export const LINE_HEIGHT = { min: 1.2, max: 2.2, step: 0.1 } as const
+export const PARAGRAPH_SPACING = { min: 0, max: 1.5, step: 0.1 } as const
+export const MARGINS: readonly NonNullable<ReaderAppearance['margins']>[] = ['narrow', 'normal', 'wide']
+export const PAGE_TURNS: readonly PageTurnEffect[] = ['curl', 'slide', 'fade', 'none']
 export const PDF_ZOOM = { min: 0.5, max: 4 } as const
 
 /** The fixed reader palettes: the only raw colours in the reader. Auto reads Velocity tokens instead. */
-export const FIXED_PALETTES: Record<Exclude<ReaderTheme, 'auto'>, ReaderColors> = {
-  light: { background: '#ffffff', text: '#1d1d1f', link: '#0066cc', selection: 'rgba(0, 102, 204, 0.25)', dark: false },
-  sepia: { background: '#f4ecd8', text: '#5b4636', link: '#8a5a2b', selection: 'rgba(138, 90, 43, 0.28)', dark: false },
-  dark: { background: '#1c1c1e', text: '#e5e5e7', link: '#64a8ff', selection: 'rgba(100, 168, 255, 0.35)', dark: true },
+export const FIXED_PALETTES: Record<Exclude<ReaderTheme, 'auto' | 'paper'>, ReaderColors> = {
+  light: { background: '#ffffff', text: '#1d1d1f', link: '#0066cc', selection: 'rgba(0, 102, 204, 0.25)', dark: false, muted: '#6e6e73' },
+  sepia: { background: '#f4ecd8', text: '#5b4636', link: '#8a5a2b', selection: 'rgba(138, 90, 43, 0.28)', dark: false, muted: '#8b7355' },
+  dark: { background: '#1c1c1e', text: '#e5e5e7', link: '#64a8ff', selection: 'rgba(100, 168, 255, 0.35)', dark: true, muted: '#98989d' },
 }
 
 /** Reads resolved CSS colours (any `var(--token)` expression) and the dark flag of the current Velocity theme. */
@@ -29,13 +34,21 @@ export interface TokenReader {
 }
 
 export function resolveColors(theme: ReaderTheme, tokens: TokenReader): ReaderColors {
-  if (theme !== 'auto') return { ...FIXED_PALETTES[theme] }
+  if (theme === 'paper') return paperColors(tokens)
+  if (theme !== 'auto') {
+    const fixed = FIXED_PALETTES[theme]
+    return { ...fixed, backgroundImage: null, highlights: highlightFills(fixed.dark) }
+  }
+  const dark = tokens.isDark()
   return {
     background: tokens.color('var(--bg-content)'),
     text: tokens.color('var(--label)'),
+    muted: tokens.color('var(--label-secondary)'),
     link: tokens.color('var(--accent)'),
     selection: tokens.color('var(--editor-selection, color-mix(in srgb, var(--accent) 30%, transparent))'),
-    dark: tokens.isDark(),
+    dark,
+    backgroundImage: null,
+    highlights: highlightFills(dark),
   }
 }
 
@@ -75,7 +88,18 @@ export function sanitizeAppearance(raw: unknown): ReaderAppearance {
   else if (typeof r.pdfZoom === 'number' && Number.isFinite(r.pdfZoom)) {
     pdfZoom = Math.round(clamp(r.pdfZoom, PDF_ZOOM.min, PDF_ZOOM.max) * 100) / 100
   }
-  return { theme, fontScale, fontFamily, layout, pdfZoom }
+  const lineHeight =
+    typeof r.lineHeight === 'number' && Number.isFinite(r.lineHeight)
+      ? round1(clamp(r.lineHeight, LINE_HEIGHT.min, LINE_HEIGHT.max))
+      : base.lineHeight
+  const paragraphSpacing =
+    typeof r.paragraphSpacing === 'number' && Number.isFinite(r.paragraphSpacing)
+      ? round1(clamp(r.paragraphSpacing, PARAGRAPH_SPACING.min, PARAGRAPH_SPACING.max))
+      : base.paragraphSpacing
+  const margins = MARGINS.includes(r.margins as never) ? (r.margins as ReaderAppearance['margins']) : base.margins
+  const align = r.align === 'left' || r.align === 'justify' ? r.align : base.align
+  const pageTurn = PAGE_TURNS.includes(r.pageTurn as PageTurnEffect) ? (r.pageTurn as PageTurnEffect) : base.pageTurn
+  return { ...base, theme, fontScale, fontFamily, layout, pdfZoom, lineHeight, paragraphSpacing, margins, align, pageTurn }
 }
 
 export function loadAppearance(storage: AppearanceStorage): ReaderAppearance {
@@ -92,6 +116,11 @@ export function saveAppearance(storage: AppearanceStorage, appearance: ReaderApp
   } catch (err) {
     console.error('[books] could not save reader appearance', err)
   }
+}
+
+/** Next/previous value in a ranged setting (one decimal), clamped. */
+export function stepRange(current: number, direction: 1 | -1, range: { min: number; max: number; step: number }): number {
+  return round1(clamp(current + direction * range.step, range.min, range.max))
 }
 
 /** Next/previous text size, clamped to the allowed range. */

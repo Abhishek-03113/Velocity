@@ -1,10 +1,18 @@
-/* PDF reading surface: a vertical scroller of absolutely positioned pages. Colours come in as custom properties from props. */
+/*
+ * PDF reading surface. Two layouts share one DOM: a scroller holding a sheet of absolutely positioned pages
+ * (scroll layout: all pages stacked; paged layout: current page centred, neighbours hidden for prefetch).
+ * Colours come in as custom properties from props:
+ *   --pdf-bg / --pdf-bg-image   the area around the pages (paper stock + grain)
+ *   --pdf-paper                 the page box fill; the canvas is blended onto it (--pdf-blend, --pdf-filter)
+ *   --pdf-hl-blend              blend mode of highlight fills
+ */
 .scroller {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: auto;
-  background: var(--pdf-bg, var(--bg-primary));
+  background-color: var(--pdf-bg, var(--bg-primary));
+  background-image: var(--pdf-bg-image, none);
   outline: none;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -14,6 +22,17 @@
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
+/* Paged: swipes and horizontal wheel turn pages, so only vertical panning stays native. */
+.paged {
+  touch-action: pan-y pinch-zoom;
+  overscroll-behavior: none;
+}
+
+/* While a turn animates nothing may scroll sideways (pages travel outside the sheet). */
+.animating {
+  overflow-x: hidden;
+}
+
 .sheet {
   position: relative;
   min-width: 100%;
@@ -21,8 +40,10 @@
 
 .page {
   position: absolute;
-  background: var(--pdf-page-bg, #fff);
-  box-shadow: var(--shadow-sm);
+  isolation: isolate;
+  background-color: var(--pdf-paper, #fff);
+  background-image: var(--pdf-bg-image, none);
+  box-shadow: var(--shadow-sm), 0 6px 22px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
@@ -33,6 +54,43 @@
   inset: 0;
   display: block;
   filter: var(--pdf-filter, none);
+  mix-blend-mode: var(--pdf-blend, normal);
+}
+
+/* Highlight overlay: above the canvas, below the (transparent) text layer. Hit-testing is done in script. */
+.annots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hl {
+  position: absolute;
+  border-radius: 2px;
+  mix-blend-mode: var(--pdf-hl-blend, multiply);
+}
+
+.line {
+  position: absolute;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.squiggle {
+  position: absolute;
+  height: 4px;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+}
+
+.noteMark {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -3px 0 0 3px;
+  border-radius: 50% 50% 50% 0;
+  box-shadow: 0 0 0 1.5px var(--pdf-paper, #fff);
 }
 
 /* Text layer for selection: transparent text positioned over the canvas (pdf.js 4.x needs --scale-factor on the page). */
@@ -85,6 +143,70 @@
   cursor: default;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* --- curl page turn ------------------------------------------------------------------------------------------------
+ * The turning page is a bitmap copy of the current page on an overlay: a leaf that rotates around the spine edge inside
+ * a perspective stage, with a lit front, a darker back and a shadow cast on the page being revealed. */
+.curlStage {
+  position: absolute;
+  z-index: 5;
+  perspective: 1800px;
+  perspective-origin: 50% 50%;
+  pointer-events: none;
+}
+
+.curlShade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.leaf {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.leafFront,
+.leafBack {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.leafBack {
+  background-color: var(--pdf-paper, #fff);
+  background-image: var(--pdf-bg-image, none);
+  box-shadow: var(--shadow-sm);
+}
+
+.leafBack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.leafGloss,
+.leafDim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.leafGloss {
+  width: 60%;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
+  will-change: transform, opacity;
+}
+
+.leafDim {
+  background: rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  will-change: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {

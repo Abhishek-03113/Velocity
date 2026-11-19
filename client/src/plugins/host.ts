@@ -463,3 +463,25 @@ export function urlHandlerFor(url: string): { pluginName: string; pluginIcon: Ve
   }
   return null
 }
+
+/** The running plugin that opens an in-app `velocity://` link from a note, or null. */
+export function linkHandlerFor(href: string): { pluginName: string; open: (opts: { split: boolean }) => void } | null {
+  let parsed: URL
+  try {
+    parsed = new URL(href)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== 'velocity:') return null
+  for (const { plugin, instance } of active.values()) {
+    const handler = instance.linkHandler
+    try {
+      if (handler?.match(parsed)) {
+        return { pluginName: plugin.manifest.name, open: (opts) => handler.open(parsed, opts) }
+      }
+    } catch (err) {
+      console.error(`[plugins] ${plugin.manifest.id} linkHandler failed:`, err)
+    }
+  }
+  return null
+}

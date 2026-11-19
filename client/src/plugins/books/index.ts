@@ -2,11 +2,13 @@ import { createElement, lazy, Suspense } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import { useGroupStore } from '../../store/groupStore'
 import type { NoteBadge, PluginContext, VelocityPlugin } from '../types'
+import { bindAnnotationSync, resetAnnotations } from './annotations'
 import { createReaderHost } from './host'
+import { isBookLinkUrl } from './note'
 import { createLibrary, READER_VIEW, SHELF_VIEW } from './metadata'
 import { bindShelfPrefs, resetBooksStore, scanNotes, useBooksStore } from './store'
 import { readerTileView } from './ReaderTile'
-import type { Book } from './types'
+import { parseBookLink, type Book } from './types'
 
 // The shelf (and its styles) load only when it is first opened.
 const Bookshelf = lazy(() => import('./Bookshelf'))
@@ -50,6 +52,7 @@ const plugin: VelocityPlugin = {
     let badgeTimer: ReturnType<typeof setTimeout> | null = null
 
     cleanups.push(bindShelfPrefs(ctx.storage))
+    cleanups.push(bindAnnotationSync(ctx.storage))
 
     // ── Notes ↔ books ──
     scanNotes()
@@ -101,6 +104,23 @@ const plugin: VelocityPlugin = {
         document.body.appendChild(input)
       }
       input.click()
+    }
+    /** `velocity://book/<id>?at=<locator>`: open the reader tile at that place. */
+    const openBookLink = async (href: string) => {
+      const link = parseBookLink(href)
+      if (!link) return
+      const state = useBooksStore.getState
+      if (!state().books[link.bookId]) {
+        if (!state().loaded) await library.loadBooks()
+        if (!state().books[link.bookId]) await library.fetchBook(link.bookId)
+      }
+      if (!state().books[link.bookId]) {
+        ctx.flash('This book is no longer on your shelf')
+        return
+      }
+      // Set before the tile opens: a reader that is already open reacts to the change, a new one finds it on mount.
+      if (link.locator) state().setPendingGoTo(link.bookId, link.locator)
+      library.openBook(link.bookId, { fit: true })
     }
     const openShelf = () => {
       ctx.views.open(SHELF_VIEW, { focus: true })
@@ -167,6 +187,11 @@ const plugin: VelocityPlugin = {
         },
       },
 
+      linkHandler: {
+        match: isBookLinkUrl,
+        open: (url) => void openBookLink(url.href),
+      },
+
       tiles: { [READER_VIEW]: readerTileView(ctx, host) },
 
       folderAction: (folder) =>
@@ -187,6 +212,7 @@ const plugin: VelocityPlugin = {
         input?.remove()
         input = null
         resetBooksStore()
+        resetAnnotations()
       },
     }
   },

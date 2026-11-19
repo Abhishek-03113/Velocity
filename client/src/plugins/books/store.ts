@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { create } from 'zustand'
 import { useEditorStore } from '../../store/editorStore'
 import { cachedContent } from '../../store/searchStore'
@@ -44,6 +45,8 @@ interface BooksState {
   focusBookId: number | null
   /** bookId → note id, kept in step with the notes by `scanNotes`. */
   noteIdByBook: Record<number, number>
+  /** bookId → a locator a link asked the reader to open (see `usePendingGoTo`). */
+  pendingGoTo: Record<number, string>
 
   setBooks: (list: Book[]) => void
   upsertBook: (book: Book) => void
@@ -57,6 +60,7 @@ interface BooksState {
   setShelfPrefs: (prefs: Partial<Pick<BooksState, 'sort' | 'filter' | 'format'>>) => void
   setFocusBook: (id: number | null) => void
   applyProgress: (id: number, patch: ProgressPatch) => void
+  setPendingGoTo: (id: number, locator: string | null) => void
 }
 
 export const useBooksStore = create<BooksState>((set) => ({
@@ -71,6 +75,7 @@ export const useBooksStore = create<BooksState>((set) => ({
   format: 'all',
   focusBookId: null,
   noteIdByBook: {},
+  pendingGoTo: {},
 
   setBooks: (list) =>
     set((s) => {
@@ -98,7 +103,23 @@ export const useBooksStore = create<BooksState>((set) => ({
   setFocusBook: (id) => set({ focusBookId: id }),
   applyProgress: (id, patch) =>
     set((s) => (s.books[id] ? { books: { ...s.books, [id]: { ...s.books[id]!, ...patch } } } : s)),
+  setPendingGoTo: (id, locator) =>
+    set((s) => {
+      if (locator == null) return s.pendingGoTo[id] === undefined ? s : { pendingGoTo: omit(s.pendingGoTo, id) }
+      return { pendingGoTo: { ...s.pendingGoTo, [id]: locator } }
+    }),
 }))
+
+/**
+ * For the reader: a place a `velocity://book/<id>?at=<locator>` link asked to open. `locator` is null when
+ * nothing is pending. Navigate there once the engine is ready, then call `consume()` so it runs once.
+ * A link clicked while the reader is already open sets it again, so the effect re-runs.
+ */
+export function usePendingGoTo(bookId: number): { locator: string | null; consume: () => void } {
+  const locator = useBooksStore((s) => s.pendingGoTo[bookId] ?? null)
+  const consume = useCallback(() => useBooksStore.getState().setPendingGoTo(bookId, null), [bookId])
+  return { locator, consume }
+}
 
 function omit<T extends Record<number, unknown>>(record: T, id: number): T {
   if (!(id in record)) return record
@@ -219,5 +240,6 @@ export function resetBooksStore(): void {
     uploads: [],
     focusBookId: null,
     noteIdByBook: {},
+    pendingGoTo: {},
   })
 }
