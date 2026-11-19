@@ -130,16 +130,16 @@ In the notes list, `↑`/`↓` browse, `↩` opens, `⌘↩` or `Alt+↩` opens 
 | State | Zustand | Client-side source of truth |
 | Search | FlexSearch | Sub-10 ms full-text search |
 | Styling | CSS Modules + design tokens | Scoped, zero-runtime styles; light/dark/accent and colour-family theming |
-| Backend | Hono on Node.js | Thin REST API (gzip for note bodies) |
-| Database | SQLite (better-sqlite3) | Embedded persistence |
-| Tests | Vitest, node:test, Playwright | Unit, API/worker, end-to-end |
+| Backend | Hono on Bun | Thin REST API (gzip for note bodies) |
+| Database | SQLite (bun:sqlite) | Embedded persistence |
+| Tests | Vitest, bun test, Playwright | Unit, API/worker, end-to-end |
 | Deploy | Docker Compose + nginx | Self-contained deployment |
 
 ---
 
 ## Landing page
 
-A self-contained static marketing page lives in `landing/` (plain HTML, CSS and ES modules, no build step, relative paths, so it also works on GitHub Pages). It defaults to Gruvbox Light Hard regardless of the OS setting; the nav toggle switches to Gruvbox Dark Hard and the choice is remembered in `localStorage`. Run it with `npm run landing` (http://localhost:4173). Product clips and stills are listed in `landing/scripts/media.js` and live in `landing/media/`. `npm run test:landing` runs the page checks and writes review screenshots to `docs/screenshots/landing/`.
+A self-contained static marketing page lives in `landing/` (plain HTML, CSS and ES modules, no build step, relative paths, so it also works on GitHub Pages). It defaults to Gruvbox Light Hard regardless of the OS setting; the nav toggle switches to Gruvbox Dark Hard and the choice is remembered in `localStorage`. Run it with `bun run landing` (http://localhost:4173). Product clips and stills are listed in `landing/scripts/media.js` and live in `landing/media/`. `bun run test:landing` runs the page checks and writes review screenshots to `docs/screenshots/landing/`.
 
 ## Quick Start
 
@@ -163,18 +163,22 @@ make up
 make down      # stop containers
 make restart   # rebuild and restart
 make rebuild   # clean rebuild (no cache)
+make latex     # rebuild the server with TeX Live for LaTeX PDF compiles
+make ps        # container status (the server has a health check)
+make logs      # follow the server logs
+make help      # every target, including the local Bun ones (install, dev, test, lint, …)
 ```
 
-Data is stored in the `velocity_data` Docker volume. Markdown image assets are also written to `~/velocity_docs` on the host (mounted into the server container).
+Both images build on `oven/bun:1.4-alpine`: the server runs `bun index.ts` (SQLite through the built-in `bun:sqlite`, so no native build tools), and the client is built with Bun and served by nginx. Data is stored in the `velocity_data` Docker volume. Markdown image assets are also written to `~/velocity_docs` on the host (mounted into the server container).
 
 ### Local development
 
-Requires Node.js 18+.
+Requires [Bun](https://bun.sh) 1.4+ (runs the server, Vite, Vitest, ESLint and tsc). Playwright's test runner still needs Node.js 18+.
 
 ```bash
-npm run install:all
+bun run install:all
 cp .env.example .env
-npm run dev
+bun run dev
 ```
 
 | Service | URL                   |
@@ -183,18 +187,18 @@ npm run dev
 | Server  | http://localhost:3000 |
 
 ```bash
-npm run dev:client   # Vite only
-npm run dev:server   # Hono only
-npm run build        # production client build
-cd client && npm run lint
+bun run dev:client   # Vite only
+bun run dev:server   # Hono only
+bun run build        # production client build
+cd client && bun run lint
 ```
 
 ### Tests
 
 ```bash
-cd client && npm test            # Vitest: tiling and sliding engines, auto-save worker, board sync, cleanup, themes, shortcuts
-cd server && npm test            # node:test: API routes, whiteboards, cleanup + Markdown export worker
-cd client && npm run test:e2e    # Playwright (headless Chromium): full product walkthrough
+cd client && bun run test           # Vitest: tiling and sliding engines, auto-save worker, board sync, cleanup, themes, shortcuts
+cd server && bun run test           # bun test (node:test API): API routes, whiteboards, cleanup + Markdown export worker
+cd client && bun run test:e2e    # Playwright (headless Chromium): full product walkthrough
 ```
 
 The E2E suite starts its own API server on a throwaway database. It writes review screenshots to [`docs/screenshots/after/`](docs/screenshots/after). The original UI is preserved in [`docs/screenshots/before/`](docs/screenshots/before), and the redesign plan and UX audit are in [`docs/ux-revamp/PLAN.md`](docs/ux-revamp/PLAN.md).
@@ -219,7 +223,7 @@ Velocity/
 │       └── styles/            # Design tokens + global base styles
 │           └── themes/        # One CSS file per theme family
 │   └── public/brand/          # Logo and favicons
-├── server/                    # Hono + Node.js backend
+├── server/                    # Hono + Bun backend
 │   ├── routes/                # /api/pastes, /api/groups, /api/assets, whiteboards
 │   ├── db/                    # SQLite client + migrations
 │   ├── workers/               # Markdown export + empty-note cleanup workers

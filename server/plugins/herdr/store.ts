@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3'
+import type { Database } from 'bun:sqlite'
 import { db } from '../../db/client.ts'
 import type { SummarySource } from './summary.ts'
 
@@ -6,7 +6,7 @@ import type { SummarySource } from './summary.ts'
  * Conversations are one note shared with one agent pane; turns are its sends. Velocity keeps only
  * fingerprints of the paragraphs it sent and the agent's summary, never the prompt or transcript.
  */
-export function migrate(database: Database.Database = db) {
+export function migrate(database: Database = db) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS plugin_herdr_conversations (
       id               INTEGER PRIMARY KEY AUTOINCREMENT,

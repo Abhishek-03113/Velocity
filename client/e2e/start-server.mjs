@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = mkdtempSync(path.join(os.tmpdir(), 'velocity-e2e-'))
 const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../server')
-const child = spawn('npx', ['tsx', 'index.ts'], {
+const child = spawn('bun', ['index.ts'], {
   cwd: serverDir,
   stdio: 'inherit',
   env: {

@@ -25,7 +25,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
   webServer: {
-    command: `npx vite ../landing --port ${PORT} --strictPort --host 127.0.0.1`,
+    command: `bun --bun vite ../landing --port ${PORT} --strictPort --host 127.0.0.1`,
     port: PORT,
     reuseExistingServer: true,
     timeout: 60_000,
