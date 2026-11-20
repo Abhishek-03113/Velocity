@@ -34,7 +34,7 @@ function TileTitle({ noteId, suffix, icon = 'doc.text' }: { noteId: number; suff
   })
   const dirty = useEditorStore((s) => s.pastes.find((x) => x.id === noteId)?.dirty ?? false)
   return (
-    <span className={styles.tileTitle}>
+    <span className={styles.tileTitle} data-tile-title>
       <Icon name={icon} size={14} className={styles.tileTitleIcon} />
       <span className={styles.tileTitleText}>
         {title}
@@ -57,7 +57,7 @@ function ViewTileTitle({ pluginId, view }: { pluginId: string; view: string }) {
   usePluginsVersion((s) => s.version)
   const spec = pluginWorkspaceView(pluginId, view)
   return (
-    <span className={styles.tileTitle}>
+    <span className={styles.tileTitle} data-tile-title>
       <Icon name={spec?.icon ?? 'doc.plaintext'} size={14} className={styles.tileTitleIcon} />
       <span className={styles.tileTitleText}>{spec?.title ?? pluginName(pluginId)}</span>
     </span>
@@ -167,6 +167,24 @@ function TileImpl({ leaf, focused, tiled, zoomed }: TileProps) {
           className={styles.tileHeader}
           draggable
           title="Drag to move this tile"
+          onPointerDown={(e) => {
+            // Solid drawing: the tile lifts off the workspace while it is held by its header.
+            if (e.button !== 0 || (e.target as Element).closest('button')) return
+            const section = e.currentTarget.closest('section')
+            if (!section) return
+            section.dataset.lifted = ''
+            const drop = () => {
+              delete section.dataset.lifted
+              window.removeEventListener('pointerup', drop, true)
+              window.removeEventListener('dragend', drop, true)
+              window.removeEventListener('drop', drop, true)
+              window.removeEventListener('pointercancel', drop, true)
+            }
+            window.addEventListener('pointerup', drop, true)
+            window.addEventListener('pointercancel', drop, true)
+            window.addEventListener('dragend', drop, true)
+            window.addEventListener('drop', drop, true)
+          }}
           onDragStart={(e) => {
             // Pick the tile up: drop it on another tile's edge to move it there, or its centre to swap places.
             e.dataTransfer.effectAllowed = 'move'
@@ -179,7 +197,7 @@ function TileImpl({ leaf, focused, tiled, zoomed }: TileProps) {
           }}
         >
           {content.kind === 'empty' ? (
-            <span className={styles.tileTitle}>
+            <span className={styles.tileTitle} data-tile-title>
               <Icon name="plus.circle" size={14} className={styles.tileTitleIcon} />
               <span className={styles.tileTitleText}>Open a Note</span>
             </span>

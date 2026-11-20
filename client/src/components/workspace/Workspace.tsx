@@ -5,7 +5,7 @@ import { NOTE_DRAG_TYPE, TILE_DRAG_TYPE } from '../../lib/groupColors'
 import { contentForNote, primaryLeafFor } from '../../lib/noteViews'
 import { planDrop, zoneAt, type DropPlan, type DropSource, type DropZone } from '../../lib/dropPlan'
 import { clampScroll } from '../../lib/sliding'
-import { EASE, animate, rubberBandClamp } from '../../lib/motion'
+import { EASE, animate, reducedMotion, rubberBandClamp } from '../../lib/motion'
 import { geometry as slidingGeometry } from '../../lib/sliding'
 import { computeGeometry, leaves, type Rect, type SplitGeometry } from '../../lib/tiling'
 import { useLayoutStore } from '../../store/layoutStore'
@@ -19,6 +19,37 @@ const FULL: Rect = { x: 0, y: 0, w: 1, h: 1 }
 /** How far (px) the sliding strip stretches past an end while dragged / wheeled (rubber banding). */
 const PAN_STRETCH = 120
 const WHEEL_STRETCH = 60
+
+/**
+ * A tile that moved without resizing (swap, move to another slot): a short wind-up (anticipation), travel on an arc
+ * instead of a straight line, a small squash on landing, and the header title arriving a beat later
+ * (follow-through). Transforms only, inside the FLIP pass; the frame finishes in 300 ms.
+ */
+function moveTile(el: HTMLElement, dx: number, dy: number) {
+  const horizontal = Math.abs(dx) >= Math.abs(dy)
+  // Tiles passing each other take opposite arcs: rightward goes up, leftward goes down (and likewise vertically).
+  const lift = Math.min(24, Math.hypot(dx, dy) * 0.08)
+  const ax = horizontal ? 0 : dy > 0 ? lift : -lift
+  const ay = horizontal ? (dx > 0 ? lift : -lift) : 0
+  const squash = horizontal ? 'scale(1.02, 0.98)' : 'scale(0.98, 1.02)'
+  el.animate(
+    [
+      { transform: `translate(${dx}px, ${dy}px) scale(1)`, easing: EASE.out },
+      { transform: `translate(${dx}px, ${dy}px) scale(0.97)`, offset: 0.2, easing: EASE.inOut },
+      { transform: `translate(${dx / 2 + ax}px, ${dy / 2 + ay}px) scale(1.015)`, offset: 0.55, easing: EASE.inOut },
+      { transform: `translate(0px, 0px) ${squash}`, offset: 0.85, easing: EASE.out },
+      { transform: 'none' },
+    ],
+    { duration: 300 },
+  )
+  const title = el.querySelector<HTMLElement>('[data-tile-title]')
+  const nudge = horizontal ? (dx > 0 ? 8 : -8) : 0
+  if (title && nudge)
+    title.animate(
+      [{ transform: `translateX(${nudge}px)` }, { transform: `translateX(${-nudge * 0.4}px)`, offset: 0.7 }, { transform: 'none' }],
+      { duration: 140, delay: 230, easing: EASE.out, fill: 'backwards' },
+    )
+}
 
 function tileStyle(r: Rect, gapped: boolean): React.CSSProperties {
   if (!gapped) {
@@ -132,7 +163,7 @@ export default function Workspace() {
     const stage = { w: stageRef.current?.clientWidth ?? 0, h: stageRef.current?.clientHeight ?? 0 }
     const sameStage = stage.w === lastStage.current.w && stage.h === lastStage.current.h
     lastStage.current = stage
-    const animate = sameStage && !resizing && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const animate = sameStage && !resizing && !reducedMotion()
     for (const [id, el] of slotRefs.current) {
       const box = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }
       next.set(id, box)
@@ -144,10 +175,13 @@ export default function Workspace() {
       const sy = was.h / box.h
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.005 && Math.abs(sy - 1) < 0.005) continue
       el.getAnimations().forEach((a) => a.cancel())
-      el.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` }, { transform: 'none' }], {
-        duration: 280,
-        easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
-      })
+      const moved = Math.abs(sx - 1) < 0.02 && Math.abs(sy - 1) < 0.02 && Math.hypot(dx, dy) > 40
+      if (moved) moveTile(el, dx, dy)
+      else
+        el.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` }, { transform: 'none' }], {
+          duration: 280,
+          easing: EASE.spring,
+        })
     }
     lastBoxes.current = next
   }, [geometry, monocleId, tiled, resizing, slideGeo])
