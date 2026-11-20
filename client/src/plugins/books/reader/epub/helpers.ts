@@ -100,6 +100,11 @@ const IMP = ' !important'
 /** Paragraph-like blocks the alignment and spacing rules apply to (centred epigraphs and the like are left alone). */
 const FLOW_BLOCKS = 'p:not([class*="cent" i]):not([align="center"]):not([style*="center"]), li, dd'
 const TEXT_BLOCKS = 'p, li, dd, blockquote, figcaption, td, th'
+/**
+ * Every element under the body. The `:not(#…)` adds id weight, so the rule also beats a book's class or id
+ * selectors marked `!important`; no element has that id.
+ */
+const ALL_INK = 'body *:not(#velocity-ink)'
 
 /** Appearance + resolved colours → epub.js style rules (selector → declarations). */
 export function buildThemeRules(
@@ -149,6 +154,15 @@ export function buildThemeRules(
     html,
     body,
     '*': { '-webkit-tap-highlight-color': 'transparent' },
+    // Readable ink everywhere. Books set their own colours (black small caps, grey captions, white boxes behind a
+    // sidebar) for a white page; on the paper, above all a dark one, those read as dark text on a dark page. Every
+    // element takes the paper's ink and lets the paper show through; links keep the accent underline below.
+    [ALL_INK]: {
+      color: `inherit${IMP}`,
+      '-webkit-text-fill-color': `currentColor${IMP}`,
+      'background-color': `transparent${IMP}`,
+      'text-shadow': `none${IMP}`,
+    },
     'a, a:link, a:visited': {
       color: `${ink}${IMP}`,
       'text-decoration': `underline${IMP}`,

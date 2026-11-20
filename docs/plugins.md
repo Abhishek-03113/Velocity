@@ -228,7 +228,14 @@ More: [dark](screenshots/books-v2/02-paper-dark-epub.jpg), [page curl](screensho
     page at a time) or **Scroll** (EPUB continuous across chapters, PDF a virtualised column). Switching layout, text
     size, spacing or margins keeps the first visible text in view.
   - **Page turns** (Pages only): **Curl**, **Slide** (default), **Fade** or **None**; `prefers-reduced-motion` forces
-    None. Tap zones: left 30 % previous, right 30 % next, middle shows or hides the chrome (a mouse tap in a turn
+    None. Curl is a page flip (`reader/pageFlip.ts`, no dependency): the page folds from the corner on the side you
+    tapped along a moving fold line, its back and the fold shadows showing, over the next page; going back, the
+    previous page unfolds over the current one. Slide pushes the old sheet out edge to edge. No turn ever flashes:
+    every book iframe is pinned to `color-scheme: light`, since in a dark app an iframe inheriting `dark` is painted
+    on an opaque white canvas.
+  - **Readable ink:** every element of the book takes the paper's ink colour and a transparent background (an id-weighted
+    `body *` rule beats publisher `!important` colours), so a book's black small caps or white sidebars never turn
+    into dark-on-dark or light-on-white text. Links keep the accent underline. Tap zones: left 30 % previous, right 30 % next, middle shows or hides the chrome (a mouse tap in a turn
     zone waits 180 ms so a double or triple click can select text instead). Swipe on touch, horizontal trackpad scroll, keys
     `←` `→` `PageUp` `PageDown` `Space` / `Shift+Space` `Home` `End`. The top bar and the status line (chapter,
     `3 / 6` or `p. 12 of 300`, percent, a seekable progress track) fade after 3 s in Pages and return on a middle tap,

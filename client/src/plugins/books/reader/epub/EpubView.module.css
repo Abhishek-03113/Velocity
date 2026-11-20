@@ -38,6 +38,15 @@
   height: 100%;
 }
 
+/* Book pages are light-scheme documents on a transparent canvas. In a dark app an iframe that inherits `dark` is
+   painted on an opaque white canvas until something pins it: pin it from the moment epub.js creates it (a new
+   chapter's frame used to flash white before the content hook ran). */
+.mount :global(iframe),
+.layer :global(iframe) {
+  color-scheme: light;
+  background: transparent;
+}
+
 /* Holds the outgoing-page ghost and shadows while a turn runs; empty (and inert) otherwise. */
 .layer {
   position: absolute;

@@ -64,6 +64,7 @@ import {
 } from './paged'
 import { loadPdfjs, type PdfjsLib } from './pdfjs'
 import styles from './pdf.module.css'
+import { FLIP_MS, playPageFlip, type FlipCorner } from '../pageFlip'
 
 /** Upper bound for one canvas, so a 400 % zoom on a large page cannot exhaust GPU memory. */
 const MAX_CANVAS_PIXELS = 16_777_216
@@ -71,8 +72,7 @@ const RESIZE_DEBOUNCE_MS = 120
 const EASE = 'cubic-bezier(.2,.8,.2,1)'
 const SLIDE_MS = 220
 const FADE_MS = 140
-const CURL_MS = 520
-const CURL_EASE = 'cubic-bezier(.4,.1,.2,1)'
+const CURL_MS = FLIP_MS
 /** A mouse click in a turn zone waits this long so a double click (select word) does not turn pages. */
 const MOUSE_TAP_DELAY_MS = 180
 const TAP_SLOP_PX = 8
@@ -188,6 +188,8 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
     let turning = false
     let turnFrom = -1
     let turnToken = 0
+    /** The corner the next Curl lifts: the half of the page that was tapped or swiped (keys and wheel: bottom). */
+    let flipCorner: FlipCorner = 'bottom'
     let cancelEffect: (() => void) | null = null
 
     // Highlight state.
@@ -605,6 +607,9 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
     function runEffect(effect: 'curl' | 'slide' | 'fade', from: number, to: number, dir: 1 | -1): { done: Promise<void>; cancel: () => void } {
       const out = slots[from].el
       const inn = slots[to].el
+      const corner = flipCorner
+      flipCorner = 'bottom'
+      if (effect === 'curl') return flipPage(out, inn, dir, corner)
       const anims: Animation[] = []
       const cleanups: Array<() => void> = []
       const play = (el: Element, keyframes: Keyframe[], duration: number, easing = EASE) => {
@@ -617,17 +622,15 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
         const w = viewW()
         play(out, [{ transform: 'translateX(0)' }, { transform: `translateX(${-dir * w}px)` }], SLIDE_MS)
         play(inn, [{ transform: `translateX(${dir * w}px)` }, { transform: 'translateX(0)' }], SLIDE_MS)
-      } else if (effect === 'fade') {
+      } else {
         inn.style.zIndex = '2'
         cleanups.push(() => {
           inn.style.zIndex = ''
         })
         play(inn, [{ opacity: 0 }, { opacity: 1 }], FADE_MS, 'ease')
-      } else {
-        curl(out, inn, dir, play, cleanups)
       }
 
-      const duration = effect === 'curl' ? CURL_MS : effect === 'slide' ? SLIDE_MS : FADE_MS
+      const duration = effect === 'slide' ? SLIDE_MS : FADE_MS
       const done = new Promise<void>((resolve) => {
         const t = window.setTimeout(resolve, duration + 120)
         void Promise.all(anims.map((a) => a.finished)).then(
@@ -650,75 +653,47 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
       }
     }
 
-    /** Curl: the outgoing page (already a bitmap) becomes a leaf that rotates around the spine over the revealed page. */
-    function curl(
-      out: HTMLDivElement,
-      inn: HTMLDivElement,
-      dir: 1 | -1,
-      play: (el: Element, keyframes: Keyframe[], duration: number, easing?: string) => Animation,
-      cleanups: Array<() => void>,
-    ) {
-      void inn
-      const stage = document.createElement('div')
-      stage.className = styles.curlStage
-      stage.style.left = out.style.left
-      stage.style.top = out.style.top
-      stage.style.width = out.style.width
-      stage.style.height = out.style.height
-
-      // Shadow cast on the page being revealed.
-      const shade = document.createElement('div')
-      shade.className = styles.curlShade
-      const spine = dir > 0 ? 'left' : 'right'
-      shade.style.background = `linear-gradient(to ${dir > 0 ? 'right' : 'left'}, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 38%, transparent 70%)`
-      void spine
-
-      const leaf = document.createElement('div')
-      leaf.className = styles.leaf
-      leaf.style.transformOrigin = dir > 0 ? 'left center' : 'right center'
-
-      const front = document.createElement('div')
-      front.className = styles.leafFront
-      const copy = out.cloneNode(true) as HTMLDivElement
-      copy.querySelector('.textLayer')?.remove()
-      copy.style.cssText = `position:absolute;left:0;top:0;width:100%;height:100%;display:block;visibility:visible;box-shadow:none;`
-      const from = out.querySelector('canvas')
-      const to = copy.querySelector('canvas')
-      if (from && to) to.getContext('2d')?.drawImage(from, 0, 0)
-      const gloss = document.createElement('div')
-      gloss.className = styles.leafGloss
-      if (dir < 0) gloss.style.right = '0'
-      const dim = document.createElement('div')
-      dim.className = styles.leafDim
-      front.append(copy, gloss, dim)
-
-      const back = document.createElement('div')
-      back.className = styles.leafBack
-      leaf.append(front, back)
-      stage.append(shade, leaf)
-      sheet.appendChild(stage)
-      out.style.visibility = 'hidden'
-      cleanups.push(() => stage.remove())
-
-      const rot = dir > 0 ? -180 : 180
-      play(
+    /**
+     * Curl: a page flip (`../pageFlip.ts`). Forward, the current page folds away from its corner over the next one;
+     * back, the previous page unfolds over the current one. The leaf is the page element itself, clipped to the part
+     * still lying flat, so nothing is copied.
+     */
+    function flipPage(out: HTMLDivElement, inn: HTMLDivElement, dir: 1 | -1, corner: FlipCorner): { done: Promise<void>; cancel: () => void } {
+      const leaf = dir > 0 ? out : inn
+      const host = document.createElement('div')
+      host.className = styles.flipHost
+      host.style.left = leaf.style.left
+      host.style.top = leaf.style.top
+      host.style.width = leaf.style.width
+      host.style.height = leaf.style.height
+      sheet.appendChild(host)
+      const zIndex = leaf.style.zIndex
+      const flip = playPageFlip({
         leaf,
-        [
-          { transform: 'rotateY(0deg)', opacity: 1, offset: 0 },
-          { transform: `rotateY(${rot * 0.5}deg)`, opacity: 1, offset: 0.5 },
-          { opacity: 1, offset: 0.82 },
-          { transform: `rotateY(${rot}deg)`, opacity: 0, offset: 1 },
-        ],
-        CURL_MS,
-        CURL_EASE,
-      )
-      // Past 90 degrees the back of the leaf takes over from the front (same easing, so the swap is exactly edge-on).
-      play(front, [{ opacity: 1, offset: 0 }, { opacity: 1, offset: 0.499 }, { opacity: 0, offset: 0.5 }, { opacity: 0, offset: 1 }], CURL_MS, CURL_EASE)
-      play(back, [{ opacity: 0, offset: 0 }, { opacity: 0, offset: 0.499 }, { opacity: 1, offset: 0.5 }, { opacity: 1, offset: 1 }], CURL_MS, CURL_EASE)
-      play(shade, [{ opacity: 1 }, { opacity: 1, offset: 0.35 }, { opacity: 0 }], CURL_MS, CURL_EASE)
-      const sweep = dir > 0 ? [-30, 200] : [30, -200]
-      play(gloss, [{ transform: `translateX(${sweep[0]}%)`, opacity: 0.9 }, { transform: `translateX(${sweep[1]}%)`, opacity: 0 }], CURL_MS, CURL_EASE)
-      play(dim, [{ opacity: 0 }, { opacity: 0.9 }], CURL_MS, CURL_EASE)
+        host,
+        width: leaf.offsetWidth,
+        height: leaf.offsetHeight,
+        dir: dir > 0 ? 'next' : 'prev',
+        corner,
+        paper: { color: 'var(--pdf-paper, #fff)', image: 'var(--pdf-bg-image, none)', dark: !!propsRef.current.colors.dark },
+        duration: CURL_MS,
+      })
+      // Stacked after the first fold is applied (same task), so no frame shows the incoming page whole.
+      leaf.style.zIndex = '2'
+      let cleaned = false
+      const cleanup = () => {
+        if (cleaned) return
+        cleaned = true
+        host.remove()
+        leaf.style.zIndex = zIndex
+      }
+      return {
+        done: flip.done.then(cleanup),
+        cancel: () => {
+          flip.cancel()
+          cleanup()
+        },
+      }
     }
 
     // --- controller ---------------------------------------------------------------------------------------------
@@ -1043,6 +1018,12 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
       down = { x: e.clientX, y: e.clientY, type: e.pointerType, hadSelection: selectionInside() || hasSelection }
     }
 
+    /** The page corner a Curl lifts for a pointer at viewport y: the half of the view it is in. */
+    function cornerAt(clientY: number): FlipCorner {
+      const r = scroller.getBoundingClientRect()
+      return clientY - r.top < r.height / 2 ? 'top' : 'bottom'
+    }
+
     function onPointerUp(e: PointerEvent) {
       const d = down
       down = null
@@ -1052,6 +1033,7 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
       if (paged() && d.type !== 'mouse' && !selectionInside()) {
         const swipe = swipeDirection(dx, dy)
         if (swipe) {
+          flipCorner = cornerAt(d.y)
           turnBy(swipe === 'next' ? 1 : -1)
           return
         }
@@ -1071,8 +1053,10 @@ const PdfView = forwardRef<ReaderHandle, ReaderEngineProps>(function PdfView(pro
         propsRef.current.onTap?.('center')
         return
       }
+      const corner = cornerAt(d.y)
       const fire = () => {
         if (selectionInside()) return
+        flipCorner = corner
         turnBy(zone === 'next' ? 1 : -1)
         propsRef.current.onTap?.(zone)
       }

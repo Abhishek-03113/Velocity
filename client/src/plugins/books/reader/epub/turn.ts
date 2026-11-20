@@ -11,12 +11,16 @@
  * a turn inside the same chapter only moves the copy to the current page, so it starts in the same frame, with the
  * book's fonts already loaded in the copy (a fresh copy would first paint in a fallback font: the glitch).
  *
- *  - slide: the outgoing page drifts 30% (capped) and fades while the incoming page drifts in, 220 ms
+ *  - slide: a push, the outgoing sheet leaves as the incoming one arrives edge to edge, 280 ms
  *  - fade:  the ghost cross-fades out, 140 ms
- *  - curl:  the outgoing page swings about its left edge in 3D (perspective) with a shade on its face and a
- *           shadow cast onto the page beneath. Going back, the live page swings in over the ghost instead.
+ *  - curl:  a page flip (`../pageFlip.ts`): the outgoing page folds from its corner along a moving fold line, its
+ *           back and the fold shadows showing, over the new page. Going back, the live page unfolds over the ghost.
+ *
+ * Every iframe involved is pinned to `color-scheme: light` (its document's scheme). In a dark app an iframe that
+ * inherits `dark` is painted on an opaque white canvas: that was the white flash during turns.
  */
 import type { TurnDir } from './helpers'
+import { FLIP_MS, playPageFlip, type FlipCorner, type PageFlip } from '../pageFlip'
 
 export type TurnEffect = 'curl' | 'slide' | 'fade' | 'none'
 
@@ -33,6 +37,10 @@ export interface TurnEnv {
   backgroundImage: string | null
   /** Changes whenever the page's look changes (appearance, colours); a kept copy with another key is rebuilt. */
   key?: string
+  /** Dark paper: the page flip keeps its sheen and shadows tuned to it. */
+  dark?: boolean
+  /** Which corner the page flip lifts (the half of the page that was tapped); bottom by default. */
+  corner?: FlipCorner
 }
 
 export interface Ghost {
@@ -40,9 +48,9 @@ export interface Ghost {
   dispose(): void
 }
 
-export const SLIDE_MS = 220
+export const SLIDE_MS = 280
 export const FADE_MS = 140
-export const CURL_MS = 460
+export const CURL_MS = FLIP_MS
 export const TURN_EASE = 'cubic-bezier(.2,.8,.2,1)'
 
 function paper(env: Pick<TurnEnv, 'background' | 'backgroundImage'>): string {
@@ -87,6 +95,7 @@ function build(env: TurnEnv, doc: Document): Kept | null {
   ghost.style.cssText = `${GHOST_CSS}visibility:hidden;${paper(env)}`
   const clip = document.createElement('div')
   const copy = document.createElement('iframe')
+  copy.style.cssText = 'border:0;background:transparent;color-scheme:light;'
   copy.setAttribute('sandbox', 'allow-same-origin')
   copy.setAttribute('tabindex', '-1')
   clip.appendChild(copy)
@@ -147,7 +156,9 @@ export function takeGhost(env: TurnEnv): Ghost | null {
     const mountRect = env.mount.getBoundingClientRect()
     const frameRect = live.frame.getBoundingClientRect()
     k.clip.style.cssText = `position:absolute;overflow:hidden;left:${mountRect.left - rootRect.left}px;top:${mountRect.top - rootRect.top}px;width:${mountRect.width}px;height:${mountRect.height}px;`
-    k.copy.style.cssText = `position:absolute;left:${frameRect.left - mountRect.left}px;top:${frameRect.top - mountRect.top}px;width:${frameRect.width}px;height:${frameRect.height}px;border:0;background:transparent;z-index:1;pointer-events:none;`
+    // color-scheme: light, as on the live frame: in a dark app an iframe whose scheme differs from its document's is
+    // painted on an opaque white canvas, which flashed white through every turn effect.
+    k.copy.style.cssText = `position:absolute;left:${frameRect.left - mountRect.left}px;top:${frameRect.top - mountRect.top}px;width:${frameRect.width}px;height:${frameRect.height}px;border:0;background:transparent;color-scheme:light;z-index:1;pointer-events:none;`
 
     // Highlights drawn over the live page come along (they change between turns, so they are copied each time).
     k.clip.querySelectorAll('svg').forEach((n) => n.remove())
@@ -173,42 +184,19 @@ export function takeGhost(env: TurnEnv): Ghost | null {
   }
 }
 
-const easeInOut = (t: number): number => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
-
-interface Frame {
-  offset: number
-  angle: number
-}
-
-function curlFrames(from: number, to: number, steps = 30): Frame[] {
-  return Array.from({ length: steps + 1 }, (_, i) => {
-    const t = i / steps
-    return { offset: t, angle: from + (to - from) * easeInOut(t) }
-  })
-}
-
-/**
- * Projected x of the page's free edge for a swing of `deg` degrees, as a fraction of the width. The perspective
- * origin is the centre of the tile, so the offset from the centre is what gets magnified.
- */
-function edgeX(deg: number, width: number, p: number): number {
-  const a = (Math.abs(deg) * Math.PI) / 180
-  const z = width * Math.sin(a)
-  const cx = width / 2
-  return (cx + (width * Math.cos(a) - cx) * (p / Math.max(1, p - z))) / width
-}
-
 function finish(anims: Animation[]): Promise<void> {
   return Promise.all(anims.map((a) => a.finished.catch(() => undefined))).then(() => undefined)
 }
 
 /** Run one turn. Resolves when the animation is done; always leaves the DOM as it found it. */
 export async function playTurn(effect: Exclude<TurnEffect, 'none'>, dir: TurnDir, ghost: Ghost, env: TurnEnv): Promise<void> {
-  const { stage, root, layer } = env
+  const { stage, root } = env
   const anims: Animation[] = []
   const extra: HTMLElement[] = []
   const w = root.clientWidth
+  let flipRef: PageFlip | null = null
   const reset = () => {
+    flipRef?.cancel()
     for (const a of anims) {
       try {
         a.cancel()
@@ -218,8 +206,6 @@ export async function playTurn(effect: Exclude<TurnEffect, 'none'>, dir: TurnDir
     }
     for (const n of extra) n.remove()
     for (const p of ['transform-origin', 'backface-visibility', 'z-index', 'background-color', 'background-image', 'will-change']) stage.style.removeProperty(p)
-    root.style.perspective = ''
-    layer.style.perspective = ''
     ghost.dispose()
   }
   try {
@@ -230,67 +216,49 @@ export async function playTurn(effect: Exclude<TurnEffect, 'none'>, dir: TurnDir
     }
 
     if (effect === 'slide') {
-      const dist = Math.min(w * 0.3, 280) * (dir === 'next' ? 1 : -1)
-      stage.style.willChange = 'transform, opacity'
+      // A push: the old sheet (opaque paper) leaves as the new one arrives edge to edge, so two pages of text never
+      // overlap mid-turn (the old 30% drift + cross-fade showed both at once).
+      const dist = w * (dir === 'next' ? 1 : -1)
+      stage.style.willChange = 'transform'
       const opts = { duration: SLIDE_MS, easing: TURN_EASE, fill: 'forwards' as const }
       anims.push(
-        ghost.el.animate([{ transform: 'translate3d(0,0,0)', opacity: 1 }, { transform: `translate3d(${-dist}px,0,0)`, opacity: 0 }], opts),
-        stage.animate([{ transform: `translate3d(${dist}px,0,0)`, opacity: 0 }, { transform: 'translate3d(0,0,0)', opacity: 1 }], opts),
+        ghost.el.animate([{ transform: 'translate3d(0,0,0)' }, { transform: `translate3d(${-dist}px,0,0)` }], opts),
+        stage.animate([{ transform: `translate3d(${dist}px,0,0)` }, { transform: 'translate3d(0,0,0)' }], opts),
       )
       await finish(anims)
       return
     }
 
-    // curl
-    const persp = 1800
-    root.style.perspective = `${persp}px`
-    layer.style.perspective = `${persp}px`
+    // curl: a page flip. Forward, the copy of the old page folds away over the new one; back, the live (previous)
+    // page unfolds over the copy of the old one.
     const next = dir === 'next'
-    const frames = curlFrames(next ? 0 : -178, next ? -178 : 0)
-    const flipper = next ? ghost.el : stage
-    flipper.style.transformOrigin = 'left center'
-    flipper.style.backfaceVisibility = 'hidden'
-    flipper.style.willChange = 'transform'
+    const leaf = next ? ghost.el : stage
     if (!next) {
-      // The live page is the one that swings in: give it paper so the ghost beneath does not show through.
+      // The live page is the one that turns: give it paper so the copy beneath does not show through it.
       stage.style.backgroundColor = env.background
       if (env.backgroundImage) stage.style.backgroundImage = env.backgroundImage
+    }
+    const host = document.createElement('div')
+    host.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:5;'
+    root.appendChild(host)
+    extra.push(host)
+    const flip = playPageFlip({
+      leaf,
+      host,
+      width: w,
+      height: root.clientHeight,
+      dir,
+      corner: env.corner,
+      paper: { color: env.background, image: env.backgroundImage, dark: !!env.dark },
+      duration: CURL_MS,
+    })
+    if (!next) {
+      // Stack after the first fold is applied (same task, so no frame shows the new page whole).
       stage.style.zIndex = '4'
       ghost.el.style.zIndex = '2'
     }
-    const rotate = (a: number) => `rotateY(${a}deg)`
-    const keyframes = (fn: (f: Frame) => Keyframe): Keyframe[] => frames.map((f) => ({ offset: f.offset, ...fn(f) }))
-    const opts = { duration: CURL_MS, easing: 'linear', fill: 'forwards' as const }
-    anims.push(flipper.animate(keyframes((f) => ({ transform: rotate(f.angle) })), opts))
-
-    // Shade on the turning page: it darkens as it tilts away from the light.
-    const shade = document.createElement('div')
-    shade.style.cssText =
-      'position:absolute;inset:0;pointer-events:none;z-index:5;transform-origin:left center;backface-visibility:hidden;will-change:transform,opacity;' +
-      'background:linear-gradient(90deg,rgba(0,0,0,.10) 0%,rgba(0,0,0,.0) 35%,rgba(0,0,0,.22) 100%);'
-    ;(next ? layer : root).appendChild(shade)
-    extra.push(shade)
-    const lift = (a: number) => Math.sin((Math.min(90, Math.abs(a)) * Math.PI) / 180)
-    anims.push(shade.animate(keyframes((f) => ({ transform: rotate(f.angle), opacity: 0.15 + 0.85 * lift(f.angle) })), opts))
-
-    // Shadow cast on the page beneath, riding the free edge.
-    const castW = Math.round(w * 0.34)
-    const cast = document.createElement('div')
-    cast.style.cssText =
-      `position:absolute;top:0;bottom:0;left:0;width:${castW}px;pointer-events:none;z-index:${next ? 2 : 1};will-change:transform,opacity;` +
-      'background:linear-gradient(90deg,rgba(0,0,0,.34),rgba(0,0,0,.12) 40%,rgba(0,0,0,0));'
-    layer.appendChild(cast)
-    extra.push(cast)
-    anims.push(
-      cast.animate(
-        keyframes((f) => ({
-          transform: `translate3d(${Math.round(edgeX(f.angle, w, persp) * w)}px,0,0)`,
-          opacity: Math.max(0, 0.95 * lift(f.angle) * (1 - Math.max(0, Math.abs(f.angle) - 90) / 88)),
-        })),
-        opts,
-      ),
-    )
-    await finish(anims)
+    flipRef = flip
+    await flip.done
   } finally {
     reset()
   }
