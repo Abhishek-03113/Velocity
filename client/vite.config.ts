@@ -20,6 +20,10 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
+          // Emit .mjs assets (the pdf.js worker) as .js: static servers whose MIME table lacks .mjs (nginx:alpine)
+          // send them as application/octet-stream, which browsers refuse to load as a module or worker.
+          assetFileNames: (asset) =>
+            (asset.names?.[0] ?? '').endsWith('.mjs') ? 'assets/[name]-[hash].js' : 'assets/[name]-[hash][extname]',
           // Keep the editor and the (large, lazy) whiteboard in their own cacheable chunks.
           manualChunks: {
             codemirror: [

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { allNotes, api, noteContent, shot, tiles } from './helpers'
 
 /**
@@ -18,6 +18,15 @@ const PDF_FILE = { name: 'sample.pdf', mimeType: 'application/pdf', buffer: read
 
 const shelf = (page: Page) => page.locator('section[data-tile-kind="view"]')
 const reader = (page: Page) => page.locator('section[data-tile-kind="plugin"]')
+
+/** Close a tile from the tab bar: its own tile tab, or else the tab of the note it shows. */
+async function closeFromTabs(page: Page, tile: Locator) {
+  const tileId = await tile.getAttribute('data-tile-id')
+  const tileTab = page.locator(`[data-tile-tab="${tileId}"]`)
+  if (await tileTab.count()) return tileTab.getByRole('button', { name: /^Close / }).click()
+  const noteId = await tile.getAttribute('data-note-id')
+  await page.locator(`[data-note-tab="${noteId}"]`).getByRole('button', { name: /^Close / }).click()
+}
 const cards = (page: Page) => shelf(page).locator('[data-book-id]')
 const EPUB_CARD = 'The Velocity Sampler, Ada Reader'
 const PDF_CARD = 'Velocity PDF Handbook, Lin Pages'
@@ -59,7 +68,7 @@ async function openShelf(page: Page) {
 /** Close every reader tile so the next book opens into a fresh one. */
 async function closeReaders(page: Page) {
   while (await reader(page).count()) {
-    await reader(page).first().getByRole('button', { name: /Close/ }).click()
+    await closeFromTabs(page, reader(page).first())
     await page.waitForTimeout(300)
   }
 }
@@ -232,7 +241,7 @@ test('shortcuts, rename and remove', async ({ page }) => {
   await closeReaders(page)
   await expect(tiles(page).first()).toBeVisible()
   if (await shelf(page).count()) {
-    await shelf(page).getByRole('button', { name: /Close/ }).click()
+    await closeFromTabs(page, shelf(page))
     await expect(shelf(page)).toHaveCount(0)
   }
   await page.keyboard.press('Control+Alt+KeyO')

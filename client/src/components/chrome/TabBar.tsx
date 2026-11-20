@@ -3,11 +3,14 @@ import { useShallow } from 'zustand/react/shallow'
 import { primaryKey } from '../../lib/commands'
 import { NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { displayTitle } from '../../lib/noteMeta'
+import { isPrimaryContent } from '../../lib/noteViews'
 import { isMac } from '../../lib/platform'
-import { newNote, openNote } from '../../lib/workspace'
+import { findLeaf, leaves, tileNoteId, type TileContent } from '../../lib/tiling'
+import { closeTile, focusTile, newNote, openNote } from '../../lib/workspace'
+import { pluginName, pluginTileView, pluginWorkspaceView, usePluginsVersion } from '../../plugins/host'
 import { useEditorStore } from '../../store/editorStore'
 import { useLayoutStore, visibleNoteIds } from '../../store/layoutStore'
-import { Icon } from '../Icon'
+import { Icon, type IconName } from '../Icon'
 import { ContextMenu, type MenuState } from '../ui/ContextMenu'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import styles from './Chrome.module.css'
@@ -56,6 +59,7 @@ const Tab = memo(function Tab({ id, title, dirty, active, visible, index, onMenu
       tabIndex={active ? 0 : -1}
       draggable
       title={title}
+      data-note-tab={id}
       className={`${styles.tab} ${active ? styles.tabActive : ''} ${visible && !active ? styles.tabVisible : ''} ${
         dropSide ? styles[`tabDrop_${dropSide}`] : ''
       }`}
@@ -93,7 +97,81 @@ const Tab = memo(function Tab({ id, title, dirty, active, visible, index, onMenu
   )
 })
 
-/** Safari-style compact tabs — only shown when more than one note is open. */
+/** Icon and label of a tile that is not a note's primary view (so it has no note tab of its own). */
+function tileTabLabel(content: TileContent, noteTitle: string | null): { icon: IconName; title: string } {
+  switch (content.kind) {
+    case 'empty':
+      return { icon: 'plus.circle', title: 'New Tile' }
+    case 'view': {
+      const spec = pluginWorkspaceView(content.pluginId, content.view)
+      return { icon: spec?.icon ?? 'doc.plaintext', title: spec?.title ?? pluginName(content.pluginId) }
+    }
+    case 'board':
+      return { icon: 'scribble', title: `${noteTitle ?? 'Note'} — Whiteboard` }
+    case 'plugin': {
+      const spec = pluginTileView(content.pluginId, content.view)
+      return { icon: spec?.icon ?? 'doc.plaintext', title: `${noteTitle ?? 'Note'} — ${spec?.title ?? pluginName(content.pluginId)}` }
+    }
+    default:
+      return { icon: 'doc.text', title: noteTitle ?? 'Note' }
+  }
+}
+
+/**
+ * Tab of a tile with no note tab of its own: an empty tile, a workspace view (Bookshelf), a whiteboard or a plugin
+ * tile beside its note. Clicking focuses the tile; × (or a middle click) closes just that tile.
+ */
+const TileTab = memo(function TileTab({ tileId, active }: { tileId: string; active: boolean }) {
+  usePluginsVersion((s) => s.version)
+  const content = useLayoutStore((s) => findLeaf(s.root, tileId)?.content)
+  const noteId = content && 'noteId' in content ? content.noteId : null
+  const noteTitle = useEditorStore((s) => {
+    if (noteId == null) return null
+    const p = s.pastes.find((x) => x.id === noteId)
+    return p ? displayTitle(p) : null
+  })
+  if (!content) return null
+  const { icon, title } = tileTabLabel(content, noteTitle)
+  return (
+    <div
+      role="tab"
+      aria-selected={active}
+      tabIndex={active ? 0 : -1}
+      title={title}
+      data-tile-tab={tileId}
+      className={`${styles.tab} ${active ? styles.tabActive : ''} ${active ? '' : styles.tabVisible}`}
+      onClick={() => focusTile(tileId, { dom: true })}
+      onAuxClick={(e) => {
+        if (e.button === 1) closeTile(tileId)
+      }}
+      onMouseDown={(e) => {
+        if (e.button === 1) e.preventDefault()
+      }}
+    >
+      <Icon name={icon} size={12} className={styles.tabIcon} />
+      <span className={styles.tabTitle}>{title}</span>
+      <span className={styles.tabTrail}>
+        <button
+          type="button"
+          className={styles.tabClose}
+          aria-label={`Close ${title}`}
+          title="Close tile"
+          onClick={(e) => {
+            e.stopPropagation()
+            closeTile(tileId)
+          }}
+        >
+          <Icon name="xmark" size={11} strokeWidth={2} />
+        </button>
+      </span>
+    </div>
+  )
+})
+
+/**
+ * Safari-style compact tabs: one per open note, plus one per tile that has no note tab of its own, so every tile is
+ * focused and closed from here. Shown when there is more than one tab to choose between.
+ */
 export default function TabBar() {
   const tabs = useEditorStore(
     useShallow((s) => {
@@ -105,6 +183,22 @@ export default function TabBar() {
     }),
   )
   const activeId = useEditorStore((s) => s.activeId)
+  // Re-resolve which tiles are a note's primary view when plugins are switched on or off.
+  usePluginsVersion((s) => s.version)
+  const openTabIds = useEditorStore((s) => s.openTabIds)
+  // A tile gets its own tab unless a note tab already stands for it (it is that note's primary view).
+  const tileTabs = useLayoutStore(
+    useShallow((s) =>
+      leaves(s.root)
+        .filter((l) => {
+          const noteId = tileNoteId(l.content)
+          return noteId == null || !isPrimaryContent(l.content) || !openTabIds.includes(noteId)
+        })
+        .map((l) => l.id),
+    ),
+  )
+  const focusedId = useLayoutStore((s) => s.focusedId)
+  const focusOnTileTab = tileTabs.includes(focusedId)
   const visibleKey = useLayoutStore((s) => visibleNoteIds(s.root).join(','))
   const visible = new Set(visibleKey.split(',').map(Number))
   const [menu, setMenu] = useState<MenuState | null>(null)
@@ -130,7 +224,7 @@ export default function TabBar() {
     useEditorStore.getState().moveTab(id, from < index ? index - 1 : index)
   }, [])
 
-  if (tabs.length < 2) return null
+  if (tabs.length + tileTabs.length < 2) return null
 
   return (
     <div
@@ -159,13 +253,16 @@ export default function TabBar() {
             index={index}
             title={title!}
             dirty={dirty === '1'}
-            active={id === activeId}
+            active={!focusOnTileTab && id === activeId}
             visible={visible.has(id)}
             onMenu={onMenu}
             onReorder={onReorder}
           />
         )
       })}
+      {tileTabs.map((tileId) => (
+        <TileTab key={tileId} tileId={tileId} active={tileId === focusedId} />
+      ))}
       <ToolbarButton
         icon="plus"
         size="small"
