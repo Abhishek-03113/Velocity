@@ -95,6 +95,16 @@
   color: var(--accent-contrast);
 }
 
+.paletteEnter {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.22);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
 .paletteItemActive .paletteDetail,
 .paletteItemActive .paletteMeta,
 .paletteItemActive .paletteIcon,

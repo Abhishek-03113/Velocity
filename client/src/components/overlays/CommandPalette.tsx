@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { COMMANDS, dynamicCommands, runCommand, type Command } from '../../lib/commands'
 import { displayTitle, parseTimestamp, relativeTime } from '../../lib/noteMeta'
 import { isMac } from '../../lib/platform'
+import { recentCommandIds, recordCommand, suggestedCommandIds } from '../../lib/recentCommands'
+import { leaves } from '../../lib/tiling'
 import { newNote, openNote } from '../../lib/workspace'
 import { pluginCommands, urlHandlerFor } from '../../plugins/host'
 import type { PickItem, PickSpec, PromptSpec } from '../../plugins/types'
 import { useEditorStore } from '../../store/editorStore'
+import { focusedNoteId, useLayoutStore } from '../../store/layoutStore'
 import { useGroupStore } from '../../store/groupStore'
 import { cachedContent, searchNotes } from '../../store/searchStore'
 import { useUiStore } from '../../store/uiStore'
@@ -15,7 +18,8 @@ import styles from './Overlays.module.css'
 
 type Item =
   | { type: 'note'; id: number; title: string; detail: string; meta: string }
-  | { type: 'command'; command: Command }
+  | { type: 'command'; command: Command; group?: string }
+  | { type: 'more'; count: number }
   | { type: 'create'; title: string }
   | { type: 'url'; label: string; detail: string; icon: IconName; open: (opts: { split: boolean }) => void }
 
@@ -313,6 +317,8 @@ function SearchPalette() {
   const pastes = useEditorStore((s) => s.pastes)
   const [value, setValue] = useState(mode === 'notes' ? '' : '>')
   const [index, setIndex] = useState(0)
+  // Empty ">" shows recent and suggested commands first (Hick's law); this opens the full list.
+  const [showAll, setShowAll] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const restoreFocus = useRef<Element | null>(document.activeElement)
@@ -335,6 +341,24 @@ function SearchPalette() {
       const all = (moveOnly ? dynamicCommands() : [...COMMANDS, ...pluginCommands(), ...dynamicCommands()]).filter(
         (c) => !c.paletteHidden && (!c.enabled || c.enabled()) && (!moveOnly || c.id.startsWith('note.moveTo.')),
       )
+      if (!query && !moveOnly && !showAll) {
+        const byId = new Map(all.map((c) => [c.id, c]))
+        const recent = recentCommandIds(5)
+          .map((id) => byId.get(id))
+          .filter((c): c is Command => !!c)
+        const layout = useLayoutStore.getState()
+        const suggested = suggestedCommandIds({ noteOpen: focusedNoteId(layout) != null, tileCount: leaves(layout.root).length })
+          .map((id) => byId.get(id))
+          .filter((c): c is Command => !!c && !recent.includes(c))
+          .slice(0, 3)
+        if (recent.length + suggested.length > 0) {
+          return [
+            ...recent.map((c) => ({ type: 'command' as const, command: c, group: 'Recent' })),
+            ...suggested.map((c) => ({ type: 'command' as const, command: c, group: 'Suggested' })),
+            { type: 'more' as const, count: all.length },
+          ]
+        }
+      }
       return all
         .map((c) => ({ c, score: fuzzyScore(`${c.title} ${c.keywords ?? ''} ${c.section}`, query) }))
         .filter((x): x is { c: Command; score: number } => x.score != null)
@@ -392,7 +416,7 @@ function SearchPalette() {
         ]
       : []
     return [...urlItem, ...notes.slice(0, 30), { type: 'create', title: query }]
-  }, [isCommand, query, moveOnly, pastes])
+  }, [isCommand, query, moveOnly, pastes, showAll])
 
   useEffect(() => setIndex(0), [value])
 
@@ -402,9 +426,18 @@ function SearchPalette() {
 
   const activate = (item: Item | undefined, split: boolean) => {
     if (!item) return
+    if (item.type === 'more') {
+      setShowAll(true)
+      setIndex(0)
+      // Clicking the row must not take focus (and Escape / arrow keys) away from the search field.
+      inputRef.current?.focus()
+      return
+    }
     close()
     if (item.type === 'note') openNote(item.id, { split: split ? 'auto' : false })
-    else if (item.type === 'command') runCommand(item.command)
+    else if (item.type === 'command') {
+      if (runCommand(item.command) && !item.command.id.startsWith('note.moveTo.')) recordCommand(item.command.id)
+    }
     else if (item.type === 'url') item.open({ split })
     else {
       newNote({ split: split ? 'auto' : false })
@@ -465,13 +498,18 @@ function SearchPalette() {
           {!isCommand && !query && items.length > 0 && <div className={styles.paletteSection}>Recent</div>}
           {items.map((item, i) => {
             let sectionHeader: ReactNode = null
-            if (item.type === 'command' && item.command.section !== lastSection && !query) {
-              lastSection = item.command.section
-              sectionHeader = <div className={styles.paletteSection}>{item.command.section}</div>
+            const heading = item.type === 'command' ? (item.group ?? item.command.section) : null
+            if (heading && heading !== lastSection && !query) {
+              lastSection = heading
+              sectionHeader = <div className={styles.paletteSection}>{heading}</div>
             }
             const active = i === index
             return (
-              <div key={item.type === 'note' ? `n${item.id}` : item.type === 'command' ? item.command.id : item.type}>
+              <div
+                key={
+                  item.type === 'note' ? `n${item.id}` : item.type === 'command' ? `${item.group ?? ''}${item.command.id}` : item.type
+                }
+              >
                 {sectionHeader}
                 <div
                   id={`palette-item-${i}`}
@@ -500,6 +538,20 @@ function SearchPalette() {
                       </div>
                       {item.command.keys?.[0] && <Kbd combo={item.command.keys[0]} />}
                     </>
+                  )}
+                  {item.type === 'more' && (
+                    <>
+                      <Icon name="ellipsis.circle" size={15} className={styles.paletteIcon} />
+                      <div className={styles.paletteText}>
+                        <div className={styles.paletteTitle}>Show all {item.count} commands</div>
+                      </div>
+                    </>
+                  )}
+                  {/* Von Restorff: only the row Enter will run carries the ↵ hint (and the accent fill). */}
+                  {active && item.type !== 'more' && (
+                    <span className={styles.paletteEnter} aria-hidden="true">
+                      ↵
+                    </span>
                   )}
                   {item.type === 'url' && (
                     <>
