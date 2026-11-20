@@ -68,6 +68,16 @@ describe('buildThemeRules', () => {
     expect(r['a, a:link, a:visited'].color).toContain('#eee')
     expect(r['a, a:link, a:visited']['text-decoration-color']).toContain('#6af')
   })
+  it('gives every element the paper ink, so book colours never put dark text on dark paper', () => {
+    const r = buildThemeRules(base, colors)
+    const key = Object.keys(r).find((k) => k.startsWith('body *'))!
+    expect(key).toMatch(/:not\(#/) // id weight beats a book's `.class { color: … !important }`
+    expect(r[key].color).toBe('inherit !important')
+    expect(r[key]['-webkit-text-fill-color']).toBe('currentColor !important')
+    expect(r[key]['background-color']).toBe('transparent !important')
+    // Links still read as links: the accent stays on the underline.
+    expect(r['a, a:link, a:visited']['text-decoration-color']).toContain('#6af')
+  })
   it('keeps the page transparent so the tile paints the paper', () => {
     const r = buildThemeRules(base, colors)
     expect(r.html.background).toContain('transparent')

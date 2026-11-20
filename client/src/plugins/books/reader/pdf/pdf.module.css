@@ -173,67 +173,12 @@
 }
 
 /* --- curl page turn ------------------------------------------------------------------------------------------------
- * The turning page is a bitmap copy of the current page on an overlay: a leaf that rotates around the spine edge inside
- * a perspective stage, with a lit front, a darker back and a shadow cast on the page being revealed. */
-.curlStage {
+ * A page flip (reader/pageFlip.ts): the turning page element is clipped to the part still lying flat; the folded flap
+ * and the shadows are drawn in this host, laid over the turning page and stacked above both pages. */
+.flipHost {
   position: absolute;
   z-index: 5;
-  perspective: 1800px;
-  perspective-origin: 50% 50%;
   pointer-events: none;
-}
-
-.curlShade {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.leaf {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-
-.leafFront,
-.leafBack {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.leafBack {
-  background-color: var(--pdf-paper, #fff);
-  background-image: var(--pdf-bg-image, none);
-  box-shadow: var(--shadow-sm);
-}
-
-.leafBack::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.16);
-}
-
-.leafGloss,
-.leafDim {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.leafGloss {
-  width: 60%;
-  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
-  will-change: transform, opacity;
-}
-
-.leafDim {
-  background: rgba(0, 0, 0, 0.32);
-  opacity: 0;
-  will-change: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {

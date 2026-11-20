@@ -48,9 +48,10 @@ Engines never import the store or host; the shell never touches epub.js / pdf.js
     you have to click through.
   - PDF paged: one page at a time, fitted (fit-page by default in paged), turned with the effect.
     PDF scroll: today's virtualised column.
-- `appearance.pageTurn` (paged only): **Curl** (a 3D page lifting from the turning edge with a soft shadow and
-  the next page revealed underneath), **Slide** (default; the page slides out while the next slides in, 220 ms,
-  `--ease-out`), **Fade** (140 ms cross-fade), **None**. `prefers-reduced-motion` forces None. Turns must stay at
+- `appearance.pageTurn` (paged only): **Curl** (a page flip: the page folds from its corner along a moving fold line,
+  back of the leaf and fold shadows showing, the next page revealed underneath, 640 ms; ACC-52), **Slide** (default;
+  the old sheet is pushed out as the next arrives edge to edge, 280 ms, `--ease-out`), **Fade** (140 ms cross-fade),
+  **None**. No effect may flash: book iframes are pinned to `color-scheme: light`. `prefers-reduced-motion` forces None. Turns must stay at
   60 fps on a mid laptop; never block input (queue at most one extra turn on rapid presses).
 - Input, as in Moon+: **tap zones** (left 30% previous, right 30% next, middle toggles the chrome), **swipe**
   left/right on touch and trackpad horizontal scroll in paged, keys ←/→ PageUp/PageDown Space Shift+Space Home End,

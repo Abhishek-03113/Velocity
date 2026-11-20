@@ -30,6 +30,7 @@ import {
 } from './helpers'
 import { MarksLayer } from './marks'
 import { playTurn, takeGhost, warmGhost, type TurnEffect, type TurnEnv } from './turn'
+import type { FlipCorner } from '../pageFlip'
 import styles from './EpubView.module.css'
 
 /** How long a mouse tap in a page-turn zone waits for a second click (shared with the PDF engine's value). */
@@ -250,6 +251,8 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
   const scrollWheelRef = useRef({ dy: 0, raf: 0 })
   const coalesceWheelRef = useRef<(e: WheelEvent) => void>(() => undefined)
   const turnRef = useRef<(dir: TurnDir) => void>(() => undefined)
+  /** The corner the next Curl lifts: the half of the page that was tapped or swiped (keys and wheel: bottom). */
+  const cornerRef = useRef<FlipCorner>('bottom')
   const [book, setBook] = useState<EpubBook | null>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
 
@@ -502,6 +505,7 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       mount,
       background: colors.background,
       backgroundImage: colors.backgroundImage ?? null,
+      dark: !!colors.dark,
       key: `${JSON.stringify(appearanceRef.current)}|${colors.background}|${colors.text}`,
     }
   }, [])
@@ -514,6 +518,8 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
       if (loc && ((dir === 'next' && loc.atEnd) || (dir === 'prev' && loc.atStart))) return
       const effect: TurnEffect = prefersReducedMotion() ? 'none' : (appearanceRef.current.pageTurn as TurnEffect)
       const env = turnEnv()
+      if (env) env.corner = cornerRef.current
+      cornerRef.current = 'bottom'
       const ghost = effect !== 'none' && env ? takeGhost(env) : null
       const before = lastCfiRef.current
       try {
@@ -739,9 +745,11 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
           propsRef.current.onTap?.(zone)
           return
         }
+        const corner: FlipCorner = f.top + e.clientY - rr.top < rr.height / 2 ? 'top' : 'bottom'
         const fire = () => {
           const picked = win.getSelection()
           if (picked && !picked.isCollapsed && picked.toString().trim()) return
+          cornerRef.current = corner
           turnRef.current(zone)
           propsRef.current.onTap?.(zone)
         }
@@ -773,6 +781,9 @@ const EpubView = forwardRef<ReaderHandle, ReaderEngineProps>(function EpubView(p
         const dir = swipeDirection(e.clientX - d.x, e.clientY - d.y)
         if (dir) {
           suppressClickUntil = performance.now() + 400
+          const rr = rootRef.current?.getBoundingClientRect()
+          const fr = frame?.getBoundingClientRect()
+          if (rr && fr) cornerRef.current = fr.top + d.y - rr.top < rr.height / 2 ? 'top' : 'bottom'
           turnRef.current(dir)
         }
       })
