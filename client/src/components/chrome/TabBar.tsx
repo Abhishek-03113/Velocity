@@ -1,9 +1,10 @@
-import { memo, useCallback, useState, type DragEvent, type MouseEvent } from 'react'
+import { memo, useCallback, useLayoutEffect, useRef, useState, type DragEvent, type MouseEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { primaryKey } from '../../lib/commands'
 import { NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { displayTitle } from '../../lib/noteMeta'
 import { isPrimaryContent } from '../../lib/noteViews'
+import { EASE, animate } from '../../lib/motion'
 import { isMac } from '../../lib/platform'
 import { findLeaf, leaves, tileNoteId, type TileContent } from '../../lib/tiling'
 import { closeTile, focusTile, newNote, openNote } from '../../lib/workspace'
@@ -12,6 +13,7 @@ import { useEditorStore } from '../../store/editorStore'
 import { useLayoutStore, visibleNoteIds } from '../../store/layoutStore'
 import { Icon, type IconName } from '../Icon'
 import { ContextMenu, type MenuState } from '../ui/ContextMenu'
+import { DirtyDot } from '../ui/DirtyDot'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import styles from './Chrome.module.css'
 
@@ -79,7 +81,7 @@ const Tab = memo(function Tab({ id, title, dirty, active, visible, index, onMenu
     >
       <span className={styles.tabTitle}>{title}</span>
       <span className={styles.tabTrail}>
-        {dirty && <span className={styles.tabDirty} aria-label="Unsaved changes" />}
+        <DirtyDot dirty={dirty} className={styles.tabDirty} />
         <button
           type="button"
           className={styles.tabClose}
@@ -186,6 +188,38 @@ export default function TabBar() {
   // Re-resolve which tiles are a note's primary view when plugins are switched on or off.
   usePluginsVersion((s) => s.version)
   const openTabIds = useEditorStore((s) => s.openTabIds)
+  const barRef = useRef<HTMLDivElement>(null)
+  // Tab positions after the previous render (relative to the bar), for FLIP when tabs open, close or move.
+  const tabRects = useRef(new Map<string, number>())
+  useLayoutEffect(() => {
+    const bar = barRef.current
+    if (!bar) return
+    const prev = tabRects.current
+    if (prev.size === 0) return
+    const base = bar.getBoundingClientRect().left - bar.scrollLeft
+    for (const el of bar.querySelectorAll<HTMLElement>('[data-note-tab]')) {
+      const left = el.getBoundingClientRect().left - base
+      const old = prev.get(el.dataset.noteTab ?? '')
+      if (old == null) {
+        // A new tab unfolds from the + side instead of popping in.
+        el.style.transformOrigin = 'right center'
+        animate(el, [{ transform: 'scaleX(0.3)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 170, easing: EASE.spring })
+      } else if (Math.abs(old - left) > 0.5) {
+        // Neighbours of a closed or moved tab slide into place.
+        animate(el, [{ transform: `translateX(${old - left}px)` }, { transform: 'none' }], { tier: 'warm', easing: EASE.out })
+      }
+    }
+  }, [openTabIds])
+  useLayoutEffect(() => {
+    const bar = barRef.current
+    if (!bar) return
+    const base = bar.getBoundingClientRect().left - bar.scrollLeft
+    const next = new Map<string, number>()
+    for (const el of bar.querySelectorAll<HTMLElement>('[data-note-tab]')) {
+      next.set(el.dataset.noteTab ?? '', el.getBoundingClientRect().left - base)
+    }
+    tabRects.current = next
+  })
   // A tile gets its own tab unless a note tab already stands for it (it is that note's primary view).
   const tileTabs = useLayoutStore(
     useShallow((s) =>
@@ -228,6 +262,7 @@ export default function TabBar() {
 
   return (
     <div
+      ref={barRef}
       className={styles.tabBar}
       role="tablist"
       aria-label="Open notes"

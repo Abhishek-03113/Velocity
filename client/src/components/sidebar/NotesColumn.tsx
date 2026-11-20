@@ -3,6 +3,7 @@ import {
   memo,
   useCallback,
   useDeferredValue,
+  useLayoutEffect,
   useMemo,
   useRef,
   type CSSProperties,
@@ -16,6 +17,7 @@ import { primaryKey } from '../../lib/commands'
 import { moveMenuItems } from '../../lib/moveMenu'
 import { groupColorFor, NOTE_DRAG_TYPE } from '../../lib/groupColors'
 import { dateSection, displayTitle, parseTimestamp, relativeTime, snippet } from '../../lib/noteMeta'
+import { EASE, animate, reducedMotion } from '../../lib/motion'
 import { comboLabel, isMac } from '../../lib/platform'
 import {
   exportMarkdown,
@@ -33,6 +35,7 @@ import { useUiStore } from '../../store/uiStore'
 import type { Group, Paste } from '../../types'
 import { Icon } from '../Icon'
 import type { MenuState } from '../ui/ContextMenu'
+import { DirtyDot } from '../ui/DirtyDot'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import styles from './Sidebar.module.css'
 
@@ -81,7 +84,7 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }:
       >
         <div className={styles.noteTitleLine}>
           <span className={styles.noteTitle}>{row.title}</span>
-          {row.dirty && <span className={styles.unsavedDot} title="Unsaved changes" />}
+          <DirtyDot dirty={row.dirty} className={styles.unsavedDot} />
         </div>
         <button
           type="button"
@@ -113,6 +116,11 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }:
                 aria-label={badge.title ?? badge.label}
                 onClick={(e) => {
                   e.stopPropagation()
+                  // Secondary action: a quick pop backs up the Read / Unread change (small and frequent: 140 ms).
+                  animate(e.currentTarget, [{ transform: 'scale(1)' }, { transform: 'scale(1.15)', offset: 0.4 }, { transform: 'scale(1)' }], {
+                    duration: 140,
+                    easing: EASE.out,
+                  })
                   badge.onClick?.()
                 }}
                 onDoubleClick={(e) => e.stopPropagation()}
@@ -248,6 +256,65 @@ export function NotesColumn({
     // badgeVersion: re-read plugin badges when a plugin reports a change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deferredPastes, activeGroupId, groups, sort, badgeVersion])
+
+  // Deleting a note: the row takes a small breath (anticipation), leaves on a gentle downward curve, and the rows
+  // below close the gap one after another with a 2 px overshoot (stagger + follow-through). Transforms only.
+  const rowGeo = useRef(new Map<number, { el: HTMLElement; top: number; left: number; width: number; height: number }>())
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const prev = rowGeo.current
+    const next = new Map<number, { el: HTMLElement; top: number; left: number; width: number; height: number }>()
+    list?.querySelectorAll<HTMLElement>('[data-note-row]').forEach((el) => {
+      next.set(Number(el.dataset.noteRow), { el, top: el.offsetTop, left: el.offsetLeft, width: el.offsetWidth, height: el.offsetHeight })
+    })
+    rowGeo.current = next
+    if (!list || prev.size === 0 || reducedMotion()) return
+    const removed = [...prev.keys()].filter((id) => !next.has(id))
+    // Only a single note that no longer exists (not a folder switch, filter or move).
+    if (removed.length !== 1 || useEditorStore.getState().pastes.some((p) => p.id === removed[0])) return
+    const gone = prev.get(removed[0])
+    if (gone) {
+      const ghost = document.createElement('li')
+      ghost.setAttribute('role', 'presentation')
+      ghost.setAttribute('aria-hidden', 'true')
+      Object.assign(ghost.style, {
+        position: 'absolute',
+        top: `${gone.top}px`,
+        left: `${gone.left}px`,
+        width: `${gone.width}px`,
+        height: `${gone.height}px`,
+        pointerEvents: 'none',
+        listStyle: 'none',
+      })
+      gone.el.removeAttribute('data-note-row')
+      ghost.appendChild(gone.el)
+      list.appendChild(ghost)
+      const exit = animate(
+        ghost,
+        [
+          { transform: 'none', opacity: 1 },
+          { transform: 'translateX(4px)', opacity: 0.7, offset: 0.2 },
+          { transform: 'translate(-60%, 4px)', opacity: 0 },
+        ],
+        { duration: 240, easing: EASE.inOut, fill: 'forwards' },
+      )
+      if (exit) exit.onfinish = exit.oncancel = () => ghost.remove()
+      else ghost.remove()
+    }
+    let i = 0
+    for (const [id, now] of next) {
+      const old = prev.get(id)
+      const dy = old ? old.top - now.top : 0
+      if (dy < 0.5) continue
+      animate(now.el, [{ transform: `translateY(${dy}px)` }, { transform: 'translateY(-2px)', offset: 0.75 }, { transform: 'none' }], {
+        duration: 220,
+        delay: 60 + Math.min(i, 8) * 20,
+        easing: EASE.out,
+        fill: 'backwards',
+      })
+      i++
+    }
+  }, [rows])
 
   const openRow = useCallback((id: number, e: MouseEvent | KeyboardEvent) => {
     const split = e.altKey || (isMac ? e.metaKey : e.ctrlKey)

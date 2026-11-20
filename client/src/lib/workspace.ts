@@ -237,7 +237,9 @@ export function exportMarkdown(id: number | null = currentNoteId()) {
 export async function saveNow() {
   await useEditorStore.getState().saveNow()
   const pending = Object.keys(useEditorStore.getState().syncStatus).length
-  useUiStore.getState().showFlash(pending ? 'Couldn’t reach the server. Will keep retrying.' : 'All changes saved')
+  if (pending) useUiStore.getState().showFlash('Couldn’t reach the server. Will keep retrying.')
+  // A deliberate save that worked gets an exaggerated acknowledgement (status bar only, never a toast).
+  else useUiStore.getState().showFlash('All changes saved', 'success')
 }
 
 export function adjustTextSize(delta: number) {

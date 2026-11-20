@@ -75,6 +75,22 @@
   border-radius: 0;
 }
 
+/* Held by its header: lifted off the workspace (solid drawing). */
+.tileCard[data-lifted] {
+  z-index: 2;
+  box-shadow: var(--shadow-lg);
+  transform: scale(1.012);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.tileCard.tileFocused[data-lifted] {
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    var(--shadow-lg);
+}
+
 /* Hyprland-style active border, rendered in the accent colour */
 .tileCard.tileFocused {
   box-shadow:

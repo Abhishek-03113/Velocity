@@ -24,6 +24,7 @@ export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(f
       aria-label={label}
       aria-pressed={active || undefined}
       title={title}
+      data-press=""
       className={`${styles.toolbarButton} ${size === 'small' ? styles.toolbarButtonSmall : ''} ${
         active ? styles.toolbarButtonActive : ''
       } ${className ?? ''}`}
