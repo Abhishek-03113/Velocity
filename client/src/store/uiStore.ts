@@ -13,6 +13,7 @@ import {
   type Appearance,
   type ThemeVariantPrefs,
 } from '../lib/themes'
+import { setUserReducedMotion } from '../lib/motion'
 import type { PanelSpec, PickSpec, PromptSpec } from '../plugins/types'
 
 export type ThemePref = 'system' | 'light' | 'dark'
@@ -39,6 +40,8 @@ export interface Preferences {
   /** Sidebar column widths in px (dragged at their right edge; see SIDEBAR_WIDTHS for limits). */
   foldersWidth: number
   notesWidth: number
+  /** Skip interface animations even when the OS allows them (lib/motion.ts). */
+  reduceMotion: boolean
 }
 
 /** Default and limits of the two resizable sidebar columns, in px. */
@@ -65,6 +68,7 @@ export const DEFAULT_PREFS: Preferences = {
   spellcheck: true,
   foldersWidth: SIDEBAR_WIDTHS.folders.initial,
   notesWidth: SIDEBAR_WIDTHS.notes.initial,
+  reduceMotion: false,
 }
 
 const PREFS_KEY = 'velocity.prefs.v1'
@@ -170,6 +174,7 @@ export function sanitizePrefs(raw: Partial<Preferences>): Preferences {
   if (typeof raw.spellcheck === 'boolean') p.spellcheck = raw.spellcheck
   if (typeof raw.foldersWidth === 'number') p.foldersWidth = clampSidebarWidth('folders', raw.foldersWidth)
   if (typeof raw.notesWidth === 'number') p.notesWidth = clampSidebarWidth('notes', raw.notesWidth)
+  if (typeof raw.reduceMotion === 'boolean') p.reduceMotion = raw.reduceMotion
   return p
 }
 
@@ -210,6 +215,9 @@ export function applyPreferences(prefs: Preferences, theme: Appearance): void {
   root.style.setProperty('--editor-size', `${prefs.editorSize}px`)
   root.style.setProperty('--editor-measure', MEASURES[prefs.measure])
   root.style.setProperty('--tile-gap', prefs.tileGaps ? '8px' : '0px')
+  if (prefs.reduceMotion) root.dataset.reduceMotion = ''
+  else delete root.dataset.reduceMotion
+  setUserReducedMotion(prefs.reduceMotion)
   const meta = document.querySelector('meta[name="theme-color"]')
   meta?.setAttribute('content', swatchFor(family, theme, variant).bg)
 }

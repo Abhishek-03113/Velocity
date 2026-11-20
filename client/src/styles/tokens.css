@@ -44,6 +44,13 @@
   --dur-fast: 120ms;
   --dur-base: 200ms;
   --dur-slow: 280ms;
+  /* Motion v2 (lib/motion.ts): travel/exit curve, spring-back overshoot, tiers by frequency of use. */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-hot: 90ms;
+  --dur-warm: 160ms;
+  --dur-cool: 240ms;
+  --dur-rare: 300ms;
 
   /* ---- Layout -------------------------------------------------------- */
   --toolbar-height: 52px;

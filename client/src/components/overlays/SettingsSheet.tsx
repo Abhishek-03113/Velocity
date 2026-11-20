@@ -325,6 +325,9 @@ export default function SettingsSheet() {
         <Row label="Gaps between tiles" hint="Floating tiles with an accent border on the focused one">
           <Toggle label="Gaps between tiles" checked={prefs.tileGaps} onChange={(v) => setPref('tileGaps', v)} />
         </Row>
+        <Row label="Reduce interface motion" hint="Menus, sheets and tiles appear without animating">
+          <Toggle label="Reduce interface motion" checked={prefs.reduceMotion} onChange={(v) => setPref('reduceMotion', v)} />
+        </Row>
       </div>
 
       <h3 className={styles.groupHeading}>Editor</h3>

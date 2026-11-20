@@ -220,6 +220,15 @@ kbd {
   }
 }
 
+/* Settings → "Reduce interface motion" (applied as <html data-reduce-motion>). */
+:root[data-reduce-motion] *,
+:root[data-reduce-motion] *::before,
+:root[data-reduce-motion] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 /* Inputs embedded in a styled field show the ring on the field, not the input. */
 input[data-bare]:focus-visible,
 .cm-content:focus-visible {
