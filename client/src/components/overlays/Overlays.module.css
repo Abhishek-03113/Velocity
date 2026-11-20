@@ -37,7 +37,8 @@
   backdrop-filter: saturate(180%) blur(40px);
   -webkit-backdrop-filter: saturate(180%) blur(40px);
   box-shadow: var(--shadow-lg);
-  animation: pop var(--dur-base) var(--ease-spring);
+  /* Opened dozens of times a day: a short fade, no scale (frequency of use). */
+  animation: fade var(--dur-hot) var(--ease-out);
 }
 
 .paletteSearch {
@@ -215,7 +216,7 @@
   -webkit-backdrop-filter: saturate(180%) blur(40px);
   box-shadow: var(--shadow-lg);
   text-align: center;
-  animation: pop var(--dur-base) var(--ease-spring);
+  /* Entrance and exit: hooks/useOverlayMotion.ts (from the pressed button, reversible). */
 }
 
 .alertIcon {
@@ -296,7 +297,7 @@
   border-radius: var(--radius-sheet);
   background: var(--bg-secondary);
   box-shadow: var(--shadow-lg);
-  animation: pop var(--dur-base) var(--ease-spring);
+  /* Entrance and exit: hooks/useOverlayMotion.ts (from the pressed button, reversible). */
 }
 
 .sheetHeader {

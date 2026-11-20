@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useUiStore } from '../../store/uiStore'
 import { Icon } from '../Icon'
+import { useOverlayMotion } from '../../hooks/useOverlayMotion'
+import type { AlertSpec } from '../../store/uiStore'
 import styles from './Overlays.module.css'
 
 /**
@@ -13,6 +15,9 @@ export default function Alert() {
   const cancelRef = useRef<HTMLButtonElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
   const previous = useRef<Element | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const { requestClose, closing } = useOverlayMotion(panelRef, backdropRef, alert)
 
   useEffect(() => {
     if (!alert) return
@@ -26,14 +31,23 @@ export default function Alert() {
 
   if (!alert) return null
 
+  // Only dismiss the alert this exit belongs to (onConfirm may have opened another one).
+  const finish = (spec: AlertSpec) => () => {
+    if (useUiStore.getState().alert === spec) dismiss()
+  }
+  const cancel = () => requestClose(finish(alert))
   const confirm = () => {
-    dismiss()
-    alert.onConfirm()
+    if (closing()) return
+    const spec = alert
+    requestClose(finish(spec))
+    // The action runs now; the exit animation never delays it.
+    spec.onConfirm()
   }
 
   return (
-    <div className={styles.backdrop} onMouseDown={dismiss}>
+    <div ref={backdropRef} className={styles.backdrop} onMouseDown={cancel}>
       <div
+        ref={panelRef}
         className={styles.alert}
         role="alertdialog"
         aria-modal="true"
@@ -44,7 +58,7 @@ export default function Alert() {
           e.stopPropagation()
           if (e.key === 'Escape') {
             e.preventDefault()
-            dismiss()
+            cancel()
           } else if (e.key === 'Backspace' || e.key === 'Delete') {
             e.preventDefault()
             confirm()
@@ -68,7 +82,7 @@ export default function Alert() {
           </p>
         )}
         <div className={styles.alertButtons}>
-          <button ref={cancelRef} type="button" className={styles.button} onClick={dismiss}>
+          <button ref={cancelRef} type="button" className={styles.button} onClick={cancel}>
             Cancel
           </button>
           <button

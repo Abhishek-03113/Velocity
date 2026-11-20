@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { comboLabel } from '../../lib/platform'
+import { EASE, originCss, originWithin, reversible, staggerDelay, animate, type Reversible } from '../../lib/motion'
 import { Icon, type IconName } from '../Icon'
 import styles from './menu.module.css'
 
@@ -34,19 +35,64 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
     .map((item, i) => ('onSelect' in item && !item.disabled ? i : -1))
     .filter((i) => i >= 0)
 
+  // The open animation; closing plays it backwards from wherever it is (interruptible).
+  const motion = useRef<Reversible | null>(null)
+  const closing = useRef(false)
+
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    const left = Math.min(menu.x, window.innerWidth - rect.width - 8)
-    const top = menu.y + rect.height > window.innerHeight - 8 ? Math.max(8, menu.y - rect.height) : menu.y
-    setPos({ left: Math.max(8, left), top })
+    const left = Math.max(8, Math.min(menu.x, window.innerWidth - rect.width - 8))
+    const flippedUp = menu.y + rect.height > window.innerHeight - 8
+    const top = flippedUp ? Math.max(8, menu.y - rect.height) : menu.y
+    setPos({ left, top })
+    el.style.left = `${left}px`
+    el.style.top = `${top}px`
     el.focus()
+
+    // Origin awareness: grow out of the exact point that was pressed.
+    closing.current = false
+    motion.current?.animation?.cancel()
+    el.style.transformOrigin = originCss(originWithin({ x: menu.x, y: menu.y }, { left, top, width: rect.width, height: rect.height }))
+    motion.current = reversible(
+      el,
+      [
+        { opacity: 0, transform: 'scale(0.6)' },
+        { opacity: 1, transform: 'scale(1)' },
+      ],
+      { duration: 170, easing: EASE.spring },
+    )
+    // Staggering: the first items land one after another.
+    const dy = flippedUp ? 4 : -4
+    el.querySelectorAll<HTMLElement>('[role="menuitem"]').forEach((item, i) => {
+      if (i > 5) return
+      animate(
+        item,
+        [
+          { opacity: 0, transform: `translateY(${dy}px)` },
+          { opacity: 1, transform: 'none' },
+        ],
+        { duration: 140, delay: staggerDelay(i), easing: EASE.out, fill: 'backwards' },
+      )
+    })
   }, [menu])
+
+  /** Dismiss without choosing: reverse the entrance, then unmount. */
+  const dismiss = useCallback(() => {
+    if (closing.current) return
+    closing.current = true
+    const m = motion.current
+    if (!m?.animation) {
+      onClose()
+      return
+    }
+    m.reverse(onClose, 1.6)
+  }, [onClose])
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose()
+      if (!ref.current?.contains(e.target as Node)) dismiss()
     }
     const onBlur = () => onClose()
     window.addEventListener('mousedown', onDown, true)
@@ -57,7 +103,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
       window.removeEventListener('blur', onBlur)
       window.removeEventListener('resize', onBlur)
     }
-  }, [onClose])
+  }, [onClose, dismiss])
 
   const select = (i: number) => {
     const item = menu.items[i]
@@ -71,7 +117,7 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
     e.stopPropagation()
     if (e.key === 'Escape') {
       e.preventDefault()
-      onClose()
+      dismiss()
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       if (actionable.length === 0) return
