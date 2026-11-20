@@ -18,19 +18,15 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            client/package-lock.json
-            server/package-lock.json
-      - run: npm ci --prefix client
-      - run: npm ci --prefix server
-      - run: npm run lint --prefix client
-      - run: npm run typecheck --prefix client
-      - run: npm test --prefix client
-      - run: npm test --prefix server
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile --cwd client
+      - run: bun install --frozen-lockfile --cwd server
+      - run: bun run --cwd client lint
+      - run: bun run --cwd client typecheck
+      - run: bun run --cwd client test
+      - run: bun run --cwd server test
 
   e2e:
     name: E2E (Playwright)
@@ -38,18 +34,16 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            client/package-lock.json
-            server/package-lock.json
-      - run: npm ci --prefix client
-      - run: npm ci --prefix server
-      - run: npx playwright install --with-deps chromium
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile --cwd client
+      - run: bun install --frozen-lockfile --cwd server
+      # The Playwright test runner itself still runs on the runner's Node.js (it does
+      # not support Bun); the API and Vite dev server it starts run on Bun.
+      - run: bunx playwright install --with-deps chromium
         working-directory: client
-      - run: npm run test:e2e
+      - run: bun run test:e2e
         working-directory: client
         env:
           E2E_SHOTS_DIR: ci

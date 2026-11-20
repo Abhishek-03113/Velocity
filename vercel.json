@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm ci --prefix client",
-  "buildCommand": "VITE_APP_ENV=production npm run build --prefix client",
+  "installCommand": "bun install --frozen-lockfile --cwd client",
+  "buildCommand": "VITE_APP_ENV=production bun run --cwd client build",
   "outputDirectory": "client/dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [

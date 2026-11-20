@@ -1,4 +1,4 @@
-// Generates sample.epub next to this script: `npm run fixtures:books` (from client/), or `tsx e2e/fixtures/books/make-epub.ts`.
+// Generates sample.epub next to this script: `bun run fixtures:books` (from client/), or `bun e2e/fixtures/books/make-epub.ts`.
 // EPUB 3 with an NCX for EPUB 2 readers. Output is deterministic (fixed timestamps) so the file diffs cleanly.
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
