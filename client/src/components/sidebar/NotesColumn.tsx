@@ -33,6 +33,7 @@ import { useUiStore } from '../../store/uiStore'
 import type { Group, Paste } from '../../types'
 import { Icon } from '../Icon'
 import type { MenuState } from '../ui/ContextMenu'
+import { DirtyDot } from '../ui/DirtyDot'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import styles from './Sidebar.module.css'
 
@@ -81,7 +82,7 @@ const NoteRow = memo(function NoteRow({ row, selected, onOpen, onMenu, onMove }:
       >
         <div className={styles.noteTitleLine}>
           <span className={styles.noteTitle}>{row.title}</span>
-          {row.dirty && <span className={styles.unsavedDot} title="Unsaved changes" />}
+          <DirtyDot dirty={row.dirty} className={styles.unsavedDot} />
         </div>
         <button
           type="button"

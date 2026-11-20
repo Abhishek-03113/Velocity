@@ -105,6 +105,8 @@ interface UiState {
   alert: AlertSpec | null
   /** Brief status message in the status bar ("Saved", "Exported…") — not a toast. */
   flash: string | null
+  /** 'success' flashes (a deliberate save that worked) get the check and a short pulse. */
+  flashTone: 'neutral' | 'success'
   /** Longer-lived status-bar activity ("Fetching…"); a flash takes precedence while it shows. */
   activity: string | null
 
@@ -127,7 +129,7 @@ interface UiState {
   setShortcutsOpen: (open: boolean) => void
   confirm: (spec: AlertSpec) => void
   dismissAlert: () => void
-  showFlash: (message: string) => void
+  showFlash: (message: string, tone?: 'neutral' | 'success') => void
   setActivity: (message: string | null) => void
 }
 
@@ -241,6 +243,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   pluginPanel: null,
   alert: null,
   flash: null,
+  flashTone: 'neutral',
   activity: null,
 
   setPref: (key, value) => {
@@ -298,8 +301,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   confirm: (spec) => set({ alert: spec }),
   dismissAlert: () => set({ alert: null }),
 
-  showFlash: (message) => {
-    set({ flash: message })
+  showFlash: (message, tone = 'neutral') => {
+    set({ flash: message, flashTone: tone })
     if (flashTimer) clearTimeout(flashTimer)
     flashTimer = setTimeout(() => set({ flash: null }), 2200)
   },

@@ -202,6 +202,7 @@
 }
 
 .tabDirty {
+  /* Pops in and squashes out: components/ui/DirtyDot.tsx. */
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -302,6 +303,14 @@
 
 .statusPending {
   color: var(--label-secondary);
+}
+
+.statusPeak {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--system-green) 16%, transparent);
+  color: color-mix(in srgb, var(--system-green) 70%, var(--label));
+  font-weight: 600;
 }
 
 .statusError {

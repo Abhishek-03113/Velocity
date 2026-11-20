@@ -13,6 +13,7 @@ import { useEditorStore } from '../../store/editorStore'
 import { useLayoutStore, visibleNoteIds } from '../../store/layoutStore'
 import { Icon, type IconName } from '../Icon'
 import { ContextMenu, type MenuState } from '../ui/ContextMenu'
+import { DirtyDot } from '../ui/DirtyDot'
 import { ToolbarButton } from '../ui/ToolbarButton'
 import styles from './Chrome.module.css'
 
@@ -80,7 +81,7 @@ const Tab = memo(function Tab({ id, title, dirty, active, visible, index, onMenu
     >
       <span className={styles.tabTitle}>{title}</span>
       <span className={styles.tabTrail}>
-        {dirty && <span className={styles.tabDirty} aria-label="Unsaved changes" />}
+        <DirtyDot dirty={dirty} className={styles.tabDirty} />
         <button
           type="button"
           className={styles.tabClose}
