@@ -230,12 +230,24 @@
   opacity: 0;
 }
 
+.tabClose::after {
+  /* Fitts's law: the button looks 18 px but answers to a 28 px area. */
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 6px;
+}
+
 .tabClose:hover {
   background: var(--fill-secondary);
   color: var(--label);
 }
 
-.tabNew {
+.tabBar .tabNew {
+  /* A bigger, closer target for the most common tab action (--hit-target). */
+  width: var(--hit-target);
+  height: var(--hit-target);
+  flex-shrink: 0;
   margin-left: 2px;
 }
 

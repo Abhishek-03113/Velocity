@@ -82,12 +82,13 @@ export default function Alert() {
           </p>
         )}
         <div className={styles.alertButtons}>
-          <button ref={cancelRef} type="button" className={styles.button} onClick={cancel}>
+          <button ref={cancelRef} type="button" data-press="" className={styles.button} onClick={cancel}>
             Cancel
           </button>
           <button
             ref={confirmRef}
             type="button"
+            data-press=""
             className={`${styles.button} ${alert.destructive ? styles.buttonDestructive : styles.buttonPrimary}`}
             onClick={confirm}
           >

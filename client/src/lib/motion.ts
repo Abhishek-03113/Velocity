@@ -286,3 +286,36 @@ export function tween(
     cancelAnimationFrame(raf)
   }
 }
+
+let pressInstalled = false
+
+/**
+ * Press feedback for every `[data-press]` element, from one capture listener:
+ * it sinks on pointerdown (same frame, well inside the Doherty threshold) and
+ * springs back on release, or when the pointer slides off (the click is then
+ * cancelled by the browser, so the press can be taken back).
+ */
+export function installPressFeedback(): void {
+  if (pressInstalled || typeof window === 'undefined') return
+  pressInstalled = true
+  window.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (e.button !== 0) return
+      const el = (e.target as Element | null)?.closest?.<HTMLElement>('[data-press]')
+      if (!el || (el as HTMLButtonElement).disabled) return
+      const sink = pressIn(el)
+      if (!sink) return
+      const release = () => {
+        el.removeEventListener('pointerup', release)
+        el.removeEventListener('pointerleave', release)
+        el.removeEventListener('pointercancel', release)
+        pressOut(el, sink)
+      }
+      el.addEventListener('pointerup', release)
+      el.addEventListener('pointerleave', release)
+      el.addEventListener('pointercancel', release)
+    },
+    { capture: true, passive: true },
+  )
+}
