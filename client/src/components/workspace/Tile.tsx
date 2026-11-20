@@ -153,6 +153,7 @@ function TileImpl({ leaf, focused, tiled, zoomed }: TileProps) {
       className={`${styles.tile} ${focused ? styles.tileFocused : ''} ${tiled ? styles.tileCard : ''}`}
       data-tile-id={leaf.id}
       data-tile-kind={content.kind}
+      data-note-id={tileNoteId(content) ?? undefined}
       aria-label={tileLabel(content.kind)}
       onPointerDownCapture={() => {
         if (!focused) focusTile(leaf.id)
@@ -210,13 +211,7 @@ function TileImpl({ leaf, focused, tiled, zoomed }: TileProps) {
                 onClick={() => useLayoutStore.getState().toggleZoom()}
               />
             )}
-            <ToolbarButton
-              size="small"
-              icon="xmark"
-              label="Close Tile"
-              shortcut={primaryKey('tile.close')}
-              onClick={() => closeTile(leaf.id)}
-            />
+            {/* No close button here: tiles are closed from their tab in the tab bar (or Ctrl+Alt+Q). */}
           </div>
         </header>
       )}

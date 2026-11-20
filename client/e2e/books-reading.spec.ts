@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { allNotes, api, noteContent, shot, tiles } from './helpers'
 
 /**
@@ -45,6 +45,15 @@ interface ApiAnnotation {
 
 const shelf = (page: Page) => page.locator('section[data-tile-kind="view"]')
 const reader = (page: Page) => page.locator('section[data-tile-kind="plugin"]')
+
+/** Close a tile from the tab bar: its own tile tab, or else the tab of the note it shows. */
+async function closeFromTabs(page: Page, tile: Locator) {
+  const tileId = await tile.getAttribute('data-tile-id')
+  const tileTab = page.locator(`[data-tile-tab="${tileId}"]`)
+  if (await tileTab.count()) return tileTab.getByRole('button', { name: /^Close / }).click()
+  const noteId = await tile.getAttribute('data-note-id')
+  await page.locator(`[data-note-tab="${noteId}"]`).getByRole('button', { name: /^Close / }).click()
+}
 const cards = (page: Page) => shelf(page).locator('[data-book-id]')
 const toolbar = (page: Page) => reader(page).getByTestId('selection-toolbar')
 const drawer = (page: Page) => reader(page).locator('aside')
@@ -155,7 +164,7 @@ async function writeNote(page: Page, text: string) {
 
 async function closeReaders(page: Page) {
   while (await reader(page).count()) {
-    await reader(page).first().getByRole('button', { name: /Close/ }).click()
+    await closeFromTabs(page, reader(page).first())
     await page.waitForTimeout(300)
   }
 }
