@@ -245,3 +245,44 @@ export function pressOut(el: HTMLElement, from: Animation | null): void {
   from?.cancel()
   animate(el, [{ transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: EASE.overshoot })
 }
+
+/** Ease-out with a small overshoot past 1 (spring-backs after a stretch). */
+export function easeOutBack(t: number, s = 1.2): number {
+  const u = t - 1
+  return 1 + (s + 1) * u * u * u + s * u * u
+}
+
+/**
+ * Tween a number with requestAnimationFrame, for values WAAPI cannot animate
+ * (a CSS variable that drives layout). Returns a cancel function. Under reduced
+ * motion it jumps straight to the end.
+ */
+export function tween(
+  from: number,
+  to: number,
+  onFrame: (value: number) => void,
+  opts: { duration?: number; ease?: (t: number) => number; onDone?: () => void } = {},
+): () => void {
+  const duration = clampDuration(opts.duration ?? TIER_MS.cool)
+  if (reducedMotion() || duration === 0 || from === to || typeof requestAnimationFrame !== 'function') {
+    onFrame(to)
+    opts.onDone?.()
+    return () => {}
+  }
+  const ease = opts.ease ?? easeOutBack
+  const start = performance.now()
+  let raf = 0
+  let cancelled = false
+  const step = (now: number) => {
+    if (cancelled) return
+    const t = Math.min(1, (now - start) / duration)
+    onFrame(from + (to - from) * ease(t))
+    if (t < 1) raf = requestAnimationFrame(step)
+    else opts.onDone?.()
+  }
+  raf = requestAnimationFrame(step)
+  return () => {
+    cancelled = true
+    cancelAnimationFrame(raf)
+  }
+}

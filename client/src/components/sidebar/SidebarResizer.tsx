@@ -1,11 +1,14 @@
-import type { KeyboardEvent, PointerEvent, RefObject } from 'react'
+import { useRef, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
 import { clampSidebarWidth, SIDEBAR_WIDTHS, useUiStore } from '../../store/uiStore'
+import { rubberBandClamp, tween } from '../../lib/motion'
 import styles from './Sidebar.module.css'
 
 const PREF = { folders: 'foldersWidth', notes: 'notesWidth' } as const
 const VAR = { folders: '--folders-width', notes: '--notes-width' } as const
 const LABEL = { folders: 'Resize folders', notes: 'Resize notes list' } as const
 const STEP = 16
+/** How far past a limit the edge can stretch (rubber banding, see lib/motion.ts). */
+const STRETCH = 80
 
 /**
  * Drag handle on the right edge of a sidebar column. While dragging, the width is written straight to the sidebar's
@@ -15,28 +18,42 @@ const STEP = 16
 export function SidebarResizer({ which, asideRef }: { which: 'folders' | 'notes'; asideRef: RefObject<HTMLElement> }) {
   const width = useUiStore((s) => s.prefs[PREF[which]])
   const { min, max, initial } = SIDEBAR_WIDTHS[which]
+  const springBack = useRef<(() => void) | null>(null)
   const save = (px: number) => useUiStore.getState().setPref(PREF[which], clampSidebarWidth(which, px))
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     const aside = asideRef.current
     if (!aside || e.button !== 0) return
     e.preventDefault()
+    springBack.current?.()
     const handle = e.currentTarget
     handle.setPointerCapture(e.pointerId)
     const startX = e.clientX
     const start = width
-    let latest = start
+    let drawn = start
     aside.dataset.resizing = ''
+    const show = (px: number) => aside.style.setProperty(VAR[which], `${px}px`)
     const onMove = (ev: globalThis.PointerEvent) => {
-      latest = clampSidebarWidth(which, start + ev.clientX - startX)
-      aside.style.setProperty(VAR[which], `${latest}px`)
+      // Past min/max the edge keeps moving with growing resistance instead of stopping dead.
+      drawn = rubberBandClamp(start + ev.clientX - startX, min, max, STRETCH)
+      show(drawn)
     }
     const onUp = () => {
-      delete aside.dataset.resizing
       handle.removeEventListener('pointermove', onMove)
       handle.removeEventListener('pointerup', onUp)
       handle.removeEventListener('pointercancel', onUp)
-      save(latest)
+      const settled = clampSidebarWidth(which, drawn)
+      const finish = () => {
+        springBack.current = null
+        delete aside.dataset.resizing
+        save(settled)
+      }
+      if (Math.abs(settled - drawn) < 0.5) {
+        finish()
+        return
+      }
+      // Spring back to the limit with a small overshoot; the stored width is always clamped.
+      springBack.current = tween(drawn, settled, show, { duration: 260, onDone: finish })
     }
     handle.addEventListener('pointermove', onMove)
     handle.addEventListener('pointerup', onUp)

@@ -5,6 +5,7 @@ import { NOTE_DRAG_TYPE, TILE_DRAG_TYPE } from '../../lib/groupColors'
 import { contentForNote, primaryLeafFor } from '../../lib/noteViews'
 import { planDrop, zoneAt, type DropPlan, type DropSource, type DropZone } from '../../lib/dropPlan'
 import { clampScroll } from '../../lib/sliding'
+import { EASE, animate, rubberBandClamp } from '../../lib/motion'
 import { geometry as slidingGeometry } from '../../lib/sliding'
 import { computeGeometry, leaves, type Rect, type SplitGeometry } from '../../lib/tiling'
 import { useLayoutStore } from '../../store/layoutStore'
@@ -15,6 +16,9 @@ import { Tile } from './Tile'
 import styles from './Workspace.module.css'
 
 const FULL: Rect = { x: 0, y: 0, w: 1, h: 1 }
+/** How far (px) the sliding strip stretches past an end while dragged / wheeled (rubber banding). */
+const PAN_STRETCH = 120
+const WHEEL_STRETCH = 60
 
 function tileStyle(r: Rect, gapped: boolean): React.CSSProperties {
   if (!gapped) {
@@ -230,6 +234,29 @@ export default function Workspace() {
     if (x != null) scrollTo(x)
   }, [scrollTo])
 
+  /**
+   * Rubber banding: an offset past either end of the strip, drawn with growing resistance.
+   * `stretchPx` is how far (in px) the strip can be pulled past an end.
+   */
+  const stretchPan = useCallback((raw: number, width: number, stretchPx: number) => {
+    const cols = useLayoutStore.getState().columns
+    return rubberBandClamp(raw, clampScroll(cols, -Infinity), clampScroll(cols, Infinity), stretchPx / width)
+  }, [])
+  /** End a pan: spring back inside the bounds if it was stretched, then commit. */
+  const settlePan = useCallback(() => {
+    const x = panning.current
+    if (x == null) return
+    const settled = clampScroll(useLayoutStore.getState().columns, x)
+    if (Math.abs(settled - x) > 1e-4 && stripRef.current) {
+      animate(stripRef.current, [{ transform: `translateX(${-x * 100}%)` }, { transform: `translateX(${-settled * 100}%)` }], {
+        duration: 260,
+        easing: EASE.overshoot,
+      })
+      showPan(settled)
+    }
+    commitPan()
+  }, [showPan, commitPan])
+
   // Horizontal wheel / trackpad scroll pans the strip (vertical scroll stays with the notes).
   useEffect(() => {
     const el = containerRef.current
@@ -237,16 +264,21 @@ export default function Workspace() {
     // The pan is written straight to the strip's transform while the gesture runs and committed to the store once
     // it settles, so a trackpad flick does not re-render the whole workspace on every wheel event.
     let settle: ReturnType<typeof setTimeout> | null = null
+    let wheelRaw: number | null = null
     const onWheel = (e: WheelEvent) => {
       const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey
       if (!horizontal) return
       e.preventDefault()
       const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
       const width = el.clientWidth || 1
-      const from = panning.current ?? useLayoutStore.getState().scrollX
-      showPan(clampScroll(useLayoutStore.getState().columns, from + delta / width))
+      // Track the raw offset so overscroll stretches (rubber band) and springs back once the gesture settles.
+      wheelRaw = (wheelRaw ?? panning.current ?? useLayoutStore.getState().scrollX) + delta / width
+      showPan(stretchPan(wheelRaw, width, WHEEL_STRETCH))
       if (settle) clearTimeout(settle)
-      settle = setTimeout(commitPan, 120)
+      settle = setTimeout(() => {
+        wheelRaw = null
+        settlePan()
+      }, 120)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => {
@@ -254,7 +286,7 @@ export default function Workspace() {
       if (settle) clearTimeout(settle)
       commitPan()
     }
-  }, [strip, showPan, commitPan])
+  }, [strip, showPan, commitPan, settlePan, stretchPan])
 
   // While a note is dragged, frames inside tiles (the EPUB reader, previews) would swallow the drag events and the
   // tile under them could never become a drop target: make them transparent to the pointer until the drag ends.
@@ -301,9 +333,9 @@ export default function Workspace() {
     target.setPointerCapture(e.pointerId)
     setResizing('pan')
     const onMove = (ev: globalThis.PointerEvent) =>
-      showPan(clampScroll(useLayoutStore.getState().columns, startScroll - (ev.clientX - startX) / (el.clientWidth || 1)))
+      showPan(stretchPan(startScroll - (ev.clientX - startX) / (el.clientWidth || 1), el.clientWidth || 1, PAN_STRETCH))
     const onUp = () => {
-      commitPan()
+      settlePan()
       setResizing(null)
       target.removeEventListener('pointermove', onMove)
       target.removeEventListener('pointerup', onUp)

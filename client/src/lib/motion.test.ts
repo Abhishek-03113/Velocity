@@ -5,6 +5,7 @@ import {
   _setLastPointer,
   animate,
   clampDuration,
+  easeOutBack,
   flipFrom,
   originWithin,
   recentPointer,
@@ -15,6 +16,7 @@ import {
   setUserReducedMotion,
   staggerDelay,
   tierDuration,
+  tween,
 } from './motion'
 
 function setMatchMedia(matches: boolean) {
@@ -149,6 +151,25 @@ describe('reduced motion', () => {
     r.reverse(done, 2)
     expect(a.updatePlaybackRate).toHaveBeenCalledWith(-2)
     ;(a.onfinish as unknown as () => void)()
+    expect(done).toHaveBeenCalledOnce()
+  })
+})
+
+describe('spring-back tween', () => {
+  it('overshoots slightly and lands exactly on the target', () => {
+    expect(easeOutBack(0)).toBeCloseTo(0)
+    expect(easeOutBack(1)).toBeCloseTo(1)
+    const peak = Math.max(...Array.from({ length: 50 }, (_, i) => easeOutBack(i / 50)))
+    expect(peak).toBeGreaterThan(1)
+    expect(peak).toBeLessThan(1.1)
+  })
+
+  it('jumps to the end under reduced motion', () => {
+    setUserReducedMotion(true)
+    const frames: number[] = []
+    const done = vi.fn()
+    tween(400, 360, (v) => frames.push(v), { onDone: done })
+    expect(frames).toEqual([360])
     expect(done).toHaveBeenCalledOnce()
   })
 })
